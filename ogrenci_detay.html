@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasköy CADEP - Öğrenci Deneme Karnesi</title>
+    <script>
+        // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
+        let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+        if (!oturum) {
+            window.location.href = 'giris.html';
+        }
+
+        let urlParams = new URLSearchParams(window.location.search);
+        let ogrenciId = urlParams.get('id');
+    </script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS (Excel Çıktısı İçin) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Ortak Navbar -->
+    <header class="bg-indigo-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    Hasköy CADEP Takip Sistemi
+                </h1>
+                <p class="text-indigo-200 text-sm">8. Sınıf LGS Öğrenci ve Deneme Analiz Platformu - Hasköy Ortaokulu</p>
+            </div>
+            <!-- Üst Menü (Öğrenci ise gizlenecek) -->
+            <nav id="ogrenci-nav-menu" class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
+                <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Ana Sayfa</a>
+                <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
+                <a href="#" onclick="mihmandarLinkYonlendir(event)" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Mihmandar Öğretmenler</a>
+                <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
+                <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
+                <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
+                <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
+                
+                <!-- Aktif Kullanıcı İsim Alanı -->
+                <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
+                </div>
+
+                <!-- Çıkış Yap Butonu -->
+                <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
+            </nav>
+            <!-- Öğrenci Girişlerinde Sağ Üstte Sadece Çıkış Butonu ve İsim Rozeti -->
+            <div id="ogrenci-cikis-container" class="hidden mt-3 sm:mt-0 flex items-center gap-3">
+                <div class="flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span id="aktif-kullanici-adi-ogr" class="font-bold text-white">Yükleniyor...</span>
+                </div>
+                <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white shadow">Çıkış Yap</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Ana İçerik -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div>
+                <!-- Öğrenci Listesine Dön Butonu (Öğrenci ise gizlenecek) -->
+                <a href="ogrenciler.html" id="btn-geri-don" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center gap-1 mb-2">← Öğrenci Listesine Dön</a>
+                <h2 id="ogr-baslik" class="text-2xl font-bold text-slate-700">Öğrenci Deneme Karnesi</h2>
+                <p id="ogr-detay-bilgi" class="text-sm text-slate-500">Öğrencinin tüm deneme sınavlarındaki başarı ve net analizleri.</p>
+            </div>
+            <div>
+                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Karnesi İndir</button>
+            </div>
+        </div>
+
+        <!-- Öğrenci Deneme Sonuçları Tablosu -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 uppercase tracking-wider text-[11px]">
+                            <th class="p-2.5 w-12 text-center">Sıra</th>
+                            <th class="p-2.5 min-w-[150px]">Deneme Adı</th>
+                            <th class="p-2.5 w-24">Tarih</th>
+                            <th class="p-2.5 text-center w-24">Derece</th>
+                            <th class="p-2.5 text-center">Türkçe (D/Y/B)</th>
+                            <th class="p-2.5 text-center">Mat (D/Y/B)</th>
+                            <th class="p-2.5 text-center">Fen (D/Y/B)</th>
+                            <th class="p-2.5 text-center">İnk (D/Y/B)</th>
+                            <th class="p-2.5 text-center">Din (D/Y/B)</th>
+                            <th class="p-2.5 text-center">İng (D/Y/B)</th>
+                            <th class="p-2.5 text-center">Net</th>
+                            <th class="p-2.5 text-center">Puan</th>
+                            <th class="p-2.5 text-center">Yüzde</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ogr-karne-govde" class="divide-y divide-slate-200">
+                        <tr><td colspan="13" class="p-6 text-center text-slate-400">Veriler yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        Hasköy Akademik Destek Programı (CADEP) Takip Otomasyonu &copy; 2026 - Hasköy Ortaokulu
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let globalOgrenci = null;
+        let globalDenemeler = [];
+        let globalSonuclar = [];
+        let tumDenemeSonuclari = [];
+
+        window.onload = async function() {
+            // Öğrenci rolü kontrolü ve arayüzü kısıtlama
+            if (oturum && oturum.rol === 'ogrenci') {
+                let navMenu = document.getElementById('ogrenci-nav-menu');
+                if (navMenu) navMenu.style.display = 'none';
+
+                let cikisContainer = document.getElementById('ogrenci-cikis-container');
+                if (cikisContainer) cikisContainer.classList.remove('hidden');
+
+                let geriDonBtn = document.getElementById('btn-geri-don');
+                if (geriDonBtn) geriDonBtn.style.display = 'none';
+            } else if (oturum && oturum.rol !== 'admin') {
+                let kulMenu = document.getElementById('menu-kullanicilar');
+                if (kulMenu) kulMenu.style.display = 'none';
+            }
+
+            // Aktif kullanıcının gerçek adını üst menüde göster
+            await aktifKullaniciAdiGoster(oturum);
+
+            await verileriGetir();
+        };
+
+        async function aktifKullaniciAdiGoster(oturum) {
+            let isimSpan = document.getElementById('aktif-kullanici-adi');
+            let isimSpanOgr = document.getElementById('aktif-kullanici-adi-ogr');
+            if (!oturum) return;
+
+            let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
+
+            if (oturum.rol === 'admin') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
+                    if (data && data.ad_soyad) {
+                        gorunurIsim = data.ad_soyad;
+                    } else {
+                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
+                        if (allEkip && allEkip.length > 0) {
+                            let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
+                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                            else gorunurIsim = allEkip[0].ad_soyad;
+                        }
+                    }
+                }
+                if(isimSpan) isimSpan.innerText = gorunurIsim + " (Yönetici)";
+                if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Yönetici)";
+            } 
+            else if (oturum.rol === 'mihmandar') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
+                    if (data && data.length > 0) {
+                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
+                        if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                        else gorunurIsim = data[0].ad_soyad;
+                    }
+                }
+                if(isimSpan) isimSpan.innerText = gorunurIsim + " (Mihmandar)";
+                if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Mihmandar)";
+            } 
+            else if (oturum.rol === 'ogrenci') {
+                if (oturum.id) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else if (oturum.kullanici_adi) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                }
+                if(isimSpan) isimSpan.innerText = gorunurIsim + " (Öğrenci)";
+                if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Öğrenci)";
+            }
+        }
+
+        async function verileriGetir() {
+            let ogrData = null;
+
+            if (oturum.rol === 'ogrenci') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('*').eq('id', oturum.iliskili_id).single();
+                    ogrData = data;
+                }
+                if (!ogrData) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('*').eq('ogrenci_no', oturum.kullanici_adi).single();
+                    ogrData = data;
+                }
+                if (!ogrData) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('*').eq('okul_no', oturum.kullanici_adi).single();
+                    ogrData = data;
+                }
+                if (ogrData) {
+                    ogrenciId = ogrData.id;
+                }
+            } else if (ogrenciId) {
+                let { data } = await _supabase.from('cadep_ogrenciler').select('*').eq('id', ogrenciId).single();
+                ogrData = data;
+            }
+
+            if(!ogrData) {
+                alert("Öğrenci kaydı bulunamadı! Lütfen yönetici panelinden kullanıcının ilişkili ID'sini veya okul numarasını kontrol edin.");
+                window.location.href = "giris.html";
+                return;
+            }
+
+            globalOgrenci = ogrData;
+
+            // Mihmandar öğretmen adını bul
+            let mihmandarAdi = "-";
+            if (ogrData.mihmandar_ogretmen_id) {
+                let { data: mihData } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', ogrData.mihmandar_ogretmen_id).single();
+                if (mihData && mihData.ad_soyad) {
+                    mihmandarAdi = mihData.ad_soyad;
+                }
+            }
+
+            document.getElementById('ogr-baslik').innerText = `${ogrData.ad_soyad} - Deneme Karnesi`;
+            document.getElementById('ogr-detay-bilgi').innerText = `Sınıf: ${ogrData.sinif} | Okul No: ${ogrData.ogrenci_no || ogrData.okul_no || '-'} | Mihmandar: ${mihmandarAdi} | Hedef: ${ogrData.hedef_lisesi || '-'}`;
+
+            let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: true });
+            globalDenemeler = denemeler || [];
+
+            let { data: sonuclar } = await _supabase.from('deneme_sonuclari').select('*').eq('ogrenci_id', ogrenciId);
+            globalSonuclar = sonuclar || [];
+
+            let { data: tumSonuclar } = await _supabase.from('deneme_sonuclari').select('*');
+            tumDenemeSonuclari = tumSonuclar || [];
+
+            karneyiOlustur();
+        }
+
+        function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
+            if (ogrenciPuan == null || ogrenciPuan === '-') return '-';
+            
+            let sinifSonuclari = tumDenemeSonuclari
+                .filter(s => s.deneme_id === denemeId && s.lgs_puan != null)
+                .sort((a, b) => b.lgs_puan - a.lgs_puan);
+
+            let sira = sinifSonuclari.findIndex(s => s.ogrenci_id === ogrenciId) + 1;
+            if (sira === 0) return '-';
+
+            if (sira === 1) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">🥇 1.</span>';
+            if (sira === 2) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-xs">🥈 2.</span>';
+            if (sira === 3) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-xs">🥉 3.</span>';
+            
+            return `<span class="font-semibold text-slate-600">${sira}.</span>`;
+        }
+
+        function karneyiOlustur() {
+            let tbody = document.getElementById('ogr-karne-govde');
+
+            if(globalDenemeler.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            let katildigiSinavSayisi = 0;
+
+            let toplam = {
+                t_d: 0, t_y: 0, t_b: 0,
+                m_d: 0, m_y: 0, m_b: 0,
+                f_d: 0, f_y: 0, f_b: 0,
+                ind: 0, iny: 0, inb: 0,
+                d_d: 0, d_y: 0, d_b: 0,
+                ingd: 0, ingy: 0, ingb: 0,
+                net: 0, puan: 0, yuzde: 0
+            };
+
+            globalDenemeler.forEach((deneme, index) => {
+                let sonuc = globalSonuclar.find(s => s.deneme_id === deneme.id);
+
+                let td = sonuc ? (sonuc.turkce_d ?? 0) : '-'; 
+                let ty = sonuc ? (sonuc.turkce_y ?? 0) : '-'; 
+                let tb = sonuc ? (sonuc.turkce_b ?? 0) : '-';
+                
+                let md = sonuc ? (sonuc.matematik_d ?? 0) : '-'; 
+                let my = sonuc ? (sonuc.matematik_y ?? 0) : '-'; 
+                let mb = sonuc ? (sonuc.matematik_b ?? 0) : '-';
+                
+                let fd = sonuc ? (sonuc.fen_d ?? 0) : '-'; 
+                let fy = sonuc ? (sonuc.fen_y ?? 0) : '-'; 
+                let fb = sonuc ? (sonuc.fen_b ?? 0) : '-';
+                
+                let ind = sonuc ? (sonuc.inkilap_d ?? 0) : '-'; 
+                let iny = sonuc ? (sonuc.inkilap_y ?? 0) : '-'; 
+                let inb = sonuc ? (sonuc.inkilap_b ?? 0) : '-';
+                
+                let dd = sonuc ? (sonuc.din_d ?? 0) : '-'; 
+                let dy = sonuc ? (sonuc.din_y ?? 0) : '-'; 
+                let db = sonuc ? (sonuc.din_b ?? 0) : '-';
+                
+                let ingd = sonuc ? (sonuc.ingilizce_d ?? 0) : '-'; 
+                let ingy = sonuc ? (sonuc.ingilizce_y ?? 0) : '-'; 
+                let ingb = sonuc ? (sonuc.ingilizce_b ?? 0) : '-';
+                
+                let net = sonuc && sonuc.toplam_net != null ? sonuc.toplam_net : '-';
+                let puan = sonuc && sonuc.lgs_puan != null ? sonuc.lgs_puan : '-';
+                let yuzde = sonuc && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : '-';
+                let dereceHtml = ogrenciDerecesiniBul(deneme.id, ogrenciId, sonuc ? sonuc.lgs_puan : null);
+
+                if(sonuc) {
+                    katildigiSinavSayisi++;
+                    toplam.t_d += (sonuc.turkce_d ?? 0);
+                    toplam.t_y += (sonuc.turkce_y ?? 0);
+                    toplam.t_b += (sonuc.turkce_b ?? (20 - (sonuc.turkce_d ?? 0) - (sonuc.turkce_y ?? 0)));
+
+                    toplam.m_d += (sonuc.matematik_d ?? 0);
+                    toplam.m_y += (sonuc.matematik_y ?? 0);
+                    toplam.m_b += (sonuc.matematik_b ?? (20 - (sonuc.matematik_d ?? 0) - (sonuc.matematik_y ?? 0)));
+
+                    toplam.f_d += (sonuc.fen_d ?? 0);
+                    toplam.f_y += (sonuc.fen_y ?? 0);
+                    toplam.f_b += (sonuc.fen_b ?? (20 - (sonuc.fen_d ?? 0) - (sonuc.fen_y ?? 0)));
+
+                    toplam.ind += (sonuc.inkilap_d ?? 0);
+                    toplam.iny += (sonuc.inkilap_y ?? 0);
+                    toplam.inb += (sonuc.inkilap_b ?? (10 - (sonuc.inkilap_d ?? 0) - (sonuc.inkilap_y ?? 0)));
+
+                    toplam.d_d += (sonuc.din_d ?? 0);
+                    toplam.d_y += (sonuc.din_y ?? 0);
+                    toplam.d_b += (sonuc.din_b ?? (10 - (sonuc.din_d ?? 0) - (sonuc.din_y ?? 0)));
+
+                    toplam.ingd += (sonuc.ingilizce_d ?? 0);
+                    toplam.ingy += (sonuc.ingilizce_y ?? 0);
+                    toplam.ingb += (sonuc.ingilizce_b ?? (10 - (sonuc.ingilizce_d ?? 0) - (sonuc.ingilizce_y ?? 0)));
+
+                    toplam.net += (sonuc.toplam_net ?? 0);
+                    toplam.puan += (sonuc.lgs_puan ?? 0);
+                    toplam.yuzde += (sonuc.yuzdelik_dilim ?? 0);
+                }
+
+                html += `<tr>
+                    <td class="p-2.5 text-center font-bold text-slate-500">${index + 1}</td>
+                    <td class="p-2.5 font-semibold text-slate-800">${deneme.deneme_adi}</td>
+                    <td class="p-2.5 text-slate-500 text-xs">${deneme.tarih || ''}</td>
+                    <td class="p-2.5 text-center">${dereceHtml}</td>
+                    <td class="p-2.5 text-center">${td}/${ty}/${tb}</td>
+                    <td class="p-2.5 text-center">${md}/${my}/${mb}</td>
+                    <td class="p-2.5 text-center">${fd}/${fy}/${fb}</td>
+                    <td class="p-2.5 text-center">${ind}/${iny}/${inb}</td>
+                    <td class="p-2.5 text-center">${dd}/${dy}/${db}</td>
+                    <td class="p-2.5 text-center">${ingd}/${ingy}/${ingb}</td>
+                    <td class="p-2.5 text-center font-bold text-indigo-700">${net}</td>
+                    <td class="p-2.5 text-center font-semibold text-emerald-700">${puan}</td>
+                    <td class="p-2.5 text-center font-semibold text-sky-700">${yuzde}</td>
+                </tr>`;
+            });
+
+            if(katildigiSinavSayisi > 0) {
+                let fmt = (val, decimals = 2) => {
+                    let num = val / katildigiSinavSayisi;
+                    return Number.isInteger(num) ? num.toString() : num.toFixed(decimals);
+                };
+                let fmtPuan = (val) => {
+                    let num = val / katildigiSinavSayisi;
+                    return Number.isInteger(num) ? num.toString() : num.toFixed(3);
+                };
+
+                html += `<tr class="bg-indigo-50 font-bold text-slate-800 border-t-2 border-indigo-200">
+                    <td class="p-2.5 text-center text-indigo-700" colspan="4">GENEL ORTALAMA (${katildigiSinavSayisi} Sınav)</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.t_d)}/${fmt(toplam.t_y)}/${fmt(toplam.t_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.m_d)}/${fmt(toplam.m_y)}/${fmt(toplam.m_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.f_d)}/${fmt(toplam.f_y)}/${fmt(toplam.f_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.ind)}/${fmt(toplam.iny)}/${fmt(toplam.inb)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.d_d)}/${fmt(toplam.d_y)}/${fmt(toplam.d_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.ingd)}/${fmt(toplam.ingy)}/${fmt(toplam.ingb)}</td>
+                    <td class="p-2.5 text-center text-indigo-900">${fmt(toplam.net)}</td>
+                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(toplam.puan)}</td>
+                    <td class="p-2.5 text-center text-sky-800">${fmt(toplam.yuzde)}</td>
+                </tr>`;
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        function excelRaporAl() {
+            if(!globalOgrenci) return;
+
+            let excelVerisi = [
+                ["Hasköy Ortaokulu"],
+                ["2026 - 2027 Eğitim Öğretim Yılı"],
+                [globalOgrenci.ad_soyad + " - Öğrenci Deneme Karnesi Raporu"],
+                [""],
+                ["Sıra", "Deneme Adı", "Tarih", "Derece", "Türkçe (D/Y/B)", "Matematik (D/Y/B)", "Fen (D/Y/B)", "İnkılap (D/Y/B)", "Din (D/Y/B)", "İngilizce (D/Y/B)", "Toplam Net", "LGS Puanı", "Yüzdelik Dilim"]
+            ];
+
+            let katildigiSinavSayisi = 0;
+            let toplam = {
+                t_d: 0, t_y: 0, t_b: 0,
+                m_d: 0, m_y: 0, m_b: 0,
+                f_d: 0, f_y: 0, f_b: 0,
+                ind: 0, iny: 0, inb: 0,
+                d_d: 0, d_y: 0, d_b: 0,
+                ingd: 0, ingy: 0, ingb: 0,
+                net: 0, puan: 0, yuzde: 0
+            };
+
+            globalDenemeler.forEach((deneme, index) => {
+                let s = globalSonuclar.find(res => res.deneme_id === deneme.id) || {};
+                let hasData = globalSonuclar.some(res => res.deneme_id === deneme.id);
+
+                let siraText = "-";
+                if(hasData && s.lgs_puan != null) {
+                    let sinifSonuclari = tumDenemeSonuclari
+                        .filter(res => res.deneme_id === deneme.id && res.lgs_puan != null)
+                        .sort((a, b) => b.lgs_puan - a.lgs_puan);
+                    let sira = sinifSonuclari.findIndex(res => res.ogrenci_id === ogrenciId) + 1;
+                    if(sira > 0) siraText = `${sira}.`;
+                }
+
+                if(hasData) {
+                    katildigiSinavSayisi++;
+                    toplam.t_d += (s.turkce_d ?? 0);
+                    toplam.t_y += (s.turkce_y ?? 0);
+                    toplam.t_b += (s.turkce_b ?? (20 - (s.turkce_d ?? 0) - (s.turkce_y ?? 0)));
+
+                    toplam.m_d += (s.matematik_d ?? 0);
+                    toplam.m_y += (s.matematik_y ?? 0);
+                    toplam.m_b += (s.matematik_b ?? (20 - (s.matematik_d ?? 0) - (s.matematik_y ?? 0)));
+
+                    toplam.f_d += (s.fen_d ?? 0);
+                    toplam.f_y += (s.fen_y ?? 0);
+                    toplam.f_b += (s.fen_b ?? (20 - (s.fen_d ?? 0) - (s.fen_y ?? 0)));
+
+                    toplam.ind += (s.inkilap_d ?? 0);
+                    toplam.iny += (s.inkilap_y ?? 0);
+                    toplam.inb += (s.inkilap_b ?? (10 - (s.inkilap_d ?? 0) - (s.inkilap_y ?? 0)));
+
+                    toplam.d_d += (s.din_d ?? 0);
+                    toplam.d_y += (s.din_y ?? 0);
+                    toplam.d_b += (s.din_b ?? (10 - (s.din_d ?? 0) - (s.din_y ?? 0)));
+
+                    toplam.ingd += (s.ingilizce_d ?? 0);
+                    toplam.ingy += (s.ingilizce_y ?? 0);
+                    toplam.ingb += (s.ingilizce_b ?? (10 - (s.ingilizce_d ?? 0) - (s.ingilizce_y ?? 0)));
+
+                    toplam.net += (s.toplam_net ?? 0);
+                    toplam.puan += (s.lgs_puan ?? 0);
+                    toplam.yuzde += (s.yuzdelik_dilim ?? 0);
+                }
+
+                excelVerisi.push([
+                    index + 1,
+                    deneme.deneme_adi,
+                    deneme.tarih || "",
+                    siraText,
+                    hasData ? `${s.turkce_d ?? 0}/${s.turkce_y ?? 0}/${s.turkce_b ?? 0}` : "-",
+                    hasData ? `${s.matematik_d ?? 0}/${s.matematik_y ?? 0}/${s.matematik_b ?? 0}` : "-",
+                    hasData ? `${s.fen_d ?? 0}/${s.fen_y ?? 0}/${s.fen_b ?? 0}` : "-",
+                    hasData ? `${s.inkilap_d ?? 0}/${s.inkilap_y ?? 0}/${s.inkilap_b ?? 0}` : "-",
+                    hasData ? `${s.din_d ?? 0}/${s.din_y ?? 0}/${s.din_b ?? 0}` : "-",
+                    hasData ? `${s.ingilizce_d ?? 0}/${s.ingilizce_y ?? 0}/${s.ingilizce_b ?? 0}` : "-",
+                    s.toplam_net != null ? Number(s.toplam_net) : 0,
+                    s.lgs_puan != null ? Number(s.lgs_puan) : 0,
+                    s.yuzdelik_dilim != null ? Number(s.yuzdelik_dilim) : 0
+                ]);
+            });
+
+            if(katildigiSinavSayisi > 0) {
+                let fmtExcel = (val, decimals = 2) => {
+                    let num = val / katildigiSinavSayisi;
+                    return Number.isInteger(num) ? num : Number(num.toFixed(decimals));
+                };
+                let fmtExcelPuan = (val) => {
+                    let num = val / katildigiSinavSayisi;
+                    return Number.isInteger(num) ? num : Number(num.toFixed(3));
+                };
+
+                excelVerisi.push([
+                    "GENEL ORTALAMA", "", "", "",
+                    `${fmtExcel(toplam.t_d)}/${fmtExcel(toplam.t_y)}/${fmtExcel(toplam.t_b)}`,
+                    `${fmtExcel(toplam.m_d)}/${fmtExcel(toplam.m_y)}/${fmtExcel(toplam.m_b)}`,
+                    `${fmtExcel(toplam.f_d)}/${fmtExcel(toplam.f_y)}/${fmtExcel(toplam.f_b)}`,
+                    `${fmtExcel(toplam.ind)}/${fmtExcel(toplam.iny)}/${fmtExcel(toplam.inb)}`,
+                    `${fmtExcel(toplam.d_d)}/${fmtExcel(toplam.d_y)}/${fmtExcel(toplam.d_b)}`,
+                    `${fmtExcel(toplam.ingd)}/${fmtExcel(toplam.ingy)}/${fmtExcel(toplam.ingb)}`,
+                    fmtExcel(toplam.net),
+                    fmtExcelPuan(toplam.puan),
+                    fmtExcel(toplam.yuzde)
+                ]);
+            }
+
+            let worksheet = XLSX.utils.aoa_to_sheet(excelVerisi);
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Ogrenci Karnesi");
+            
+            XLSX.writeFile(workbook, `CADEP_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9]/g, '_')}_Karnesi.xlsx`);
+        }
+
+        function mihmandarLinkYonlendir(e) {
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
+    </script>
+</body>
+</html>

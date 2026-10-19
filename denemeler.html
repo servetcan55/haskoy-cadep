@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasköy CADEP Takip Sistemi - Deneme & Net Analizi</title>
+    <script>
+    // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (!oturum) {
+        window.location.href = 'giris.html';
+    }
+</script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS (Excel Çıktısı İçin) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF (PDF Çıktısı İçin) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Ortak Navbar -->
+    <header class="bg-indigo-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    Hasköy CADEP Takip Sistemi
+                </h1>
+                <p class="text-indigo-200 text-sm">8. Sınıf LGS Öğrenci ve Deneme Analiz Platformu - Hasköy Ortaokulu</p>
+            </div>
+            <nav class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
+                <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Ana Sayfa</a>
+                <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
+                <a href="#" onclick="mihmandarLinkYonlendir(event)" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Mihmandar Öğretmenler</a>
+                <a href="denemeler.html" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Denemeler & Sonuçlar</a>
+                <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
+                <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
+                <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
+                
+                <!-- Aktif Kullanıcı İsim Alanı -->
+                <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
+                </div>
+
+                <!-- Çıkış Yap Butonu -->
+                <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Ana İçerik -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-700">Deneme Sınavları ve Sonuçları</h2>
+                <p class="text-sm text-slate-500">Deneme sonuçlarını listeleyin. (Karne için öğrenci adına tıklayın)</p>
+            </div>
+            <!-- Rapor Butonları Herkese Açık, Yeni Deneme Ekle Sadece Admin -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📄 PDF Raporu</button>
+                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Raporu İndir</button>
+                <button id="btn-deneme-ekle" onclick="denemeEkle()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hidden cursor-pointer">+ Yeni Deneme Ekle</button>
+            </div>
+        </div>
+        
+        <!-- Üst Kontrol Paneli & Sekme Geçişleri -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                <div class="flex items-center gap-2">
+                    <label for="aktif-deneme-sec" class="font-medium text-sm text-slate-600 whitespace-nowrap">Deneme:</label>
+                    <select id="aktif-deneme-sec" onchange="denemeDegisti()" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56 bg-white cursor-pointer">
+                        <option value="">Deneme Seçiniz...</option>
+                    </select>
+                </div>
+                
+                <!-- Sıralama Seçenekleri (Başlangıçta Gizli) -->
+                <div id="siralama-container" class="hidden items-center gap-2">
+                    <label for="siralama-sec" class="font-medium text-sm text-slate-600 whitespace-nowrap">Sıralama:</label>
+                    <select id="siralama-sec" onchange="siralamaDegisti()" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer">
+                        <option value="sinif_no">Sınıf & Okul No (Varsayılan)</option>
+                        <option value="puan_azalan">LGS Puanı (Çoktan Aza)</option>
+                        <option value="puan_artan">LGS Puanı (Azdan Çoğa)</option>
+                        <option value="net_azalan">Toplam Net (Çoktan Aza)</option>
+                        <option value="net_artan">Toplam Net (Azdan Çoğa)</option>
+                        <option value="yuzde_artan">Yüzdelik Dilim (İyiye Göre / Artan)</option>
+                        <option value="yuzde_azalan">Yüzdelik Dilim (Azalan)</option>
+                    </select>
+                </div>
+
+                <!-- Sadece Admin Denemeyi Silebilir -->
+                <button id="btn-deneme-sil" onclick="denemeSilSecili()" class="text-xs text-red-600 hover:text-red-800 font-medium hidden cursor-pointer">Denemeyi Sil</button>
+            </div>
+            
+            <!-- Görünüm Değiştirme Butonları (Tekli Veri Girişi Sadece Admin) -->
+            <div id="gorunum-butonlari" class="hidden bg-slate-100 p-1 rounded-lg">
+                <button onclick="sekmeDegistir('liste')" id="btn-sekme-liste" class="px-4 py-1.5 rounded-md text-xs font-semibold bg-white text-indigo-700 shadow-sm transition cursor-pointer">📋 Sonuç Listesi (Rapor)</button>
+                <button onclick="sekmeDegistir('giris')" id="btn-sekme-giris" class="px-4 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-800 transition cursor-pointer">✍️ Tekli Veri Girişi</button>
+            </div>
+        </div>
+
+        <!-- SEKME 1: SONUÇ LİSTESİ (GÖRÜNTÜLEME) -->
+        <div id="panel-liste" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 uppercase tracking-wider text-[11px]">
+                            <th class="p-2.5 w-12 text-center">Sıra</th>
+                            <th class="p-2.5 w-16">Sınıf</th>
+                            <th class="p-2.5 w-20">Öğr. No</th>
+                            <th class="p-2.5 min-w-[160px]">Öğrenci Adı Soyadı</th>
+                            <th class="p-2.5 text-center">T. D/Y/B</th>
+                            <th class="p-2.5 text-center">Mat. D/Y/B</th>
+                            <th class="p-2.5 text-center">Fen D/Y/B</th>
+                            <th class="p-2.5 text-center">İnk. D/Y/B</th>
+                            <th class="p-2.5 text-center">Din D/Y/B</th>
+                            <th class="p-2.5 text-center">İng. D/Y/B</th>
+                            <th class="p-2.5 text-center">Net</th>
+                            <th class="p-2.5 text-center">Puan</th>
+                            <th class="p-2.5 text-center">Yüzde</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sonuc-liste-govde" class="divide-y divide-slate-200">
+                        <tr><td colspan="13" class="p-6 text-center text-slate-400">Lütfen yukarıdan bir deneme sınavı seçin.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SEKME 2: TEKLİ ÖĞRENCİ VERİ GİRİŞİ (Sadece Admin) -->
+        <div id="panel-giris" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hidden">
+            <h3 class="text-lg font-semibold text-slate-700 mb-4">Öğrenci Bazlı Net ve Puan Giriş Paneli</h3>
+            
+            <div class="mb-6 max-w-md">
+                <label class="block text-sm font-medium text-slate-600 mb-1">İşlem Yapılacak Öğrenciyi Seçin:</label>
+                <select id="tekli-ogrenci-sec" onchange="ogrenciVerileriniGetir()" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white cursor-pointer">
+                    <option value="">Öğrenci Seçiniz...</option>
+                </select>
+            </div>
+
+            <!-- Ders Giriş Form Alanları -->
+            <div id="veri-giris-formu" class="hidden border-t border-slate-200 pt-6">
+                <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                    <!-- Türkçe -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-xs mb-2 text-center">Türkçe (Max 20)</h4>
+                        <div class="space-y-2">
+                            <div><label class="text-[10px] text-slate-500 block">Doğru</label><input type="number" id="t-d" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Yanlış</label><input type="number" id="t-y" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Boş (Otomatik)</label><input type="number" id="t-b" readonly class="w-full border rounded p-1.5 text-center text-sm bg-slate-200 text-slate-600 font-semibold cursor-not-allowed"></div>
+                        </div>
+                    </div>
+                    <!-- Matematik -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-xs mb-2 text-center">Matematik (Max 20)</h4>
+                        <div class="space-y-2">
+                            <div><label class="text-[10px] text-slate-500 block">Doğru</label><input type="number" id="m-d" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Yanlış</label><input type="number" id="m-y" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Boş (Otomatik)</label><input type="number" id="m-b" readonly class="w-full border rounded p-1.5 text-center text-sm bg-slate-200 text-slate-600 font-semibold cursor-not-allowed"></div>
+                        </div>
+                    </div>
+                    <!-- Fen -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-xs mb-2 text-center">Fen Bilimleri (Max 20)</h4>
+                        <div class="space-y-2">
+                            <div><label class="text-[10px] text-slate-500 block">Doğru</label><input type="number" id="f-d" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Yanlış</label><input type="number" id="f-y" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Boş (Otomatik)</label><input type="number" id="f-b" readonly class="w-full border rounded p-1.5 text-center text-sm bg-slate-200 text-slate-600 font-semibold cursor-not-allowed"></div>
+                        </div>
+                    </div>
+                    <!-- İnkılap -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-xs mb-2 text-center">İnkılap (Max 10)</h4>
+                        <div class="space-y-2">
+                            <div><label class="text-[10px] text-slate-500 block">Doğru</label><input type="number" id="i-d" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Yanlış</label><input type="number" id="i-y" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Boş (Otomatik)</label><input type="number" id="i-b" readonly class="w-full border rounded p-1.5 text-center text-sm bg-slate-200 text-slate-600 font-semibold cursor-not-allowed"></div>
+                        </div>
+                    </div>
+                    <!-- Din -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-xs mb-2 text-center">Din Kültürü (Max 10)</h4>
+                        <div class="space-y-2">
+                            <div><label class="text-[10px] text-slate-500 block">Doğru</label><input type="number" id="d-d" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Yanlış</label><input type="number" id="d-y" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Boş (Otomatik)</label><input type="number" id="d-b" readonly class="w-full border rounded p-1.5 text-center text-sm bg-slate-200 text-slate-600 font-semibold cursor-not-allowed"></div>
+                        </div>
+                    </div>
+                    <!-- İngilizce -->
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-xs mb-2 text-center">İngilizce (Max 10)</h4>
+                        <div class="space-y-2">
+                            <div><label class="text-[10px] text-slate-500 block">Doğru</label><input type="number" id="ing-d" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Yanlış</label><input type="number" id="ing-y" oninput="canliTekliNetHesapla()" class="w-full border rounded p-1.5 text-center text-sm"></div>
+                            <div><label class="text-[10px] text-slate-500 block">Boş (Otomatik)</label><input type="number" id="ing-b" readonly class="w-full border rounded p-1.5 text-center text-sm bg-slate-200 text-slate-600 font-semibold cursor-not-allowed"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Özet ve Kayıt Alanı -->
+                <div class="bg-indigo-50 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-6">
+                        <div>
+                            <span class="text-xs text-indigo-600 block font-semibold">TOPLAM NET (3 Y = 1 D)</span>
+                            <span id="tekli-toplam-net" class="text-2xl font-bold text-indigo-900">0.00</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-indigo-600 block font-semibold">LGS Puanı:</label>
+                            <input type="number" step="0.001" id="tekli-puan" placeholder="Örn: 475.41" class="border rounded p-2 text-sm w-28 bg-white">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-indigo-600 block font-semibold">Yüzdelik Dilim:</label>
+                            <input type="number" step="0.001" id="tekli-yuzde" placeholder="Örn: 1.59" class="border rounded p-2 text-sm w-28 bg-white">
+                        </div>
+                    </div>
+                    <button onclick="tekliSonucKaydet()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-semibold shadow transition w-full sm:w-auto cursor-pointer">Kaydet ve Sonraki</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        Hasköy Akademik Destek Programı (CADEP) Takip Otomasyonu &copy; 2026 - Hasköy Ortaokulu
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let ogrenciCache = [];
+        let sonuclarCache = [];
+        let isAdmin = (oturum && oturum.rol === 'admin');
+
+        window.onload = async function() {
+            // Kullanıcılar menü linkini ve admin yetki alanlarını role göre ayarla
+            if (oturum && oturum.rol !== 'admin') {
+                let kulMenu = document.getElementById('menu-kullanicilar');
+                if (kulMenu) kulMenu.style.display = 'none';
+            } else {
+                // Admin ise yeni deneme ekle, deneme sil ve sekme butonlarını göster
+                let btnDenemeEkle = document.getElementById('btn-deneme-ekle');
+                if (btnDenemeEkle) btnDenemeEkle.classList.remove('hidden');
+
+                let btnDenemeSil = document.getElementById('btn-deneme-sil');
+                if (btnDenemeSil) btnDenemeSil.classList.remove('hidden');
+
+                let gorunumButonlari = document.getElementById('gorunum-butonlari');
+                if (gorunumButonlari) gorunumButonlari.classList.remove('hidden');
+            }
+
+            // Aktif kullanıcının gerçek adını üst menüde göster
+            await aktifKullaniciAdiGoster(oturum);
+
+            let kaydedilenSiralama = localStorage.getItem('cadep_deneme_siralama');
+            if(kaydedilenSiralama) {
+                document.getElementById('siralama-sec').value = kaydedilenSiralama;
+            }
+
+            await denemeleriYukle();
+            await ogrencileriYukle();
+        };
+
+        async function aktifKullaniciAdiGoster(oturum) {
+            let isimSpan = document.getElementById('aktif-kullanici-adi');
+            if (!oturum) return;
+
+            let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
+
+            if (oturum.rol === 'admin') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
+                    if (data && data.ad_soyad) {
+                        gorunurIsim = data.ad_soyad;
+                    } else {
+                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
+                        if (allEkip && allEkip.length > 0) {
+                            let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
+                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                            else gorunurIsim = allEkip[0].ad_soyad;
+                        }
+                    }
+                }
+                isimSpan.innerText = gorunurIsim + " (Yönetici)";
+            } 
+            else if (oturum.rol === 'mihmandar') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
+                    if (data && data.length > 0) {
+                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
+                        if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                        else gorunurIsim = data[0].ad_soyad;
+                    }
+                }
+                isimSpan.innerText = gorunurIsim + " (Mihmandar)";
+            } 
+            else if (oturum.rol === 'ogrenci') {
+                if (oturum.id) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else if (oturum.kullanici_adi) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                }
+                isimSpan.innerText = gorunurIsim + " (Öğrenci)";
+            }
+        }
+
+        async function denemeleriYukle() {
+            const { data } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
+            let select = document.getElementById('aktif-deneme-sec');
+            let seciliDeger = select.value;
+            select.innerHTML = '<option value="">Deneme Seçiniz...</option>';
+            if(data) {
+                data.forEach(d => {
+                    select.innerHTML += `<option value="${d.id}">${d.deneme_adi} (${d.tarih})</option>`;
+                });
+                if(seciliDeger) select.value = seciliDeger;
+            }
+        }
+
+        async function ogrencileriYukle() {
+            const { data } = await _supabase.from('cadep_ogrenciler').select('*').order('sinif').order('ogrenci_no');
+            if(data) {
+                ogrenciCache = data;
+                let select = document.getElementById('tekli-ogrenci-sec');
+                select.innerHTML = '<option value="">Öğrenci Seçiniz...</option>';
+                data.forEach(o => {
+                    select.innerHTML += `<option value="${o.id}">${o.sinif} - ${o.ad_soyad} (No: ${o.ogrenci_no || '-'})</option>`;
+                });
+            }
+        }
+
+        async function denemeDegisti() {
+            let denemeId = document.getElementById('aktif-deneme-sec').value;
+            let siralamaContainer = document.getElementById('siralama-container');
+
+            if(!denemeId) {
+                siralamaContainer.classList.remove('flex');
+                siralamaContainer.classList.add('hidden');
+                document.getElementById('sonuc-liste-govde').innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Lütfen yukarıdan bir deneme sınavı seçin.</td></tr>`;
+                sonuclarCache = [];
+                return;
+            }
+
+            siralamaContainer.classList.remove('hidden');
+            siralamaContainer.classList.add('flex');
+
+            const { data } = await _supabase.from('deneme_sonuclari').select('*').eq('deneme_id', denemeId);
+            sonuclarCache = data || [];
+            sonucListesiniGuncelle();
+            
+            if(document.getElementById('tekli-ogrenci-sec').value) {
+                ogrenciVerileriniGetir();
+            }
+        }
+
+        function siralamaDegisti() {
+            let tercih = document.getElementById('siralama-sec').value;
+            localStorage.setItem('cadep_deneme_siralama', tercih);
+            sonucListesiniGuncelle();
+        }
+
+        function siralanmisListeyiGetir() {
+            let liste = ogrenciCache.map(ogrenci => {
+                let sonuc = sonuclarCache.find(s => s.ogrenci_id === ogrenci.id);
+                return {
+                    ogrenci,
+                    sonuc,
+                    net: sonuc ? (sonuc.toplam_net ?? 0) : 0,
+                    puan: sonuc && sonuc.lgs_puan != null ? sonuc.lgs_puan : -1,
+                    yuzde: sonuc && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : 999.99
+                };
+            });
+
+            let kriter = document.getElementById('siralama-sec').value;
+            liste.sort((a, b) => {
+                if(kriter === 'puan_azalan') {
+                    return b.puan - a.puan;
+                } else if(kriter === 'puan_artan') {
+                    return a.puan - b.puan;
+                } else if(kriter === 'net_azalan') {
+                    return b.net - a.net;
+                } else if(kriter === 'net_artan') {
+                    return a.net - b.net;
+                } else if(kriter === 'yuzde_artan') {
+                    return a.yuzde - b.yuzde;
+                } else if(kriter === 'yuzde_azalan') {
+                    return b.yuzde - a.yuzde;
+                } else {
+                    let sinifCmp = (a.ogrenci.sinif || '').localeCompare(b.ogrenci.sinif || '');
+                    if(sinifCmp !== 0) return sinifCmp;
+                    let noA = parseInt(a.ogrenci.ogrenci_no) || 0;
+                    let noB = parseInt(b.ogrenci.ogrenci_no) || 0;
+                    return noA - noB;
+                }
+            });
+            return liste;
+        }
+
+        function sonucListesiniGuncelle() {
+            let tbody = document.getElementById('sonuc-liste-govde');
+            if(ogrenciCache.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Önce "Öğrenciler" sayfasından öğrenci eklemelisiniz.</td></tr>`;
+                return;
+            }
+
+            let liste = siralanmisListeyiGetir();
+            let html = '';
+            let katilanSayisi = 0;
+
+            let toplam = {
+                t_d: 0, t_y: 0, t_b: 0,
+                m_d: 0, m_y: 0, m_b: 0,
+                f_d: 0, f_y: 0, f_b: 0,
+                ind: 0, iny: 0, inb: 0,
+                d_d: 0, d_y: 0, d_b: 0,
+                ingd: 0, ingy: 0, ingb: 0,
+                net: 0, puan: 0, yuzde: 0
+            };
+
+            liste.forEach((item, index) => {
+                let ogrenci = item.ogrenci;
+                let sonuc = item.sonuc;
+
+                let td = sonuc ? (sonuc.turkce_d ?? 0) : 0; 
+                let ty = sonuc ? (sonuc.turkce_y ?? 0) : 0; 
+                let tb = sonuc ? (sonuc.turkce_b ?? 0) : (20 - td - ty);
+                
+                let md = sonuc ? (sonuc.matematik_d ?? 0) : 0; 
+                let my = sonuc ? (sonuc.matematik_y ?? 0) : 0; 
+                let mb = sonuc ? (sonuc.matematik_b ?? 0) : (20 - md - my);
+                
+                let fd = sonuc ? (sonuc.fen_d ?? 0) : 0; 
+                let fy = sonuc ? (sonuc.fen_y ?? 0) : 0; 
+                let fb = sonuc ? (sonuc.fen_b ?? 0) : (20 - fd - fy);
+                
+                let ind = sonuc ? (sonuc.inkilap_d ?? 0) : 0; 
+                let iny = sonuc ? (sonuc.inkilap_y ?? 0) : 0; 
+                let inb = sonuc ? (sonuc.inkilap_b ?? 0) : (10 - ind - iny);
+                
+                let dd = sonuc ? (sonuc.din_d ?? 0) : 0; 
+                let dy = sonuc ? (sonuc.din_y ?? 0) : 0; 
+                let db = sonuc ? (sonuc.din_b ?? 0) : (10 - dd - dy);
+                
+                let ingd = sonuc ? (sonuc.ingilizce_d ?? 0) : 0; 
+                let ingy = sonuc ? (sonuc.ingilizce_y ?? 0) : 0; 
+                let ingb = sonuc ? (sonuc.ingilizce_b ?? 0) : (10 - ingd - ingy);
+                
+                let net = sonuc ? (sonuc.toplam_net ?? 0) : '0.00';
+                let puan = sonuc && sonuc.lgs_puan != null ? sonuc.lgs_puan : '-';
+                let yuzde = sonuc && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : '-';
+
+                if(sonuc) {
+                    katilanSayisi++;
+                    toplam.t_d += td; toplam.t_y += ty; toplam.t_b += tb;
+                    toplam.m_d += md; toplam.m_y += my; toplam.m_b += mb;
+                    toplam.f_d += fd; toplam.f_y += fy; toplam.f_b += fb;
+                    toplam.ind += ind; toplam.iny += iny; toplam.inb += inb;
+                    toplam.d_d += dd; toplam.d_y += dy; toplam.d_b += db;
+                    toplam.ingd += ingd; toplam.ingy += ingy; toplam.ingb += ingb;
+                    toplam.net += (sonuc.toplam_net ?? 0);
+                    toplam.puan += (sonuc.lgs_puan ?? 0);
+                    toplam.yuzde += (sonuc.yuzdelik_dilim ?? 0);
+                }
+
+                html += `<tr>
+                    <td class="p-2.5 text-center font-bold text-slate-500">${index + 1}</td>
+                    <td class="p-2.5 font-semibold text-slate-600">${ogrenci.sinif}</td>
+                    <td class="p-2.5 font-semibold text-indigo-600">${ogrenci.ogrenci_no || '-'}</td>
+                    <td class="p-2.5 font-medium">
+                        <a href="ogrenci_detay.html?id=${ogrenci.id}" class="text-indigo-700 hover:text-indigo-900 hover:underline flex items-center gap-1">
+                            ${ogrenci.ad_soyad} <span class="text-xs text-slate-400">↗</span>
+                        </a>
+                    </td>
+                    <td class="p-2.5 text-center">${td}/${ty}/${tb}</td>
+                    <td class="p-2.5 text-center">${md}/${my}/${mb}</td>
+                    <td class="p-2.5 text-center">${fd}/${fy}/${fb}</td>
+                    <td class="p-2.5 text-center">${ind}/${iny}/${inb}</td>
+                    <td class="p-2.5 text-center">${dd}/${dy}/${db}</td>
+                    <td class="p-2.5 text-center">${ingd}/${ingy}/${ingb}</td>
+                    <td class="p-2.5 text-center font-bold text-indigo-700">${net}</td>
+                    <td class="p-2.5 text-center font-semibold text-emerald-700">${puan}</td>
+                    <td class="p-2.5 text-center font-semibold text-sky-700">${yuzde}</td>
+                </tr>`;
+            });
+
+            if(katilanSayisi > 0) {
+                let fmt = (val, decimals = 2) => {
+                    let num = val / katilanSayisi;
+                    return Number.isInteger(num) ? num.toString() : num.toFixed(decimals);
+                };
+                let fmtPuan = (val) => {
+                    let num = val / katilanSayisi;
+                    return Number.isInteger(num) ? num.toString() : num.toFixed(3);
+                };
+
+                html += `<tr class="bg-indigo-50 font-bold text-slate-800 border-t-2 border-indigo-200">
+                    <td class="p-2.5 text-center text-indigo-700" colspan="4">GENEL ORTALAMA (${katilanSayisi} Öğrenci)</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.t_d)}/${fmt(toplam.t_y)}/${fmt(toplam.t_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.m_d)}/${fmt(toplam.m_y)}/${fmt(toplam.m_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.f_d)}/${fmt(toplam.f_y)}/${fmt(toplam.f_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.ind)}/${fmt(toplam.iny)}/${fmt(toplam.inb)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.d_d)}/${fmt(toplam.d_y)}/${fmt(toplam.d_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.ingd)}/${fmt(toplam.ingy)}/${fmt(toplam.ingb)}</td>
+                    <td class="p-2.5 text-center text-indigo-900">${fmt(toplam.net)}</td>
+                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(toplam.puan)}</td>
+                    <td class="p-2.5 text-center text-sky-800">${fmt(toplam.yuzde)}</td>
+                </tr>`;
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        function sekmeDegistir(tur) {
+            if (!isAdmin) return;
+            let btnListe = document.getElementById('btn-sekme-liste');
+            let btnGiris = document.getElementById('btn-sekme-giris');
+            let panelListe = document.getElementById('panel-liste');
+            let panelGiris = document.getElementById('panel-giris');
+
+            if(tur === 'liste') {
+                btnListe.className = "px-4 py-1.5 rounded-md text-xs font-semibold bg-white text-indigo-700 shadow-sm transition cursor-pointer";
+                btnGiris.className = "px-4 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-800 transition cursor-pointer";
+                panelListe.classList.remove('hidden');
+                panelGiris.classList.add('hidden');
+                sonucListesiniGuncelle();
+            } else {
+                let denemeId = document.getElementById('aktif-deneme-sec').value;
+                if(!denemeId) {
+                    alert("Lütfen önce üst kısımdan aktif bir deneme seçin!");
+                    return;
+                }
+                btnGiris.className = "px-4 py-1.5 rounded-md text-xs font-semibold bg-white text-indigo-700 shadow-sm transition cursor-pointer";
+                btnListe.className = "px-4 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-800 transition cursor-pointer";
+                panelGiris.classList.remove('hidden');
+                panelListe.classList.add('hidden');
+            }
+        }
+
+        async function ogrenciVerileriniGetir() {
+            if (!isAdmin) return;
+            let ogrenciId = document.getElementById('tekli-ogrenci-sec').value;
+            let form = document.getElementById('veri-giris-formu');
+            
+            if(!ogrenciId) {
+                form.classList.add('hidden');
+                return;
+            }
+            form.classList.remove('hidden');
+
+            let sonuc = sonuclarCache.find(s => s.ogrenci_id === ogrenciId);
+
+            document.getElementById('t-d').value = sonuc && sonuc.turkce_d != null ? sonuc.turkce_d : '';
+            document.getElementById('t-y').value = sonuc && sonuc.turkce_y != null ? sonuc.turkce_y : '';
+            document.getElementById('m-d').value = sonuc && sonuc.matematik_d != null ? sonuc.matematik_d : '';
+            document.getElementById('m-y').value = sonuc && sonuc.matematik_y != null ? sonuc.matematik_y : '';
+            document.getElementById('f-d').value = sonuc && sonuc.fen_d != null ? sonuc.fen_d : '';
+            document.getElementById('f-y').value = sonuc && sonuc.fen_y != null ? sonuc.fen_y : '';
+            document.getElementById('i-d').value = sonuc && sonuc.inkilap_d != null ? sonuc.inkilap_d : '';
+            document.getElementById('i-y').value = sonuc && sonuc.inkilap_y != null ? sonuc.inkilap_y : '';
+            document.getElementById('d-d').value = sonuc && sonuc.din_d != null ? sonuc.din_d : '';
+            document.getElementById('d-y').value = sonuc && sonuc.din_y != null ? sonuc.din_y : '';
+            document.getElementById('ing-d').value = sonuc && sonuc.ingilizce_d != null ? sonuc.ingilizce_d : '';
+            document.getElementById('ing-y').value = sonuc && sonuc.ingilizce_y != null ? sonuc.ingilizce_y : '';
+            document.getElementById('tekli-puan').value = sonuc && sonuc.lgs_puan != null ? sonuc.lgs_puan : '';
+            document.getElementById('tekli-yuzde').value = sonuc && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : '';
+
+            canliTekliNetHesapla();
+        }
+
+        function canliTekliNetHesapla() {
+            let td = parseInt(document.getElementById('t-d').value) || 0;
+            let ty = parseInt(document.getElementById('t-y').value) || 0;
+            document.getElementById('t-b').value = Math.max(0, 20 - (td + ty));
+
+            let md = parseInt(document.getElementById('m-d').value) || 0;
+            let my = parseInt(document.getElementById('m-y').value) || 0;
+            document.getElementById('m-b').value = Math.max(0, 20 - (md + my));
+
+            let fd = parseInt(document.getElementById('f-d').value) || 0;
+            let fy = parseInt(document.getElementById('f-y').value) || 0;
+            document.getElementById('f-b').value = Math.max(0, 20 - (fd + fy));
+
+            let ind = parseInt(document.getElementById('i-d').value) || 0;
+            let iny = parseInt(document.getElementById('i-y').value) || 0;
+            document.getElementById('i-b').value = Math.max(0, 10 - (ind + iny));
+
+            let dd = parseInt(document.getElementById('d-d').value) || 0;
+            let dy = parseInt(document.getElementById('d-y').value) || 0;
+            document.getElementById('d-b').value = Math.max(0, 10 - (dd + dy));
+
+            let ingd = parseInt(document.getElementById('ing-d').value) || 0;
+            let ingy = parseInt(document.getElementById('ing-y').value) || 0;
+            document.getElementById('ing-b').value = Math.max(0, 10 - (ingd + ingy));
+
+            let toplamNet = (td - (ty/3)) + (md - (my/3)) + (fd - (fy/3)) + (ind - (iny/3)) + (dd - (dy/3)) + (ingd - (ingy/3));
+            document.getElementById('tekli-toplam-net').innerText = (Math.round(toplamNet * 100) / 100).toFixed(2);
+        }
+
+        async function tekliSonucKaydet() {
+            if (!isAdmin) return;
+            let denemeId = document.getElementById('aktif-deneme-sec').value;
+            let ogrenciId = document.getElementById('tekli-ogrenci-sec').value;
+
+            if(!denemeId || !ogrenciId) {
+                alert("Lütfen deneme ve öğrenci seçtiğinizden emin olun!");
+                return;
+            }
+
+            let td = parseInt(document.getElementById('t-d').value) || 0;
+            let ty = parseInt(document.getElementById('t-y').value) || 0;
+            let tb = parseInt(document.getElementById('t-b').value) || 0;
+            let md = parseInt(document.getElementById('m-d').value) || 0;
+            let my = parseInt(document.getElementById('m-y').value) || 0;
+            let mb = parseInt(document.getElementById('m-b').value) || 0;
+            let fd = parseInt(document.getElementById('f-d').value) || 0;
+            let fy = parseInt(document.getElementById('f-y').value) || 0;
+            let fb = parseInt(document.getElementById('f-b').value) || 0;
+            let ind = parseInt(document.getElementById('i-d').value) || 0;
+            let iny = parseInt(document.getElementById('i-y').value) || 0;
+            let inb = parseInt(document.getElementById('i-b').value) || 0;
+            let dd = parseInt(document.getElementById('d-d').value) || 0;
+            let dy = parseInt(document.getElementById('d-y').value) || 0;
+            let db = parseInt(document.getElementById('d-b').value) || 0;
+            let ingd = parseInt(document.getElementById('ing-d').value) || 0;
+            let ingy = parseInt(document.getElementById('ing-y').value) || 0;
+            let ingb = parseInt(document.getElementById('ing-b').value) || 0;
+
+            let puan = parseFloat(document.getElementById('tekli-puan').value) || 0;
+            let yuzde = parseFloat(document.getElementById('tekli-yuzde').value) || 0;
+
+            let toplamNet = (td - (ty/3)) + (md - (my/3)) + (fd - (fy/3)) + (ind - (iny/3)) + (dd - (dy/3)) + (ingd - (ingy/3));
+            toplamNet = Math.round(toplamNet * 100) / 100;
+
+            const { error } = await _supabase.from('deneme_sonuclari').upsert({
+                ogrenci_id: ogrenciId,
+                deneme_id: denemeId,
+                turkce_d: td, turkce_y: ty, turkce_b: tb,
+                matematik_d: md, matematik_y: my, matematik_b: mb,
+                fen_d: fd, fen_y: fy, fen_b: fb,
+                inkilap_d: ind, inkilap_y: iny, inkilap_b: inb,
+                din_d: dd, din_y: dy, din_b: db,
+                ingilizce_d: ingd, ingilizce_y: ingy, ingilizce_b: ingb,
+                toplam_net: toplamNet,
+                lgs_puan: puan,
+                yuzdelik_dilim: yuzde
+            }, { onConflict: 'ogrenci_id, deneme_id' });
+
+            if(error) {
+                alert("Hata: " + error.message);
+            } else {
+                alert("Öğrenci sonuçları başarıyla kaydedildi!");
+                await denemeDegisti();
+                let ogrenciSelect = document.getElementById('tekli-ogrenci-sec');
+                let currentIndex = ogrenciSelect.selectedIndex;
+                if(currentIndex < ogrenciSelect.options.length - 1) {
+                    ogrenciSelect.selectedIndex = currentIndex + 1;
+                    ogrenciVerileriniGetir();
+                } else {
+                    alert("Listesindeki tüm öğrencilerin veri girişi tamamlandı!");
+                }
+            }
+        }
+
+        async function denemeEkle() {
+            if (!isAdmin) return;
+            let adi = prompt("Deneme Adı (Örn: CADEP 1. Kurumsal Deneme):");
+            if(!adi) return;
+            let tarih = prompt("Tarih (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+            await _supabase.from('denemeler').insert([{ deneme_adi: adi, tarih: tarih }]);
+            denemeleriYukle();
+        }
+
+        async function denemeSilSecili() {
+            if (!isAdmin) return;
+            let denemeId = document.getElementById('aktif-deneme-sec').value;
+            if(!denemeId) return alert("Lütfen silinecek denemeyi seçin!");
+            if(confirm("Bu denemeyi ve bu denemeye ait tüm öğrenci sonuçlarını silmek istediğinize emin misiniz?")) {
+                await _supabase.from('denemeler').delete().eq('id', denemeId);
+                denemeleriYukle();
+                document.getElementById('sonuc-liste-govde').innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Lütfen yukarıdan bir deneme sınavı seçin.</td></tr>`;
+            }
+        }
+
+        async function excelRaporAl() {
+            let denemeId = document.getElementById('aktif-deneme-sec').value;
+            let select = document.getElementById('aktif-deneme-sec');
+            
+            if(!denemeId || select.selectedIndex === -1) return alert("Lütfen raporu alınacak denemeyi seçin!");
+            let denemeAdiSecilen = select.options[select.selectedIndex].text;
+
+            if(ogrenciCache.length === 0) return alert("Öğrenci listesi yüklenemedi.");
+
+            let siralanmisListe = siralanmisListeyiGetir();
+
+            let excelVerisi = [
+                ["Hasköy Ortaokulu"],
+                ["2026 - 2027 Eğitim Öğretim Yılı"],
+                [denemeAdiSecilen + " Sınav Sonuçları Raporu"],
+                [""],
+                ["Sıra", "Sınıfı", "Öğrenci No", "Öğrenci Adı Soyadı", "Türkçe", "", "", "Matematik", "", "", "Fen", "", "", "İnkılap", "", "", "Din", "", "", "İngilizce", "", "", "Toplam Net", "LGS Puanı", "Yüzdelik Dilim"],
+                ["", "", "", "", "D", "Y", "B", "D", "Y", "B", "D", "Y", "B", "D", "Y", "B", "D", "Y", "B", "D", "Y", "B", "", "", ""]
+            ];
+
+            let katilanSayisi = 0;
+            let toplam = {
+                t_d: 0, t_y: 0, t_b: 0,
+                m_d: 0, m_y: 0, m_b: 0,
+                f_d: 0, f_y: 0, f_b: 0,
+                ind: 0, iny: 0, inb: 0,
+                d_d: 0, d_y: 0, d_b: 0,
+                ingd: 0, ingy: 0, ingb: 0,
+                net: 0, puan: 0, yuzde: 0
+            };
+
+            siralanmisListe.forEach((item, index) => {
+                let ogr = item.ogrenci;
+                let s = item.sonuc || {};
+                let ogrNo = ogr.ogrenci_no ? Number(ogr.ogrenci_no) || ogr.ogrenci_no : "";
+                let toplamNet = item.net != null ? Number(item.net) : 0;
+                let lgsPuan = s.lgs_puan != null ? Number(s.lgs_puan) : 0;
+                let yuzdelik = s.yuzdelik_dilim != null ? Number(s.yuzdelik_dilim) : 0;
+
+                let t_d = s.turkce_d ?? 0, t_y = s.turkce_y ?? 0, t_b = s.turkce_b ?? (20 - t_d - t_y);
+                let m_d = s.matematik_d ?? 0, m_y = s.matematik_y ?? 0, m_b = s.matematik_b ?? (20 - m_d - m_y);
+                let f_d = s.fen_d ?? 0, f_y = s.fen_y ?? 0, f_b = s.fen_b ?? (20 - f_d - f_y);
+                let i_d = s.inkilap_d ?? 0, i_y = s.inkilap_y ?? 0, i_b = s.inkilap_b ?? (10 - i_d - i_y);
+                let d_d = s.din_d ?? 0, d_y = s.din_y ?? 0, d_b = s.din_b ?? (10 - d_d - d_y);
+                let ing_d = s.ingilizce_d ?? 0, ing_y = s.ingilizce_y ?? 0, ing_b = s.ingilizce_b ?? (10 - ing_d - ing_y);
+
+                if(item.sonuc) {
+                    katilanSayisi++;
+                    toplam.t_d += t_d; toplam.t_y += t_y; toplam.t_b += t_b;
+                    toplam.m_d += m_d; toplam.m_y += m_y; toplam.m_b += m_b;
+                    toplam.f_d += f_d; toplam.f_y += f_y; toplam.f_b += f_b;
+                    toplam.ind += i_d; toplam.iny += i_y; toplam.inb += i_b;
+                    toplam.d_d += d_d; toplam.d_y += d_y; toplam.d_b += d_b;
+                    toplam.ingd += ing_d; toplam.ingy += ing_y; toplam.ingb += ing_b;
+                    toplam.net += toplamNet;
+                    toplam.puan += lgsPuan;
+                    toplam.yuzde += yuzdelik;
+                }
+
+                excelVerisi.push([
+                    index + 1,
+                    ogr.sinif || "",
+                    ogrNo,
+                    ogr.ad_soyad || "",
+                    t_d, t_y, t_b,
+                    m_d, m_y, m_b,
+                    f_d, f_y, f_b,
+                    i_d, i_y, i_b,
+                    d_d, d_y, d_b,
+                    ing_d, ing_y, ing_b,
+                    toplamNet,
+                    lgsPuan,
+                    yuzdelik
+                ]);
+            });
+
+            if(katilanSayisi > 0) {
+                let fmtExcel = (val, decimals = 2) => {
+                    let num = val / katilanSayisi;
+                    return Number.isInteger(num) ? num : Number(num.toFixed(decimals));
+                };
+                let fmtExcelPuan = (val) => {
+                    let num = val / katilanSayisi;
+                    return Number.isInteger(num) ? num : Number(num.toFixed(3));
+                };
+
+                excelVerisi.push([
+                    "GENEL ORTALAMA", "", "", "",
+                    fmtExcel(toplam.t_d), fmtExcel(toplam.t_y), fmtExcel(toplam.t_b),
+                    fmtExcel(toplam.m_d), fmtExcel(toplam.m_y), fmtExcel(toplam.m_b),
+                    fmtExcel(toplam.f_d), fmtExcel(toplam.f_y), fmtExcel(toplam.f_b),
+                    fmtExcel(toplam.ind), fmtExcel(toplam.iny), fmtExcel(toplam.inb),
+                    fmtExcel(toplam.d_d), fmtExcel(toplam.d_y), fmtExcel(toplam.d_b),
+                    fmtExcel(toplam.ingd), fmtExcel(toplam.ingy), fmtExcel(toplam.ingb),
+                    fmtExcel(toplam.net),
+                    fmtExcelPuan(toplam.puan),
+                    fmtExcel(toplam.yuzde)
+                ]);
+            }
+
+            let worksheet = XLSX.utils.aoa_to_sheet(excelVerisi);
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "CADEP Sonuçları");
+            XLSX.writeFile(workbook, `CADEP_${denemeAdiSecilen.replace(/[^a-zA-Z0-9]/g, '_')}_Raporu.xlsx`);
+        }
+
+        async function pdfRaporAl() {
+            let denemeId = document.getElementById('aktif-deneme-sec').value;
+            let select = document.getElementById('aktif-deneme-sec');
+
+            if(!denemeId || select.selectedIndex === -1) return alert("PDF raporu indirmek için lütfen yukarıdan bir deneme seçin!");
+            let denemeAdiSecilen = select.options[select.selectedIndex].text;
+
+            let siralanmisListe = siralanmisListeyiGetir();
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+
+            function trKarakter(text) {
+                if (!text) return "";
+                return text.replace(/ğ/g, "g").replace(/Ğ/g, "G").replace(/ü/g, "u").replace(/Ü/g, "U").replace(/ş/g, "s").replace(/Ş/g, "S").replace(/ı/g, "i").replace(/İ/g, "I").replace(/ö/g, "o").replace(/Ö/g, "O").replace(/ç/g, "c").replace(/Ç/g, "C");
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(trKarakter("Hasköy Ortaokulu"), 148.5, 12, { align: "center" });
+            doc.setFontSize(11);
+            doc.text("2026 - 2027 Egitim Ogretim Yili", 148.5, 18, { align: "center" });
+            doc.setFontSize(13);
+            doc.setTextColor(79, 70, 229);
+            doc.text(trKarakter(denemeAdiSecilen + " Sinav Sonuclari Raporu"), 148.5, 25, { align: "center" });
+
+            let tableData = siralanmisListe.map((item, index) => {
+                let ogr = item.ogrenci;
+                let s = item.sonuc || {};
+                let t_b = s.turkce_b ?? (20 - (s.turkce_d ?? 0) - (s.turkce_y ?? 0));
+                let m_b = s.matematik_b ?? (20 - (s.matematik_d ?? 0) - (s.matematik_y ?? 0));
+                let f_b = s.fen_b ?? (20 - (s.fen_d ?? 0) - (s.fen_y ?? 0));
+                let i_b = s.inkilap_b ?? (10 - (s.inkilap_d ?? 0) - (s.inkilap_y ?? 0));
+                let d_b = s.din_b ?? (10 - (s.din_d ?? 0) - (s.din_y ?? 0));
+                let ing_b = s.ingilizce_b ?? (10 - (s.ingilizce_d ?? 0) - (s.ingilizce_y ?? 0));
+
+                return [index + 1, ogr.sinif || "", ogr.ogrenci_no || "-", trKarakter(ogr.ad_soyad), s.turkce_d ?? 0, s.turkce_y ?? 0, t_b, s.matematik_d ?? 0, s.matematik_y ?? 0, m_b, s.fen_d ?? 0, s.fen_y ?? 0, f_b, s.inkilap_d ?? 0, s.inkilap_y ?? 0, i_b, s.din_d ?? 0, s.din_y ?? 0, d_b, s.ingilizce_d ?? 0, s.ingilizce_y ?? 0, ing_b, s.toplam_net ?? 0, s.lgs_puan ?? "-", s.yuzdelik_dilim ?? "-"];
+            });
+
+            doc.autoTable({
+                startY: 32,
+                head: [[trKarakter('Sıra'), trKarakter('Sınıf'), trKarakter('No'), trKarakter('Öğrenci Adı Soyadı'), trKarakter('T.D'), trKarakter('T.Y'), trKarakter('T.B'), trKarakter('M.D'), trKarakter('M.Y'), trKarakter('M.B'), trKarakter('F.D'), trKarakter('F.Y'), trKarakter('F.B'), trKarakter('İ.D'), trKarakter('İ.Y'), trKarakter('İ.B'), trKarakter('D.D'), trKarakter('D.Y'), trKarakter('D.B'), trKarakter('İng.D'), trKarakter('İng.Y'), trKarakter('İng.B'), trKarakter('Net'), trKarakter('Puan'), trKarakter('Yüzde')]],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] },
+                styles: { fontSize: 7, cellPadding: 2, font: "helvetica", halign: 'center' },
+                columnStyles: { 3: { halign: 'left' } }
+            });
+
+            doc.save(`CADEP_${denemeAdiSecilen.replace(/[^a-zA-Z0-9]/g, '_')}_Raporu.pdf`);
+        }
+
+        function mihmandarLinkYonlendir(e) {
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cad_oturum') || localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
+    </script>
+</body>
+</html>

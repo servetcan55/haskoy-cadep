@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasköy CADEP - Oturum Açma</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-indigo-900 text-slate-800 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-indigo-900">Hasköy CADEP</h1>
+            <p class="text-sm text-slate-500 mt-1">Hasköy Ortaokulu Takip Otomasyonu</p>
+        </div>
+
+        <!-- Rol Seçim Sekmeleri -->
+        <div class="flex bg-slate-100 p-1 rounded-xl mb-6">
+            <button type="button" onclick="rolSec('admin')" id="tab-admin" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm transition cursor-pointer">Admin</button>
+            <button type="button" onclick="rolSec('mihmandar')" id="tab-mihmandar" class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-800 transition cursor-pointer">Mihmandar</button>
+            <button type="button" onclick="rolSec('ogrenci')" id="tab-ogrenci" class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-800 transition cursor-pointer">Öğrenci</button>
+        </div>
+
+        <form id="giris-form" onsubmit="girisYap(event)" class="space-y-4">
+            <input type="hidden" id="secilen-rol" value="admin">
+
+            <div id="input-kullanici-container">
+                <label id="label-kullanici" class="block text-xs font-semibold text-slate-600 mb-1">Yönetici Kullanıcı Adı</label>
+                <input type="text" id="kullanici-adi" required class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" value="admin" placeholder="admin">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Şifre</label>
+                <input type="password" id="sifre" required class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg shadow transition text-sm cursor-pointer">
+                Sisteme Giriş Yap
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function rolSec(rol) {
+            document.getElementById('secilen-rol').value = rol;
+            let tabAdmin = document.getElementById('tab-admin');
+            let tabMihmandar = document.getElementById('tab-mihmandar');
+            let tabOgrenci = document.getElementById('tab-ogrenci');
+            let labelKullanici = document.getElementById('label-kullanici');
+            let inputKullanici = document.getElementById('kullanici-adi');
+
+            tabAdmin.className = "flex-1 py-2 text-xs font-semibold rounded-lg text-slate-600 transition cursor-pointer";
+            tabMihmandar.className = "flex-1 py-2 text-xs font-semibold rounded-lg text-slate-600 transition cursor-pointer";
+            tabOgrenci.className = "flex-1 py-2 text-xs font-semibold rounded-lg text-slate-600 transition cursor-pointer";
+
+            if(rol === 'admin') {
+                tabAdmin.className = "flex-1 py-2 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm transition cursor-pointer";
+                labelKullanici.innerText = "Yönetici Kullanıcı Adı";
+                inputKullanici.value = "admin";
+            } else if(rol === 'mihmandar') {
+                tabMihmandar.className = "flex-1 py-2 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm transition cursor-pointer";
+                labelKullanici.innerText = "Öğretmen Ad Soyad / Kullanıcı Adı";
+                inputKullanici.value = "";
+            } else {
+                tabOgrenci.className = "flex-1 py-2 text-xs font-semibold rounded-lg bg-white text-indigo-700 shadow-sm transition cursor-pointer";
+                labelKullanici.innerText = "Öğrenci Okul Numarası";
+                inputKullanici.value = "";
+            }
+        }
+
+        async function girisYap(e) {
+            e.preventDefault();
+            let kullaniciAdi = document.getElementById('kullanici-adi').value.trim();
+            let sifre = document.getElementById('sifre').value.trim();
+
+            // Sadece kullanıcı adı ile sorgula (Rol filtresi kaldırıldı, böylece veri tabanı eşleşmeme sorunu çözüldü)
+            const { data, error } = await _supabase
+                .from('kullanicilar')
+                .select('*')
+                .eq('kullanici_adi', kullaniciAdi);
+
+            if(error || !data || data.length === 0) {
+                alert("Kullanıcı bulunamadı!");
+                return;
+            }
+
+            let kullanici = data[0];
+
+            if(kullanici.sifre === sifre) {
+                // Oturum bilgilerini tarayıcıda sakla
+                localStorage.setItem('cadep_oturum', JSON.stringify({
+                    rol: kullanici.rol ? kullanici.rol.toLowerCase() : 'ogrenci',
+                    ad: kullanici.kullanici_adi,
+                    id: kullanici.iliskili_id,
+                    kullanici_adi: kullanici.kullanici_adi,
+                    iliskili_id: kullanici.iliskili_id
+                }));
+
+                let rolNormalized = kullanici.rol ? kullanici.rol.toLowerCase() : 'ogrenci';
+
+                // Role göre doğru sayfaya yönlendir
+                if(rolNormalized === 'admin') {
+                    window.location.href = 'index.html';
+                } else if(rolNormalized === 'mihmandar' || rolNormalized === 'öğretmen') {
+                    window.location.href = `mihmandar_detay.html?id=${kullanici.iliskili_id}`;
+                } else {
+                    // Öğrenci ise doğrudan detay sayfasına yolla (zaten detay sayfasında okul no ile eşleştirip karnesini açacak)
+                    window.location.href = `ogrenci_detay.html?id=${kullanici.iliskili_id || ''}`;
+                }
+            } else {
+                alert("Hatalı şifre!");
+            }
+        }
+    </script>
+</body>
+</html>

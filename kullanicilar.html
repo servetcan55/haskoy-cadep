@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasköy CADEP - Kullanıcı ve Şifre Yönetimi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Oturum Güvenlik Kontrolü -->
+    <script>
+        let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+        if (!oturum) {
+            window.location.href = 'giris.html';
+        }
+        if (oturum.rol !== 'admin') {
+            alert("Bu sayfaya yalnızca Admin yetkisiyle erişilebilir!");
+            if (oturum.rol === 'mihmandar') {
+                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
+            } else {
+                window.location.href = `ogrenci_detay.html?id=${oturum.id}`;
+            }
+        }
+    </script>
+
+    <!-- Ortak Navbar -->
+    <header class="bg-indigo-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">Hasköy CADEP Takip Sistemi</h1>
+                <p class="text-indigo-200 text-sm">Yönetici Paneli - Kullanıcı ve Şifre Yönetimi</p>
+            </div>
+            <nav class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
+                <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Ana Sayfa</a>
+                <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
+                <a href="#" onclick="mihmandarLinkYonlendir(event)" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Mihmandar Öğretmenler</a>
+                <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
+                <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
+                <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Kullanıcılar</a>
+                <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
+                
+                <!-- Aktif Kullanıcı İsim Alanı -->
+                <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
+                </div>
+
+                <!-- Çıkış Yap Butonu -->
+                <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Ana İçerik -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Kullanıcı Ekleme / Düzenleme Formu -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-fit">
+                <h2 id="form-baslik" class="text-lg font-bold text-slate-700 mb-4 pb-2 border-b">Yeni Kullanıcı / Şifre Tanımla</h2>
+                <form id="kullanici-form" onsubmit="kullaniciKaydet(event)" class="space-y-4">
+                    <input type="hidden" id="duzenlenen-id" value="">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Rol Seçimi</label>
+                        <select id="yeni-rol" onchange="rolDegisti()" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
+                            <option value="admin">Admin (Yönetici)</option>
+                            <option value="mihmandar">Mihmandar Öğretmen</option>
+                            <option value="ogrenci">Öğrenci</option>
+                        </select>
+                    </div>
+
+                    <!-- Öğrenci Seçim Kutusu -->
+                    <div id="ogrenci-secim-container" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Bağlı Olduğu Öğrenci</label>
+                        <select id="secilen-ogrenci-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
+                            <option value="">-- Öğrenci Seçin --</option>
+                        </select>
+                    </div>
+
+                    <!-- Mihmandar Öğretmen Seçim Kutusu -->
+                    <div id="mihmandar-secim-container" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Bağlı Olduğu Mihmandar Öğretmen</label>
+                        <select id="secilen-mihmandar-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
+                            <option value="">-- Öğretmen Seçin --</option>
+                        </select>
+                    </div>
+
+                    <!-- CADEP Ekibi / Admin Seçim Kutusu -->
+                    <div id="admin-secim-container" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Bağlı Olduğu CADEP Ekip Üyesi</label>
+                        <select id="secilen-admin-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
+                            <option value="">-- Ekip Üyesi Seçin --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label id="lbl-kullanici" class="block text-xs font-semibold text-slate-600 mb-1">Kullanıcı Adı / Rumuz</label>
+                        <input type="text" id="yeni-kullanici-adi" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Örn: admin">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Şifre</label>
+                        <input type="text" id="yeni-sifre" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Şifre belirleyin">
+                    </div>
+
+                    <div id="iliskili-alan-container" class="hidden">
+                        <label id="lbl-iliskili" class="block text-xs font-semibold text-slate-600 mb-1">İlişkili ID (Supabase'den)</label>
+                        <input type="text" id="yeni-iliskili-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Örn: ID">
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="submit" id="btn-kaydet" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow transition text-sm cursor-pointer">
+                            Kullanıcıyı Kaydet
+                        </button>
+                        <button type="button" id="btn-iptal" onclick="formuSifirla()" class="hidden bg-slate-300 hover:bg-slate-400 text-slate-700 font-semibold py-2.5 px-4 rounded-lg transition text-sm cursor-pointer">
+                            İptal
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Kullanıcı Listesi -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-bold text-slate-700 mb-4 pb-2 border-b">Sistemdeki Kayıtlı Kullanıcılar</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase tracking-wider text-[11px]">
+                                <th class="p-3 w-16 text-center">Sıra</th>
+                                <th class="p-3">Üye Adı Soyadı</th>
+                                <th class="p-3">Giriş Adı / No</th>
+                                <th class="p-3">Rolü</th>
+                                <th class="p-3">Şifresi</th>
+                                <th class="p-3 text-center">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kullanici-listesi-govde" class="divide-y divide-slate-200">
+                            <tr><td colspan="6" class="p-4 text-center text-slate-400">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        Hasköy Akademik Destek Programı (CADEP) Takip Otomasyonu &copy; 2026 - Hasköy Ortaokulu
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let ogrenciIsimMap = {};
+        let ogrenciNoMap = {};
+        let tumOgrencilerListesi = [];
+        
+        let mihmandarIsimMap = {};
+        let tumMihmandarlarListesi = [];
+
+        let adminIsimMap = {};
+        let tumAdminlerListesi = [];
+
+        window.onload = async function() {
+            if (oturum && oturum.rol !== 'admin') {
+                let kulMenu = document.getElementById('menu-kullanicilar');
+                if (kulMenu) kulMenu.style.display = 'none';
+            }
+
+            // Aktif kullanıcının gerçek adını üst menüde göster
+            await aktifKullaniciAdiGoster(oturum);
+
+            // 1. Öğrencileri Çek
+            let { data: ogrData } = await _supabase.from('cadep_ogrenciler').select('*');
+            if(ogrData) {
+                tumOgrencilerListesi = ogrData;
+                let selectElement = document.getElementById('secilen-ogrenci-id');
+                let optionsHtml = '<option value="">-- Öğrenci Seçin --</option>';
+                ogrData.forEach(o => {
+                    ogrenciIsimMap[o.id] = o.ad_soyad;
+                    if(o.ogrenci_no) ogrenciNoMap[o.ogrenci_no.toString().trim()] = o.ad_soyad;
+                    if(o.okul_no) ogrenciNoMap[o.okul_no.toString().trim()] = o.ad_soyad;
+                    optionsHtml += `<option value="${o.id}">${o.ad_soyad} (No: ${o.ogrenci_no || o.okul_no || '-'})</option>`;
+                });
+                selectElement.innerHTML = optionsHtml;
+            }
+
+            // 2. Mihmandar Öğretmenleri Çek
+            let { data: mihData } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*');
+            if(mihData) {
+                tumMihmandarlarListesi = mihData;
+                let selectElement = document.getElementById('secilen-mihmandar-id');
+                let optionsHtml = '<option value="">-- Öğretmen Seçin --</option>';
+                mihData.forEach(m => {
+                    let adSoyad = m.ad_soyad || m.ogretmen_adi || m.kullanici_adi || 'Öğretmen';
+                    mihmandarIsimMap[m.id] = adSoyad;
+                    optionsHtml += `<option value="${m.id}">${adSoyad} (${m.brans || ''})</option>`;
+                });
+                selectElement.innerHTML = optionsHtml;
+            }
+
+            // 3. Admin / CADEP Ekibi Üyelerini Çek
+            let { data: ekpData } = await _supabase.from('cadep_ekip').select('*');
+            if(ekpData) {
+                tumAdminlerListesi = ekpData;
+                let selectElement = document.getElementById('secilen-admin-id');
+                let optionsHtml = '<option value="">-- Ekip Üyesi Seçin --</option>';
+                ekpData.forEach(e => {
+                    let adSoyad = e.ad_soyad || e.uye_adi || e.kullanici_adi || 'Yönetici';
+                    adminIsimMap[e.id] = adSoyad;
+                    optionsHtml += `<option value="${e.id}">${adSoyad} (${e.unvan || e.brans || ''})</option>`;
+                });
+                selectElement.innerHTML = optionsHtml;
+            }
+
+            await kullanicilariGetir();
+            rolDegisti();
+        };
+
+        async function aktifKullaniciAdiGoster(oturum) {
+            let isimSpan = document.getElementById('aktif-kullanici-adi');
+            if (!oturum) return;
+
+            let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
+
+            if (oturum.rol === 'admin') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
+                    if (data && data.ad_soyad) {
+                        gorunurIsim = data.ad_soyad;
+                    } else {
+                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
+                        if (allEkip && allEkip.length > 0) {
+                            let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
+                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                            else gorunurIsim = allEkip[0].ad_soyad;
+                        }
+                    }
+                }
+                isimSpan.innerText = gorunurIsim + " (Yönetici)";
+            } 
+            else if (oturum.rol === 'mihmandar') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
+                    if (data && data.length > 0) {
+                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
+                        if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                        else gorunurIsim = data[0].ad_soyad;
+                    }
+                }
+                isimSpan.innerText = gorunurIsim + " (Mihmandar)";
+            } 
+            else if (oturum.rol === 'ogrenci') {
+                if (oturum.id) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else if (oturum.kullanici_adi) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                }
+                isimSpan.innerText = gorunurIsim + " (Öğrenci)";
+            }
+        }
+
+        function rolDegisti() {
+            let rol = document.getElementById('yeni-rol').value;
+            let lbl = document.getElementById('lbl-kullanici');
+            let iliskiliContainer = document.getElementById('iliskili-alan-container');
+            let ogrenciSecimContainer = document.getElementById('ogrenci-secim-container');
+            let mihmandarSecimContainer = document.getElementById('mihmandar-secim-container');
+            let adminSecimContainer = document.getElementById('admin-secim-container');
+
+            iliskiliContainer.classList.add('hidden');
+            ogrenciSecimContainer.classList.add('hidden');
+            mihmandarSecimContainer.classList.add('hidden');
+            adminSecimContainer.classList.add('hidden');
+
+            if(rol === 'admin') {
+                lbl.innerText = "Yönetici Kullanıcı Adı";
+                adminSecimContainer.classList.remove('hidden');
+            } else if(rol === 'mihmandar') {
+                lbl.innerText = "Öğretmen Kullanıcı Adı";
+                mihmandarSecimContainer.classList.remove('hidden');
+            } else {
+                lbl.innerText = "Öğrenci Okul Numarası";
+                ogrenciSecimContainer.classList.remove('hidden');
+            }
+        }
+
+        // Açılır kutulardan seçim yapıldığında değerleri otomatik doldur
+        document.getElementById('secilen-ogrenci-id').addEventListener('change', function() {
+            let secilenId = this.value;
+            if(secilenId) {
+                let secilenOgr = tumOgrencilerListesi.find(o => o.id == secilenId);
+                if(secilenOgr) {
+                    document.getElementById('yeni-kullanici-adi').value = secilenOgr.ogrenci_no || secilenOgr.okul_no || '';
+                    document.getElementById('yeni-iliskili-id').value = secilenOgr.id;
+                }
+            }
+        });
+
+        document.getElementById('secilen-mihmandar-id').addEventListener('change', function() {
+            let secilenId = this.value;
+            if(secilenId) {
+                let secilenMih = tumMihmandarlarListesi.find(m => m.id == secilenId);
+                if(secilenMih) {
+                    let rumuz = secilenMih.kullanici_adi || (secilenMih.ad_soyad ? secilenMih.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+                    document.getElementById('yeni-kullanici-adi').value = rumuz;
+                    document.getElementById('yeni-iliskili-id').value = secilenMih.id;
+                }
+            }
+        });
+
+        document.getElementById('secilen-admin-id').addEventListener('change', function() {
+            let secilenId = this.value;
+            if(secilenId) {
+                let secilenAdm = tumAdminlerListesi.find(e => e.id == secilenId);
+                if(secilenAdm) {
+                    let rumuz = secilenAdm.kullanici_adi || (secilenAdm.ad_soyad ? secilenAdm.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+                    document.getElementById('yeni-kullanici-adi').value = rumuz;
+                    document.getElementById('yeni-iliskili-id').value = secilenAdm.id;
+                }
+            }
+        });
+
+        async function kullanicilariGetir() {
+            let tbody = document.getElementById('kullanici-listesi-govde');
+            let { data, error } = await _supabase.from('kullanicilar').select('*');
+
+            if(error) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Tablo okunamadı! (${error.message})</td></tr>`;
+                return;
+            }
+
+            if(!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Henüz kayıtlı kullanıcı bulunmuyor.</td></tr>`;
+                return;
+            }
+
+            // Kullanıcıların her birine üye adını ekleyelim ve sıralama için hazırlayalım
+            let islenmisListe = data.map(k => {
+                let adSoyadGosterge = "-";
+                if(k.rol === 'ogrenci') {
+                    if(k.iliskili_id && ogrenciIsimMap[k.iliskili_id]) {
+                        adSoyadGosterge = ogrenciIsimMap[k.iliskili_id];
+                    } else if(k.kullanici_adi && ogrenciNoMap[k.kullanici_adi.trim()]) {
+                        adSoyadGosterge = ogrenciNoMap[k.kullanici_adi.trim()];
+                    } else {
+                        adSoyadGosterge = "Öğrenci (No: " + k.kullanici_adi + ")";
+                    }
+                } else if(k.rol === 'mihmandar') {
+                    if(k.iliskili_id && mihmandarIsimMap[k.iliskili_id]) {
+                        adSoyadGosterge = mihmandarIsimMap[k.iliskili_id];
+                    } else {
+                        let bulunanMih = tumMihmandarlarListesi.find(m => m.kullanici_adi === k.kullanici_adi || m.id == k.iliskili_id);
+                        adSoyadGosterge = bulunanMih ? (bulunanMih.ad_soyad || bulunanMih.ogretmen_adi) : k.kullanici_adi;
+                    }
+                } else if(k.rol === 'admin') {
+                    if(k.iliskili_id && adminIsimMap[k.iliskili_id]) {
+                        adSoyadGosterge = adminIsimMap[k.iliskili_id];
+                    } else {
+                        let bulunanAdm = tumAdminlerListesi.find(e => e.kullanici_adi === k.kullanici_adi || e.id == k.iliskili_id);
+                        adSoyadGosterge = bulunanAdm ? (bulunanAdm.ad_soyad || bulunanAdm.uye_adi) : ("Sistem Yöneticisi (" + k.kullanici_adi + ")");
+                    }
+                } else {
+                    adSoyadGosterge = k.kullanici_adi;
+                }
+
+                return {
+                    ...k,
+                    adSoyadGosterge
+                };
+            });
+
+            // İstediğiniz Sıralama Mantığı:
+            // 1. Rol Önceliği: Admin (1) -> Mihmandar (2) -> Öğrenci (3)
+            // 2. Rolleri aynı olanlar kendi içinde Üye Adı Soyadı'na göre alfabetik (A-Z)
+            islenmisListe.sort((a, b) => {
+                let rolSkoru = (rol) => {
+                    if (rol === 'admin') return 1;
+                    if (rol === 'mihmandar') return 2;
+                    return 3; // ogrenci
+                };
+
+                let skorA = rolSkoru(a.rol);
+                let skorB = rolSkoru(b.rol);
+
+                if (skorA !== skorB) {
+                    return skorA - skorB;
+                }
+
+                // Rolleri aynıysa üye adına göre alfabetik sırala
+                return a.adSoyadGosterge.localeCompare(b.adSoyadGosterge, 'tr');
+            });
+
+            let html = '';
+            islenmisListe.forEach((k, index) => {
+                let badgeColor = k.rol === 'admin' ? 'bg-purple-100 text-purple-700' : (k.rol === 'mihmandar' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700');
+                let gorunurRol = k.rol ? k.rol.toUpperCase() : 'ÖĞRENCİ';
+
+                html += `<tr>
+                    <td class="p-3 text-center font-bold text-slate-500">${index + 1}</td>
+                    <td class="p-3 font-semibold text-slate-800">${k.adSoyadGosterge}</td>
+                    <td class="p-3 font-medium text-indigo-700">${k.kullanici_adi}</td>
+                    <td class="p-3"><span class="px-2 py-1 rounded text-xs font-bold uppercase ${badgeColor}">${gorunurRol}</span></td>
+                    <td class="p-3 text-slate-600 font-mono">${k.sifre}</td>
+                    <td class="p-3 text-center space-x-1">
+                        <button type="button" onclick="kullaniciDuzenleBaslat(${k.id}, '${k.rol || 'ogrenci'}', '${k.kullanici_adi}', '${k.sifre}', '${k.iliskili_id || ''}')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer">Düzenle</button>
+                        <button type="button" onclick="kullaniciSil(${k.id})" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer">Sil</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function kullaniciKaydet(e) {
+            e.preventDefault();
+            let id = document.getElementById('duzenlenen-id').value;
+            let rol = document.getElementById('yeni-rol').value;
+            let kullanici_adi = document.getElementById('yeni-kullanici-adi').value.trim();
+            let sifre = document.getElementById('yeni-sifre').value.trim();
+            let iliskili_id = document.getElementById('yeni-iliskili-id').value.trim() || null;
+
+            if (rol === 'ogrenci') {
+                let secilenId = document.getElementById('secilen-ogrenci-id').value;
+                if(secilenId) iliskili_id = secilenId;
+            } else if (rol === 'mihmandar') {
+                let secilenId = document.getElementById('secilen-mihmandar-id').value;
+                if(secilenId) iliskili_id = secilenId;
+            } else if (rol === 'admin') {
+                let secilenId = document.getElementById('secilen-admin-id').value;
+                if(secilenId) iliskili_id = secilenId;
+            }
+
+            if(id) {
+                let { error } = await _supabase.from('kullanicilar').update({
+                    kullanici_adi: kullanici_adi,
+                    sifre: sifre,
+                    rol: rol,
+                    iliskili_id: iliskili_id
+                }).eq('id', id);
+
+                if(error) {
+                    alert("Güncellenirken hata oluştu: " + error.message);
+                } else {
+                    alert("Kullanıcı başarıyla güncellendi!");
+                    formuSifirla();
+                    kullanicilariGetir();
+                }
+            } else {
+                let { error } = await _supabase.from('kullanicilar').insert([{
+                    kullanici_adi: kullanici_adi,
+                    sifre: sifre,
+                    rol: rol,
+                    iliskili_id: iliskili_id
+                }]);
+
+                if(error) {
+                    alert("Kayıt eklenirken hata oluştu: " + error.message);
+                } else {
+                    alert("Kullanıcı başarıyla tanımlandı!");
+                    formuSifirla();
+                    kullanicilariGetir();
+                }
+            }
+        }
+
+        function kullaniciDuzenleBaslat(id, rol, kullaniciAdi, sifre, iliskiliId) {
+            document.getElementById('duzenlenen-id').value = id;
+            document.getElementById('yeni-rol').value = rol;
+            document.getElementById('yeni-kullanici-adi').value = kullaniciAdi;
+            document.getElementById('yeni-sifre').value = sifre;
+            document.getElementById('yeni-iliskili-id').value = iliskiliId === 'null' ? '' : iliskiliId;
+
+            rolDegisti();
+
+            if(rol === 'ogrenci') {
+                let selectOgr = document.getElementById('secilen-ogrenci-id');
+                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {
+                    selectOgr.value = iliskiliId;
+                }
+            } else if(rol === 'mihmandar') {
+                let selectMih = document.getElementById('secilen-mihmandar-id');
+                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {
+                    selectMih.value = iliskiliId;
+                } else {
+                    let bulunan = tumMihmandarlarListesi.find(m => m.kullanici_adi === kullaniciAdi || (m.ad_soyad && m.ad_soyad === kullaniciAdi));
+                    if(bulunan) selectMih.value = bulunan.id;
+                }
+            } else if(rol === 'admin') {
+                let selectAdm = document.getElementById('secilen-admin-id');
+                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {
+                    selectAdm.value = iliskiliId;
+                } else {
+                    let bulunan = tumAdminlerListesi.find(e => e.kullanici_adi === kullaniciAdi || (e.ad_soyad && e.ad_soyad === kullaniciAdi));
+                    if(bulunan) selectAdm.value = bulunan.id;
+                }
+            }
+
+            document.getElementById('form-baslik').innerText = "Kullanıcı Bilgilerini Düzenle (ID: " + id + ")";
+            document.getElementById('btn-kaydet').innerText = "Değişiklikleri Kaydet";
+            document.getElementById('btn-iptal').classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function formuSifirla() {
+            document.getElementById('kullanici-form').reset();
+            document.getElementById('duzenlenen-id').value = '';
+            document.getElementById('form-baslik').innerText = "Yeni Kullanıcı / Şifre Tanımla";
+            document.getElementById('btn-kaydet').innerText = "Kullanıcıyı Kaydet";
+            document.getElementById('btn-iptal').classList.add('hidden');
+            rolDegisti();
+        }
+
+        async function kullaniciSil(id) {
+            if(confirm("Bu kullanıcıyı silmek istediğinize emin misiniz?")) {
+                let { error } = await _supabase.from('kullanicilar').delete().eq('id', id);
+                if(error) {
+                    alert("Silme başarısız: " + error.message);
+                } else {
+                    kullanicilariGetir();
+                }
+            }
+        }
+
+        function mihmandarLinkYonlendir(e) {
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
+    </script>
+</body>
+</html>

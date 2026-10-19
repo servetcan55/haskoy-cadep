@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasköy CADEP Takip Sistemi - Ana Sayfa</title>
+    <script>
+    // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (!oturum) {
+        window.location.href = 'giris.html';
+    }
+</script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Ortak Navbar -->
+    <header class="bg-indigo-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    Hasköy CADEP Takip Sistemi
+                </h1>
+                <p class="text-indigo-200 text-sm">8. Sınıf LGS Öğrenci ve Deneme Analiz Platformu - Hasköy Ortaokulu</p>
+            </div>
+            <nav class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
+                <!-- Ana Sayfa aktif (koyu) -->
+                <a href="index.html" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Ana Sayfa</a>
+                
+                <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
+                <a href="#" onclick="mihmandarLinkYonlendir(event)" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Mihmandar Öğretmenler</a>
+                <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
+                
+                <!-- Genel Ortalamalar artık normal renk -->
+                <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
+                
+                <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
+                <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
+                
+                <!-- Aktif Kullanıcı İsim Alanı -->
+                <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
+                </div>
+
+                <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Ana İçerik -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold text-slate-700">Genel Durum Paneli</h2>
+            <p class="text-sm text-slate-500">Sisteme ait genel özet istatistikler ve modül kısayolları aşağıdadır.</p>
+        </div>
+
+        <!-- İstatistik Kartları (4'lü Grid) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">CADEP ÖĞRENCİ</p>
+                    <h3 id="stat-ogr-sayi" class="text-3xl font-bold text-indigo-700 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">TOPLAM DENEME</p>
+                    <h3 id="stat-deneme-sayi" class="text-3xl font-bold text-emerald-600 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">MİHMANDAR ÖĞRETMEN</p>
+                    <h3 id="stat-mihmandar-sayi" class="text-3xl font-bold text-sky-600 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-sky-50 text-sky-600 rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">CADEP EKİP ÜYESİ</p>
+                    <h3 id="stat-ekip-sayi" class="text-3xl font-bold text-amber-600 mt-1">0</h3>
+                </div>
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hızlı Modül Geçiş Kartları -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="text-lg font-semibold text-slate-700 mb-4">Modül Yönetimi</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <a href="ogrenciler.html" class="p-5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-medium transition flex items-center justify-between">
+                    <span>Öğrenci Yönetimi</span>
+                    <span class="text-xl">&rarr;</span>
+                </a>
+                <a href="denemeler.html" class="p-5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-medium transition flex items-center justify-between">
+                    <span>Deneme & Net Analizi</span>
+                    <span class="text-xl">&rarr;</span>
+                </a>
+                <a href="#" onclick="mihmandarLinkYonlendir(event)" class="p-5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-xl font-medium transition flex items-center justify-between">
+                    <span>Mihmandar Öğretmenler</span>
+                    <span class="text-xl">&rarr;</span>
+                </a>
+                <a href="ekip.html" class="p-5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl font-medium transition flex items-center justify-between">
+                    <span>CADEP Ekip Yönetimi</span>
+                    <span class="text-xl">&rarr;</span>
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        Hasköy Akademik Destek Programı (CADEP) Takip Otomasyonu &copy; 2026 - Hasköy Ortaokulu
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        window.onload = async function() {
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol !== 'admin') {
+                let kulMenu = document.getElementById('menu-kullanicilar');
+                if (kulMenu) kulMenu.style.display = 'none';
+            }
+
+            // Oturum açan kullanıcının gerçek adını bul ve yazdır
+            await aktifKullaniciAdiGoster(oturum);
+
+            // İstatistikleri Çek
+            const { data: ogr } = await _supabase.from('cadep_ogrenciler').select('*');
+            const { data: ekp } = await _supabase.from('cadep_ekip').select('*');
+            const { data: mih } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*');
+            const { data: den } = await _supabase.from('denemeler').select('*');
+
+            if(ogr) document.getElementById('stat-ogr-sayi').innerText = ogr.length;
+            if(den) document.getElementById('stat-deneme-sayi').innerText = den.length;
+            if(mih) document.getElementById('stat-mihmandar-sayi').innerText = mih.length;
+            if(ekp) document.getElementById('stat-ekip-sayi').innerText = ekp.length;
+        };
+
+        async function aktifKullaniciAdiGoster(oturum) {
+            let isimSpan = document.getElementById('aktif-kullanici-adi');
+            if (!oturum) return;
+
+            let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
+
+            if (oturum.rol === 'admin') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
+                    if (data && data.ad_soyad) {
+                        gorunurIsim = data.ad_soyad;
+                    } else {
+                        // Eğer iliskili_id yoksa ve doğrudan ad bulamadıysa cadep_ekip tablosundan eşleşeni veya ilkini al
+                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
+                        if (allEkip && allEkip.length > 0) {
+                            let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
+                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                            else gorunurIsim = allEkip[0].ad_soyad;
+                        }
+                    }
+                }
+                isimSpan.innerText = gorunurIsim + " (Yönetici)";
+            } 
+            else if (oturum.rol === 'mihmandar') {
+                if (oturum.iliskili_id) {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else {
+                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
+                    if (data && data.length > 0) {
+                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
+                        if (bulunan) gorunurIsim = bulunan.ad_soyad;
+                        else gorunurIsim = data[0].ad_soyad;
+                    }
+                }
+                isimSpan.innerText = gorunurIsim + " (Mihmandar)";
+            } 
+            else if (oturum.rol === 'ogrenci') {
+                if (oturum.id) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                } else if (oturum.kullanici_adi) {
+                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
+                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                }
+                isimSpan.innerText = gorunurIsim + " (Öğrenci)";
+            }
+        }
+
+        function mihmandarLinkYonlendir(e) {
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                let targetId = oturum.iliskili_id || oturum.id;
+                window.location.href = `mihmandar_detay.html?id=${targetId}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
+    </script>
+</body>
+</html>
