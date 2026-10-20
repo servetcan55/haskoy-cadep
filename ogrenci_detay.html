@@ -20,6 +20,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- SheetJS (Excel Çıktısı İçin) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Chart.js Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
@@ -67,8 +69,8 @@
     </header>
 
     <!-- Ana İçerik -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <!-- Öğrenci Listesine Dön Butonu (Öğrenci ise gizlenecek) -->
                 <a href="ogrenciler.html" id="btn-geri-don" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center gap-1 mb-2">← Öğrenci Listesine Dön</a>
@@ -77,6 +79,16 @@
             </div>
             <div>
                 <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Karnesi İndir</button>
+            </div>
+        </div>
+
+        <!-- Gelişmiş Bireysel Öğrenci Gelişim Grafiği -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <span>📈</span> Öğrenci Sınav Gelişim Grafiği (Net & Puan)
+            </h3>
+            <div class="relative w-full h-72 sm:h-80">
+                <canvas id="gelisimGrafik"></canvas>
             </div>
         </div>
 
@@ -123,9 +135,9 @@
         let globalDenemeler = [];
         let globalSonuclar = [];
         let tumDenemeSonuclari = [];
+        let grafikObjekt = null;
 
         window.onload = async function() {
-            // Öğrenci rolü kontrolü ve arayüzü kısıtlama
             if (oturum && oturum.rol === 'ogrenci') {
                 let navMenu = document.getElementById('ogrenci-nav-menu');
                 if (navMenu) navMenu.style.display = 'none';
@@ -140,10 +152,8 @@
                 if (kulMenu) kulMenu.style.display = 'none';
             }
 
-            // Aktif kullanıcının gerçek adını üst menüde göster
-            await aktifKullaniciAdiGoster(oturum);
-
             await verileriGetir();
+            await aktifKullaniciAdiGoster(oturum);
         };
 
         async function aktifKullaniciAdiGoster(oturum) {
@@ -175,7 +185,7 @@
             } 
             else if (oturum.rol === 'gozlemci') {
                 if(isimSpan) isimSpan.innerText = gorunurIsim + " (Gözlemci)";
-                if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Gözlemci / Müdür)";
+                if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Gözlemci)";
             }
             else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
@@ -193,12 +203,17 @@
                 if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Mihmandar)";
             } 
             else if (oturum.rol === 'ogrenci') {
-                if (oturum.id) {
-                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else if (oturum.kullanici_adi) {
-                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                if (globalOgrenci && globalOgrenci.ad_soyad) {
+                    gorunurIsim = globalOgrenci.ad_soyad;
+                } else {
+                    let ogrQueryId = oturum.iliskili_id || oturum.id;
+                    if (ogrQueryId) {
+                        let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', ogrQueryId).single();
+                        if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                    } else if (oturum.kullanici_adi) {
+                        let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
+                        if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+                    }
                 }
                 if(isimSpan) isimSpan.innerText = gorunurIsim + " (Öğrenci)";
                 if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Öğrenci)";
@@ -237,7 +252,6 @@
 
             globalOgrenci = ogrData;
 
-            // Mihmandar öğretmen adını bul
             let mihmandarAdi = "-";
             if (ogrData.mihmandar_ogretmen_id) {
                 let { data: mihData } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', ogrData.mihmandar_ogretmen_id).single();
@@ -259,6 +273,7 @@
             tumDenemeSonuclari = tumSonuclar || [];
 
             karneyiOlustur();
+            ogrenciGelisimGrafiginiCiz();
         }
 
         function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
@@ -276,6 +291,81 @@
             if (sira === 3) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-xs">🥉 3.</span>';
             
             return `<span class="font-semibold text-slate-600">${sira}.</span>`;
+        }
+
+        function ogrenciGelisimGrafiginiCiz() {
+            let etiketler = [];
+            let netVerileri = [];
+            let puanVerileri = [];
+
+            let siraliDenemeler = [...globalDenemeler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+
+            siraliDenemeler.forEach(d => {
+                let sonuc = globalSonuclar.find(s => s.deneme_id === d.id);
+                if (sonuc) {
+                    etiketler.push(d.deneme_adi);
+                    netVerileri.push(sonuc.toplam_net || 0);
+                    puanVerileri.push(sonuc.lgs_puan || 0);
+                }
+            });
+
+            let ctx = document.getElementById('gelisimGrafik').getContext('2d');
+
+            if (grafikObjekt) {
+                grafikObjekt.destroy();
+            }
+
+            grafikObjekt = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: etiketler,
+                    datasets: [
+                        {
+                            label: 'Toplam Net',
+                            data: netVerileri,
+                            borderColor: 'rgb(79, 70, 229)',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            yAxisID: 'y',
+                            fill: true
+                        },
+                        {
+                            label: 'LGS Puanı',
+                            data: puanVerileri,
+                            borderColor: 'rgb(16, 185, 129)',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            yAxisID: 'y1',
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Net' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Puan' }
+                        }
+                    }
+                }
+            });
         }
 
         function karneyiOlustur() {
@@ -521,15 +611,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-    e.preventDefault();
-    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-    if (oturum && oturum.rol === 'mihmandar') {
-        let hedefId = oturum.iliskili_id || oturum.id;
-        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
-    } else {
-        window.location.href = 'mihmandar_ogretmenler.html';
-    }
-}
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                let hedefId = oturum.iliskili_id || oturum.id;
+                window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
     </script>
 </body>
 </html>
