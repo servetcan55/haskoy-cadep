@@ -63,8 +63,8 @@
                 <p id="ogretmen-brans" class="text-sm text-slate-500">Sorumluluk alanındaki öğrencilerin tüm deneme sınavı sonuçları.</p>
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <!-- Özel Deneme Ekle Butonu -->
-                <button onclick="ozelDenemeModalAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">
+                <!-- Özel Deneme Ekle Butonu (Gözlemciye Gizli, Admin ve Mihmandara Görünür) -->
+                <button id="btn-ozel-deneme-ekle" onclick="ozelDenemeModalAc()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium items-center gap-1 cursor-pointer">
                     + Özel/Dershane Denemesi Ekle
                 </button>
                 <!-- Sıralama Seçenekleri -->
@@ -116,7 +116,7 @@
                             <th class="p-2.5 w-24">Tarih</th>
                             <th class="p-2.5 text-center">Toplam Net</th>
                             <th class="p-2.5 text-center">LGS Puanı</th>
-                            <th class="p-2.5 text-center w-20">İşlem</th>
+                            <th class="p-2.5 text-center w-20 id-islem-kolu">İşlem</th>
                         </tr>
                     </thead>
                     <tbody id="ozel-deneme-govde" class="divide-y divide-slate-100">
@@ -298,6 +298,15 @@
             }
 
             await aktifKullaniciAdiGoster(oturum);
+
+            // Gözlemci ise "Özel Deneme Ekle" butonunu gizle
+            if (oturum && oturum.rol === 'gozlemci') {
+                let btnOzelEkle = document.getElementById('btn-ozel-deneme-ekle');
+                if (btnOzelEkle) btnOzelEkle.style.display = 'none';
+            } else {
+                let btnOzelEkle = document.getElementById('btn-ozel-deneme-ekle');
+                if (btnOzelEkle) btnOzelEkle.style.display = 'flex';
+            }
 
             if (oturum.rol === 'mihmandar') {
                 document.getElementById('geri-link').style.display = 'none';
@@ -586,6 +595,9 @@
 
         function ozelDenemeleriListele() {
             let tbody = document.getElementById('ozel-deneme-govde');
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            let isGozlemci = (oturum && oturum.rol === 'gozlemci');
+
             if (!globalOzelDenemeler || globalOzelDenemeler.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Henüz eklenmiş özel/dershane denemesi bulunmuyor.</td></tr>`;
                 return;
@@ -597,6 +609,8 @@
             let html = '';
             globalOzelDenemeler.forEach(d => {
                 let ogr = ogrMap[d.ogrenci_id] || { ad_soyad: 'Bilinmeyen Öğrenci', sinif: '-' };
+                let silBtn = isGozlemci ? '' : `<button onclick="ozelDenemeSil('${d.id}')" class="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer">[Sil]</button>`;
+                
                 html += `
                     <tr>
                         <td class="p-2.5 font-semibold text-indigo-700">${ogr.sinif} - ${ogr.ad_soyad}</td>
@@ -604,9 +618,7 @@
                         <td class="p-2.5 text-xs text-slate-500">${d.tarih || '-'}</td>
                         <td class="p-2.5 text-center font-bold text-indigo-700">${d.toplam_net ?? '-'}</td>
                         <td class="p-2.5 text-center font-semibold text-emerald-700">${d.lgs_puan ?? '-'}</td>
-                        <td class="p-2.5 text-center">
-                            <button onclick="ozelDenemeSil('${d.id}')" class="text-xs text-red-500 hover:text-red-700 font-medium cursor-pointer">[Sil]</button>
-                        </td>
+                        <td class="p-2.5 text-center">${silBtn}</td>
                     </tr>
                 `;
             });
