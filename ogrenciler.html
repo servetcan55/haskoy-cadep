@@ -65,11 +65,11 @@
                 <h2 class="text-2xl font-bold text-slate-700">CADEP Öğrenci Listesi</h2>
                 <p class="text-sm text-slate-500">8. sınıf LGS öğrenci kayıtları ve mihmandar öğretmen takibi. (Karne için öğrenci adına tıklayın)</p>
             </div>
-            <!-- Yönetim Butonları (Admin değilse gizlenecek) -->
-            <div id="yonetim-butonlari-container" class="flex flex-wrap gap-2 hidden">
+            <!-- Rapor ve Yönetim Butonları -->
+            <div id="yonetim-butonlari-container" class="flex flex-wrap gap-2">
                 <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📄 PDF Raporu</button>
                 <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Raporu</button>
-                <button onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium cursor-pointer">+ Yeni Öğrenci Ekle</button>
+                <button id="btn-yeni-ogrenci" onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium cursor-pointer hidden">+ Yeni Öğrenci Ekle</button>
             </div>
         </div>
 
@@ -112,7 +112,7 @@
                             <th class="p-3">Ad Soyad</th>
                             <th class="p-3">Sınıf</th>
                             <th class="p-3">Mihmandar Öğretmen</th>
-                            <th id="th-veli" class="p-3 hidden">Veli Bilgileri</th>
+                            <th id="th-veli" class="p-3">Veli Bilgileri</th>
                             <th class="p-3">Hedef Lisesi</th>
                             <th class="p-3">DYK / Dershane</th>
                             <th id="th-islemler" class="p-3 text-right hidden">İşlemler</th>
@@ -139,19 +139,19 @@
         let mihmandarListesiCache = [];
         let ogrenciCache = [];
         let isAdmin = (oturum && oturum.rol === 'admin');
+        let isGozlemci = (oturum && oturum.rol === 'gozlemci');
 
         window.onload = async function() {
-            // Kullanıcılar menü linkini ve admin yetki alanlarını role göre ayarla
+            // Kullanıcılar menü linkini sadece admin görebilir
             if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
-            } else {
-                // Admin ise yönetim butonlarını ve sütunları göster
-                let yonetimButonlari = document.getElementById('yonetim-butonlari-container');
-                if (yonetimButonlari) yonetimButonlari.classList.remove('hidden');
+            }
 
-                let thVeli = document.getElementById('th-veli');
-                if (thVeli) thVeli.classList.remove('hidden');
+            // Admin ise "+ Yeni Öğrenci Ekle" butonunu ve işlemler sütununu göster
+            if (isAdmin) {
+                let yeniOgrBtn = document.getElementById('btn-yeni-ogrenci');
+                if (yeniOgrBtn) yeniOgrBtn.classList.remove('hidden');
 
                 let thIslemler = document.getElementById('th-islemler');
                 if (thIslemler) thIslemler.classList.remove('hidden');
@@ -189,6 +189,9 @@
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
             } 
+            else if (oturum.rol === 'gozlemci') {
+                isimSpan.innerText = gorunurIsim + " (Gözlemci)";
+            }
             else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
@@ -236,7 +239,7 @@
 
             let tbody = document.getElementById('ogrenci-tablo-govde');
             
-            let colSpanSayisi = isAdmin ? 9 : 7;
+            let colSpanSayisi = isAdmin ? 9 : 8;
 
             if(!data || data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${colSpanSayisi}" class="p-4 text-center text-slate-400">Henüz öğrenci eklenmemiş.</td></tr>`;
@@ -261,17 +264,12 @@
                         </a>
                     </td>
                     <td class="p-3">${ogrenci.sinif}</td>
-                    <td class="p-3 text-indigo-700 font-medium">${mihmandarAd}</td>`;
-
-                // Sadece Admin ise Veli Bilgilerini göster
-                if (isAdmin) {
-                    html += `<td class="p-3">
+                    <td class="p-3 text-indigo-700 font-medium">${mihmandarAd}</td>
+                    <td class="p-3">
                         <span class="block">${ogrenci.veli_adi_soyad || '-'}</span>
                         <span class="text-xs text-slate-400">${ogrenci.veli_telefonu || ''}</span>
-                    </td>`;
-                }
-
-                html += `<td class="p-3 font-medium text-emerald-700">${ogrenci.hedef_lisesi || '-'}</td>
+                    </td>
+                    <td class="p-3 font-medium text-emerald-700">${ogrenci.hedef_lisesi || '-'}</td>
                     <td class="p-3">${dykBadge}</td>`;
 
                 // Sadece Admin ise İşlemler butonlarını göster
@@ -361,7 +359,6 @@
         }
 
         function excelRaporAl() {
-            if (!isAdmin) return;
             if(!ogrenciCache || ogrenciCache.length === 0) {
                 return alert("Rapor alınacak öğrenci bulunamadı!");
             }
@@ -397,7 +394,6 @@
         }
 
         function pdfRaporAl() {
-            if (!isAdmin) return;
             if(!ogrenciCache || ogrenciCache.length === 0) {
                 return alert("Rapor alınacak öğrenci bulunamadı!");
             }
@@ -449,7 +445,7 @@
                     trKarakter('Sıra'), 
                     trKarakter('No'), 
                     trKarakter('Ad Soyad'), 
-                    trKarakter('Sınıf'), 
+                    trKdk('Sınıf'), 
                     trKarakter('Mihmandar Öğretmen'), 
                     trKarakter('Veli Bilgileri'), 
                     trKarakter('Hedef Lisesi'), 
@@ -474,15 +470,21 @@
             doc.save("Haskoy_Ortaokulu_CADEP_Ogrenciler.pdf");
         }
 
-        function mihmandarLinkYonlendir(e) {
-            e.preventDefault();
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-            if (oturum && oturum.rol === 'mihmandar') {
-                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
-            } else {
-                window.location.href = 'mihmandar_ogretmenler.html';
-            }
+        // Kısa yol yardımcısı
+        function trKdk(text) {
+            return text;
         }
+
+        function mihmandarLinkYonlendir(e) {
+    e.preventDefault();
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (oturum && oturum.rol === 'mihmandar') {
+        let hedefId = oturum.iliskili_id || oturum.id;
+        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+    } else {
+        window.location.href = 'mihmandar_ogretmenler.html';
+    }
+}
     </script>
 </body>
 </html>

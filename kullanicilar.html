@@ -21,6 +21,8 @@
             alert("Bu sayfaya yalnızca Admin yetkisiyle erişilebilir!");
             if (oturum.rol === 'mihmandar') {
                 window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
+            } else if (oturum.rol === 'gozlemci') {
+                window.location.href = 'index.html';
             } else {
                 window.location.href = `ogrenci_detay.html?id=${oturum.id}`;
             }
@@ -70,6 +72,7 @@
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Rol Seçimi</label>
                         <select id="yeni-rol" onchange="rolDegisti()" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
                             <option value="admin">Admin (Yönetici)</option>
+                            <option value="gozlemci">Gözlemci</option>
                             <option value="mihmandar">Mihmandar Öğretmen</option>
                             <option value="ogrenci">Öğrenci</option>
                         </select>
@@ -97,6 +100,12 @@
                         <select id="secilen-admin-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
                             <option value="">-- Ekip Üyesi Seçin --</option>
                         </select>
+                    </div>
+
+                    <!-- Gözlemci Ad Soyad Kutusu -->
+                    <div id="gozlemci-ad-container" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Gözlemci Adı Soyadı (Unvanı)</label>
+                        <input type="text" id="gozlemci-ad-soyad" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Örn: Okul Müdürü / İlçe MEM">
                     </div>
 
                     <div>
@@ -251,6 +260,9 @@
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
             } 
+            else if (oturum.rol === 'gozlemci') {
+                isimSpan.innerText = gorunurIsim + " (Gözlemci)";
+            }
             else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
@@ -284,15 +296,20 @@
             let ogrenciSecimContainer = document.getElementById('ogrenci-secim-container');
             let mihmandarSecimContainer = document.getElementById('mihmandar-secim-container');
             let adminSecimContainer = document.getElementById('admin-secim-container');
+            let gozlemciAdContainer = document.getElementById('gozlemci-ad-container');
 
             iliskiliContainer.classList.add('hidden');
             ogrenciSecimContainer.classList.add('hidden');
             mihmandarSecimContainer.classList.add('hidden');
             adminSecimContainer.classList.add('hidden');
+            gozlemciAdContainer.classList.add('hidden');
 
             if(rol === 'admin') {
                 lbl.innerText = "Yönetici Kullanıcı Adı";
                 adminSecimContainer.classList.remove('hidden');
+            } else if(rol === 'gozlemci') {
+                lbl.innerText = "Gözlemci Kullanıcı Adı / Rumuz";
+                gozlemciAdContainer.classList.remove('hidden');
             } else if(rol === 'mihmandar') {
                 lbl.innerText = "Öğretmen Kullanıcı Adı";
                 mihmandarSecimContainer.classList.remove('hidden');
@@ -377,6 +394,9 @@
                         let bulunanAdm = tumAdminlerListesi.find(e => e.kullanici_adi === k.kullanici_adi || e.id == k.iliskili_id);
                         adSoyadGosterge = bulunanAdm ? (bulunanAdm.ad_soyad || bulunanAdm.uye_adi) : ("Sistem Yöneticisi (" + k.kullanici_adi + ")");
                     }
+                } else if(k.rol === 'gozlemci') {
+                    // Eğer iliskili_id alanında ad soyad tutuluyorsa veya kullanici_adi gözlemleniyorsa
+                    adSoyadGosterge = k.iliskili_id && isNaN(k.iliskili_id) ? k.iliskili_id : ("Gözlemci (" + k.kullanici_adi + ")");
                 } else {
                     adSoyadGosterge = k.kullanici_adi;
                 }
@@ -387,14 +407,15 @@
                 };
             });
 
-            // İstediğiniz Sıralama Mantığı:
-            // 1. Rol Önceliği: Admin (1) -> Mihmandar (2) -> Öğrenci (3)
+            // Sıralama Mantığı:
+            // 1. Rol Önceliği: Admin (1) -> Gözlemci (2) -> Mihmandar (3) -> Öğrenci (4)
             // 2. Rolleri aynı olanlar kendi içinde Üye Adı Soyadı'na göre alfabetik (A-Z)
             islenmisListe.sort((a, b) => {
                 let rolSkoru = (rol) => {
                     if (rol === 'admin') return 1;
-                    if (rol === 'mihmandar') return 2;
-                    return 3; // ogrenci
+                    if (rol === 'gozlemci') return 2;
+                    if (rol === 'mihmandar') return 3;
+                    return 4; // ogrenci
                 };
 
                 let skorA = rolSkoru(a.rol);
@@ -410,7 +431,7 @@
 
             let html = '';
             islenmisListe.forEach((k, index) => {
-                let badgeColor = k.rol === 'admin' ? 'bg-purple-100 text-purple-700' : (k.rol === 'mihmandar' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700');
+                let badgeColor = k.rol === 'admin' ? 'bg-purple-100 text-purple-700' : (k.rol === 'gozlemci' ? 'bg-amber-100 text-amber-800' : (k.rol === 'mihmandar' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'));
                 let gorunurRol = k.rol ? k.rol.toUpperCase() : 'ÖĞRENCİ';
 
                 html += `<tr>
@@ -445,6 +466,9 @@
             } else if (rol === 'admin') {
                 let secilenId = document.getElementById('secilen-admin-id').value;
                 if(secilenId) iliskili_id = secilenId;
+            } else if (rol === 'gozlemci') {
+                let gozlemciAd = document.getElementById('gozlemci-ad-soyad').value.trim();
+                if(gozlemciAd) iliskili_id = gozlemciAd; // Gözlemci adını iliskili_id alanında saklıyoruz
             }
 
             if(id) {
@@ -510,6 +534,10 @@
                     let bulunan = tumAdminlerListesi.find(e => e.kullanici_adi === kullaniciAdi || (e.ad_soyad && e.ad_soyad === kullaniciAdi));
                     if(bulunan) selectAdm.value = bulunan.id;
                 }
+            } else if(rol === 'gozlemci') {
+                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {
+                    document.getElementById('gozlemci-ad-soyad').value = iliskiliId;
+                }
             }
 
             document.getElementById('form-baslik').innerText = "Kullanıcı Bilgilerini Düzenle (ID: " + id + ")";
@@ -540,14 +568,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-            e.preventDefault();
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-            if (oturum && oturum.rol === 'mihmandar') {
-                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
-            } else {
-                window.location.href = 'mihmandar_ogretmenler.html';
-            }
-        }
+    e.preventDefault();
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (oturum && oturum.rol === 'mihmandar') {
+        let hedefId = oturum.iliskili_id || oturum.id;
+        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+    } else {
+        window.location.href = 'mihmandar_ogretmenler.html';
+    }
+}
     </script>
 </body>
 </html>

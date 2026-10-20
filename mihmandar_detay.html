@@ -39,7 +39,7 @@
                 <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
                 
-                <!-- Kullanıcılar linki id="menu-kullanicilar" ile mihmandarlara gizlenecek -->
+                <!-- Kullanıcılar linki id="menu-kullanicilar" ile admin dışındakilere gizlenecek -->
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
                 
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
@@ -62,7 +62,7 @@
     <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
-                <!-- Eğer giren admin ise listeye dön linki görünsün, mihmandar ise gizlensin veya anasayfaya yönlendirsin -->
+                <!-- Admin veya Gözlemci ise listeye dön linki görünsün, mihmandar ise gizlensin -->
                 <a href="mihmandar_ogretmenler.html" id="geri-link" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center gap-1 mb-2">← Mihmandar Öğretmenler Listesine Dön</a>
                 <h2 id="ogretmen-baslik" class="text-2xl font-bold text-slate-700">Öğretmen Öğrenci Analiz Raporu</h2>
                 <p id="ogretmen-brans" class="text-sm text-slate-500">Sorumluluk alanındaki öğrencilerin tüm deneme sınavı sonuçları. (Detay görmek için puanlara tıklayın)</p>
@@ -187,13 +187,19 @@
             if (oturum.rol === 'mihmandar') {
                 document.getElementById('geri-link').style.display = 'none'; // Mihmandar listeye dönemez
                 if (!ogretmenId) {
-                    ogretmenId = oturum.id;
+                    ogretmenId = oturum.iliskili_id || oturum.id;
+                }
+            } else if (oturum.rol === 'gozlemci') {
+                // Gözlemci rolü tüm öğretmenleri inceleyebilir, id yoksa ilk öğretmeni seçebilir veya uyarı verebilir
+                if (!ogretmenId) {
+                    let { data: ilkOgrt } = await _supabase.from('cadep_mihmandar_ogretmenler').select('id').limit(1).maybeSingle();
+                    if (ilkOgrt) ogretmenId = ilkOgrt.id;
                 }
             }
 
             if(!ogretmenId) {
                 alert("Geçersiz öğretmen seçimi!");
-                window.location.href = "giris.html";
+                window.location.href = "mihmandar_ogretmenler.html";
                 return;
             }
 
@@ -230,6 +236,9 @@
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
             } 
+            else if (oturum.rol === 'gozlemci') {
+                isimSpan.innerText = gorunurIsim + " (Gözlemci)";
+            }
             else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
@@ -400,7 +409,7 @@
                 { ad: "Türkçe (20 Soru)", d: sonuc.turkce_d, y: sonuc.turkce_y, b: sonuc.turkce_b ?? (20 - (sonuc.turkce_d||0) - (sonuc.turkce_y||0)) },
                 { ad: "Matematik (20 Soru)", d: sonuc.matematik_d, y: sonuc.matematik_y, b: sonuc.matematik_b ?? (20 - (sonuc.matematik_d||0) - (sonuc.matematik_y||0)) },
                 { ad: "Fen Bilimleri (20 Soru)", d: sonuc.fen_d, y: sonuc.fen_y, b: sonuc.fen_b ?? (20 - (sonuc.fen_d||0) - (sonuc.fen_y||0)) },
-                { ad: "İnkılap Tarihi (10 Soru)", d: sonuc.inkilap_d, y: sonuc.inkilap_y, b: sonuc.inkilap_b ?? (10 - (sonuc.inkilap_d||0) - (sonuc.inkilap_d||0)) },
+                { ad: "İnkılap Tarihi (10 Soru)", d: sonuc.inkilap_d, y: sonuc.inkilap_y, b: sonuc.inkilap_b ?? (10 - (sonuc.inkilap_d||0) - (sonuc.inkilap_y||0)) },
                 { ad: "Din Kültürü (10 Soru)", d: sonuc.din_d, y: sonuc.din_y, b: sonuc.din_b ?? (10 - (sonuc.din_d||0) - (sonuc.din_y||0)) },
                 { ad: "İngilizce (10 Soru)", d: sonuc.ingilizce_d, y: sonuc.ingilizce_y, b: sonuc.ingilizce_b ?? (10 - (sonuc.ingilizce_d||0) - (sonuc.ingilizce_y||0)) }
             ];
@@ -472,14 +481,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-            e.preventDefault();
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-            if (oturum && oturum.rol === 'mihmandar') {
-                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
-            } else {
-                window.location.href = 'mihmandar_ogretmenler.html';
-            }
-        }
+    e.preventDefault();
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (oturum && oturum.rol === 'mihmandar') {
+        let hedefId = oturum.iliskili_id || oturum.id;
+        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+    } else {
+        window.location.href = 'mihmandar_ogretmenler.html';
+    }
+}
     </script>
 </body>
 </html>

@@ -175,7 +175,6 @@
                     if (data && data.ad_soyad) {
                         gorunurIsim = data.ad_soyad;
                     } else {
-                        // Eğer iliskili_id yoksa ve doğrudan ad bulamadıysa cadep_ekip tablosundan eşleşeni veya ilkini al
                         let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
                         if (allEkip && allEkip.length > 0) {
                             let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
@@ -186,6 +185,9 @@
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
             } 
+            else if (oturum.rol === 'gozlemci') {
+                isimSpan.innerText = gorunurIsim + " (Gözlemci)";
+            }
             else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
@@ -213,15 +215,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-            e.preventDefault();
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-            if (oturum && oturum.rol === 'mihmandar') {
-                let targetId = oturum.iliskili_id || oturum.id;
-                window.location.href = `mihmandar_detay.html?id=${targetId}`;
-            } else {
-                window.location.href = 'mihmandar_ogretmenler.html';
-            }
-        }
+    e.preventDefault();
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (oturum && oturum.rol === 'mihmandar') {
+        let hedefId = oturum.iliskili_id || oturum.id;
+        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+    } else {
+        window.location.href = 'mihmandar_ogretmenler.html';
+    }
+}
     </script>
 </body>
 </html>

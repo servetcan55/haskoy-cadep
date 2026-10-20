@@ -63,10 +63,9 @@
                 <p class="text-sm text-slate-500">Okul koordinatörleri ve branş öğretmenlerinin listesi.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <!-- Sadece Adminlerin Görebileceği Rapor Butonları -->
-                <button id="btn-pdf" onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hidden items-center gap-1 cursor-pointer">📄 PDF Raporu İndir</button>
-                <button id="btn-excel" onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hidden items-center gap-1 cursor-pointer">📊 Excel Raporu İndir</button>
-                <!-- Sadece Adminlerin Görebileceği Yeni Üye Ekle Butonu -->
+                <!-- Rapor Butonları Herkese / Yetkililere Açık, Yeni Üye Sadece Admin -->
+                <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📄 PDF Raporu İndir</button>
+                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Raporu İndir</button>
                 <button id="btn-yeni-uye" onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hidden cursor-pointer">+ Yeni Ekip Üyesi Ekle</button>
             </div>
         </div>
@@ -124,7 +123,6 @@
         let isAdmin = (oturum && oturum.rol === 'admin');
 
         window.onload = async function() {
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
             if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
@@ -133,11 +131,9 @@
             // Aktif kullanıcının gerçek adını üst menüde göster
             await aktifKullaniciAdiGoster(oturum);
 
-            // Eğer kullanıcı admin ise yönetim butonlarını, telefon sütununu ve rapor butonlarını aç
+            // Eğer kullanıcı admin ise yeni üye ekleme butonunu, telefon sütununu ve işlemler sütununu aç
             if (isAdmin) {
                 document.getElementById('btn-yeni-uye').classList.remove('hidden');
-                document.getElementById('btn-pdf').classList.remove('hidden');
-                document.getElementById('btn-excel').classList.remove('hidden');
                 document.getElementById('th-telefon').classList.remove('hidden');
                 document.getElementById('th-islemler').classList.remove('hidden');
             }
@@ -169,6 +165,9 @@
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
             } 
+            else if (oturum.rol === 'gozlemci') {
+                isimSpan.innerText = gorunurIsim + " (Gözlemci)";
+            }
             else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
@@ -290,7 +289,6 @@
         }
 
         function excelRaporAl() {
-            if (!isAdmin) return;
             if(!ekipCache || ekipCache.length === 0) {
                 return alert("Rapor alınacak ekip üyesi bulunamadı!");
             }
@@ -300,35 +298,35 @@
                 ["2026 - 2027 Eğitim Öğretim Yılı"],
                 ["Akademik Başarı Ekibi (CADEP)"],
                 [""],
-                ["Sıra", "Ad Soyad", "Ünvan", "Branş", "Telefon"]
+                ["Sıra", "Ad Soyad", "Ünvan", "Branş"]
             ];
+            if (isAdmin) rawData[4].push("Telefon");
 
             ekipCache.forEach((uye, index) => {
-                rawData.push([
+                let row = [
                     uye.sira ?? (index + 1),
                     uye.ad_soyad,
                     uye.unvan || "",
-                    uye.brans,
-                    uye.telefon || ""
-                ]);
+                    uye.brans
+                ];
+                if (isAdmin) row.push(uye.telefon || "");
+                rawData.push(row);
             });
 
             let worksheet = XLSX.utils.aoa_to_sheet(rawData);
-            
+            let mergeCols = isAdmin ? 4 : 3;
             worksheet['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } }
+                { s: { r: 0, c: 0 }, e: { r: 0, c: mergeCols } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: mergeCols } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: mergeCols } }
             ];
 
             let workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "CADEP Ekibi");
-            
             XLSX.writeFile(workbook, "Haskoy_Ortaokulu_Akademik_Basari_Ekibi.xlsx");
         }
 
         function pdfRaporAl() {
-            if (!isAdmin) return;
             if(!ekipCache || ekipCache.length === 0) {
                 return alert("Rapor alınacak ekip üyesi bulunamadı!");
             }
@@ -347,7 +345,6 @@
                     .replace(/ç/g, "c").replace(/Ç/g, "C");
             }
 
-            // Üst Başlık Bilgileri
             doc.setFont("helvetica", "bold");
             doc.setFontSize(16);
             doc.text(trKarakter("Hasköy Ortaokulu"), 105, 15, { align: "center" });
@@ -361,43 +358,57 @@
 
             doc.setTextColor(0, 0, 0);
 
-            // Tablo Verileri
-            let tableData = ekipCache.map((uye, index) => [
-                uye.sira ?? (index + 1),
-                trKarakter(uye.ad_soyad),
-                trKarakter(uye.unvan || "-"),
-                trKarakter(uye.brans),
-                uye.telefon || "-"
-            ]);
+            let headRow = isAdmin 
+                ? [trKarakter('Sıra'), trKarakter('Ad Soyad'), trKarakter('Ünvan'), trKarakter('Branş'), trKarakter('Telefon')]
+                : [trKarakter('Sıra'), trKarakter('Ad Soyad'), trKarakter('Ünvan'), trKarakter('Branş')];
+
+            let tableData = ekipCache.map((uye, index) => {
+                let row = [
+                    uye.sira ?? (index + 1),
+                    trKarakter(uye.ad_soyad),
+                    trKarakter(uye.unvan || "-"),
+                    trKarakter(uye.brans)
+                ];
+                if (isAdmin) row.push(uye.telefon || "-");
+                return row;
+            });
+
+            let colStyles = isAdmin ? {
+                0: { cellWidth: 15 },
+                1: { cellWidth: 50 },
+                2: { cellWidth: 50 },
+                3: { cellWidth: 55 },
+                4: { cellWidth: 30 }
+            } : {
+                0: { cellWidth: 20 },
+                1: { cellWidth: 65 },
+                2: { cellWidth: 55 },
+                3: { cellWidth: 50 }
+            };
 
             doc.autoTable({
                 startY: 38,
-                head: [[trKarakter('Sıra'), trKarakter('Ad Soyad'), trKarakter('Ünvan'), trKarakter('Branş'), trKarakter('Telefon')]],
+                head: [headRow],
                 body: tableData,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229] },
                 styles: { fontSize: 10, cellPadding: 4, font: "helvetica", overflow: 'linebreak' },
-                columnStyles: {
-                    0: { cellWidth: 15 },
-                    1: { cellWidth: 50 },
-                    2: { cellWidth: 50 },
-                    3: { cellWidth: 55 },
-                    4: { cellWidth: 30 }
-                }
+                columnStyles: colStyles
             });
 
             doc.save("Haskoy_Ortaokulu_Akademik_Basari_Ekibi.pdf");
         }
 
         function mihmandarLinkYonlendir(e) {
-            e.preventDefault();
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-            if (oturum && oturum.rol === 'mihmandar') {
-                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
-            } else {
-                window.location.href = 'mihmandar_ogretmenler.html';
-            }
-        }
+    e.preventDefault();
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (oturum && oturum.rol === 'mihmandar') {
+        let hedefId = oturum.iliskili_id || oturum.id;
+        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+    } else {
+        window.location.href = 'mihmandar_ogretmenler.html';
+    }
+}
     </script>
 </body>
 </html>

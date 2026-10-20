@@ -68,7 +68,7 @@
             <div class="flex flex-wrap gap-2">
                 <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📄 PDF Raporu</button>
                 <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Raporu</button>
-                <button onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium cursor-pointer">+ Yeni Öğretmen Ekle</button>
+                <button id="btn-yeni-ogretmen" onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hidden cursor-pointer">+ Yeni Öğretmen Ekle</button>
             </div>
         </div>
 
@@ -96,8 +96,8 @@
                             <th class="p-3 w-16 text-center">Sıra</th>
                             <th class="p-3">Ad Soyad</th>
                             <th class="p-3">Branş</th>
-                            <th class="p-3">Telefon</th>
-                            <th class="p-3 text-right">İşlemler</th>
+                            <th id="th-telefon" class="p-3 hidden">Telefon</th>
+                            <th id="th-islemler" class="p-3 text-right hidden">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="ogretmen-tablo-govde" class="divide-y divide-slate-200 text-sm">
@@ -119,12 +119,24 @@
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let ogretmenCache = [];
+        let isAdmin = (oturum && oturum.rol === 'admin');
 
         window.onload = async function() {
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
             if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
+            }
+
+            // Admin ise ekleme butonunu, telefon sütununu ve işlemler sütununu göster
+            if (isAdmin) {
+                let yeniOgrtBtn = document.getElementById('btn-yeni-ogretmen');
+                if (yeniOgrtBtn) yeniOgrtBtn.classList.remove('hidden');
+
+                let thTel = document.getElementById('th-telefon');
+                if (thTel) thTel.classList.remove('hidden');
+
+                let thIslemler = document.getElementById('th-islemler');
+                if (thIslemler) thIslemler.classList.remove('hidden');
             }
 
             // Aktif kullanıcının gerçek adını üst menüde göster
@@ -158,6 +170,9 @@
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
             } 
+            else if (oturum.rol === 'gozlemci') {
+                isimSpan.innerText = gorunurIsim + " (Gözlemci)";
+            }
             else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
@@ -188,8 +203,10 @@
             const { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*').order('ad_soyad');
             let tbody = document.getElementById('ogretmen-tablo-govde');
             
+            let colSpanSayisi = isAdmin ? 5 : 3;
+
             if(!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Henüz öğretmen eklenmemiş.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${colSpanSayisi}" class="p-4 text-center text-slate-400">Henüz öğretmen eklenmemiş.</td></tr>`;
                 ogretmenCache = [];
                 return;
             }
@@ -204,18 +221,23 @@
                             ${ogretmen.ad_soyad} <span class="text-xs text-slate-400">↗ (Öğrenci Analizi)</span>
                         </a>
                     </td>
-                    <td class="p-3">${ogretmen.brans || '-'}</td>
-                    <td class="p-3">${ogretmen.telefon || '-'}</td>
+                    <td class="p-3">${ogretmen.brans || '-'}</td>`;
+
+                if (isAdmin) {
+                    html += `<td class="p-3">${ogretmen.telefon || '-'}</td>
                     <td class="p-3 text-right">
                         <button onclick="formuAc('${ogretmen.id}', '${ogretmen.ad_soyad}', '${ogretmen.brans || ''}', '${ogretmen.telefon || ''}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium mr-2 cursor-pointer">Düzenle</button>
                         <button onclick="ogretmenSil('${ogretmen.id}')" class="text-red-600 hover:text-red-800 text-xs font-medium cursor-pointer">Sil</button>
-                    </td>
-                </tr>`;
+                    </td>`;
+                }
+
+                html += `</tr>`;
             });
             tbody.innerHTML = html;
         }
 
         function formuAc(id = '', ad = '', brans = '', tel = '') {
+            if (!isAdmin) return;
             document.getElementById('ogretmen-form-card').classList.remove('hidden');
             document.getElementById('ogr-id').value = id;
             document.getElementById('ogr-ad').value = ad;
@@ -230,6 +252,7 @@
         }
 
         async function ogretmenKaydet() {
+            if (!isAdmin) return;
             let id = document.getElementById('ogr-id').value;
             let ad = document.getElementById('ogr-ad').value.trim();
             let brans = document.getElementById('ogr-brans').value.trim();
@@ -260,6 +283,7 @@
         }
 
         async function ogretmenSil(id) {
+            if (!isAdmin) return;
             if(confirm("Bu öğretmeni silmek istediğinize emin misiniz?")) {
                 await _supabase.from('cadep_mihmandar_ogretmenler').delete().eq('id', id);
                 ogretmenleriYukle();
@@ -269,12 +293,17 @@
         function excelRaporAl() {
             if(!ogretmenCache || ogretmenCache.length === 0) return alert("Rapor verisi yok!");
 
-            let excelVerisi = ogretmenCache.map((ogr, idx) => ({
-                "Sıra": idx + 1,
-                "Ad Soyad": ogr.ad_soyad,
-                "Branş": ogr.brans || "",
-                "Telefon": ogr.telefon || ""
-            }));
+            let excelVerisi = ogretmenCache.map((ogr, idx) => {
+                let obj = {
+                    "Sıra": idx + 1,
+                    "Ad Soyad": ogr.ad_soyad,
+                    "Branş": ogr.brans || ""
+                };
+                if (isAdmin) {
+                    obj["Telefon"] = ogr.telefon || "";
+                }
+                return obj;
+            });
 
             let worksheet = XLSX.utils.json_to_sheet(excelVerisi);
             let workbook = XLSX.utils.book_new();
@@ -308,16 +337,25 @@
             doc.setTextColor(79, 70, 229);
             doc.text(trKarakter("Mihmandar Ogretmenler Listesi"), 105, 25, { align: "center" });
 
-            let tableData = ogretmenCache.map((ogr, idx) => [
-                idx + 1,
-                trKarakter(ogr.ad_soyad),
-                trKarakter(ogr.brans || "-"),
-                ogr.telefon || "-"
-            ]);
+            let headRow = isAdmin 
+                ? [trKarakter('Sıra'), trKarakter('Ad Soyad'), trKarakter('Branş'), trKarakter('Telefon')]
+                : [trKarakter('Sıra'), trKarakter('Ad Soyad'), trKarakter('Branş')];
+
+            let tableData = ogretmenCache.map((ogr, idx) => {
+                let row = [
+                    idx + 1,
+                    trKarakter(ogr.ad_soyad),
+                    trKarakter(ogr.brans || "-")
+                ];
+                if (isAdmin) {
+                    row.push(ogr.telefon || "-");
+                }
+                return row;
+            });
 
             doc.autoTable({
                 startY: 32,
-                head: [[trKarakter('Sıra'), trKarakter('Ad Soyad'), trKarakter('Branş'), trKarakter('Telefon')]],
+                head: [headRow],
                 body: tableData,
                 theme: 'grid',
                 headStyles: { fillColor: [79, 70, 229] },
@@ -328,14 +366,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-            e.preventDefault();
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-            if (oturum && oturum.rol === 'mihmandar') {
-                window.location.href = `mihmandar_detay.html?id=${oturum.id}`;
-            } else {
-                window.location.href = 'mihmandar_ogretmenler.html';
-            }
-        }
+    e.preventDefault();
+    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    if (oturum && oturum.rol === 'mihmandar') {
+        let hedefId = oturum.iliskili_id || oturum.id;
+        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+    } else {
+        window.location.href = 'mihmandar_ogretmenler.html';
+    }
+}
     </script>
 </body>
 </html>
