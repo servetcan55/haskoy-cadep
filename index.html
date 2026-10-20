@@ -34,10 +34,7 @@
                 <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
                 <a href="#" onclick="mihmandarLinkYonlendir(event)" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Mihmandar Öğretmenler</a>
                 <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
-                
-                <!-- Genel Ortalamalar artık normal renk -->
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
-                
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
@@ -55,14 +52,16 @@
     </header>
 
     <!-- Ana İçerik -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
-        <div class="mb-6">
-            <h2 class="text-2xl font-bold text-slate-700">Genel Durum Paneli</h2>
-            <p class="text-sm text-slate-500">Sisteme ait genel özet istatistikler ve modül kısayolları aşağıdadır.</p>
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-700">Genel Durum Paneli</h2>
+                <p class="text-sm text-slate-500">Sisteme ait genel özet istatistikler ve son sınav analizleri.</p>
+            </div>
         </div>
 
         <!-- İstatistik Kartları (4'lü Grid) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                 <div>
                     <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">CADEP ÖĞRENCİ</p>
@@ -101,6 +100,79 @@
                 <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 </div>
+            </div>
+        </div>
+
+        <!-- SON DENEME SINAVI ÖZET KARTI VE BAŞARILI ÖĞRENCİLER -->
+        <div id="son-deneme-ozet-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6 hidden">
+            <!-- Sol: Son Deneme Genel Bilgileri -->
+            <div class="bg-gradient-to-br from-indigo-800 to-indigo-900 text-white p-6 rounded-2xl shadow-md flex flex-col justify-between">
+                <div>
+                    <span class="bg-indigo-700 text-indigo-200 text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">Son Sınav Analizi</span>
+                    <h3 id="son-deneme-adi" class="text-xl font-bold mt-3">Yükleniyor...</h3>
+                    <p id="son-deneme-tarih" class="text-indigo-200 text-xs mt-1">-</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4 my-6">
+                    <div class="bg-indigo-950/50 p-3 rounded-xl border border-indigo-700/50 text-center">
+                        <span class="text-[10px] text-indigo-300 block uppercase font-semibold">Okul Net Ort.</span>
+                        <span id="son-deneme-net" class="text-2xl font-bold text-white">0.00</span>
+                    </div>
+                    <div class="bg-indigo-950/50 p-3 rounded-xl border border-indigo-700/50 text-center">
+                        <span class="text-[10px] text-indigo-300 block uppercase font-semibold">Okul Puan Ort.</span>
+                        <span id="son-deneme-puan" class="text-2xl font-bold text-emerald-400">0.00</span>
+                    </div>
+                </div>
+                <a id="link-tum-sonuclar" href="denemeler.html" class="block text-center bg-white/10 hover:bg-white/20 text-white font-medium py-2 rounded-xl text-sm transition">
+                    Tüm Sonuçları İncele &rarr;
+                </a>
+            </div>
+
+            <!-- Sağ: Son Sınavda Dereceye Giren İlk 5 Öğrenci -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <span>🏆</span> Son Sınav Okul Dereceleri (İlk 5)
+                        </h3>
+                        <span id="son-deneme-katilan" class="text-xs font-semibold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">Katılan: 0 Öğrenci</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider">
+                                    <th class="p-2.5 w-14 text-center">Sıra</th>
+                                    <th class="p-2.5">Öğrenci Adı Soyadı</th>
+                                    <th class="p-2.5 w-20 text-center">Sınıf</th>
+                                    <th class="p-2.5 text-center">Toplam Net</th>
+                                    <th class="p-2.5 text-center">LGS Puanı</th>
+                                </tr>
+                            </thead>
+                            <tbody id="derece-ogrenci-govde" class="divide-y divide-slate-100">
+                                <tr><td colspan="5" class="p-4 text-center text-slate-400">Veriler yükleniyor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SINIF BAZLI BAŞARI VE DAĞILIM ÖZETİ -->
+        <div id="sinif-dagilim-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden">
+            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <span>📊</span> 8. Sınıf Şubeleri Başarı ve Dağılım Özeti
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="sinif-kartlari-grid">
+                <!-- JS ile dinamik doldurulacak -->
+            </div>
+        </div>
+
+        <!-- YENİ ÖZELLİK: HEDEF LİSE DAĞILIM ÖZETİ -->
+        <div id="hedef-lise-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden">
+            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <span>🎯</span> Öğrenci Hedef Lise Dağılımı
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="hedef-lise-grid">
+                <!-- JS ile dinamik doldurulacak -->
             </div>
         </div>
 
@@ -145,10 +217,10 @@
                 if (kulMenu) kulMenu.style.display = 'none';
             }
 
-            // Oturum açan kullanıcının gerçek adını bul ve yazdır
+            // Aktif kullanıcının gerçek adını bul ve yazdır
             await aktifKullaniciAdiGoster(oturum);
 
-            // İstatistikleri Çek
+            // 1. İstatistikleri Çek
             const { data: ogr } = await _supabase.from('cadep_ogrenciler').select('*');
             const { data: ekp } = await _supabase.from('cadep_ekip').select('*');
             const { data: mih } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*');
@@ -158,7 +230,207 @@
             if(den) document.getElementById('stat-deneme-sayi').innerText = den.length;
             if(mih) document.getElementById('stat-mihmandar-sayi').innerText = mih.length;
             if(ekp) document.getElementById('stat-ekip-sayi').innerText = ekp.length;
+
+            let ogrenciListesi = ogr || [];
+
+            // 2. Son Deneme ve Derece Analizini Çek
+            await sonDenemeOzetiniYukle(ogrenciListesi);
+
+            // 3. Sınıf Bazlı Dağılım ve Başarıları Yükle
+            await sinifDagilimlariniYukle(ogrenciListesi);
+
+            // 4. Hedef Lise Dağılımını Yükle
+            await hedefLiseDagiliminiYukle(ogrenciListesi);
         };
+
+        async function sonDenemeOzetiniYukle(ogrencilerListesi) {
+            let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
+            if (!denemeler || denemeler.length === 0) return;
+
+            let enSonDeneme = denemeler[0];
+            let container = document.getElementById('son-deneme-ozet-container');
+            container.classList.remove('hidden');
+
+            document.getElementById('son-deneme-adi').innerText = enSonDeneme.deneme_adi;
+            document.getElementById('son-deneme-tarih').innerText = "Sınav Tarihi: " + (enSonDeneme.tarih || '-');
+
+            let btnIncele = document.getElementById('link-tum-sonuclar');
+            if (btnIncele) {
+                btnIncele.href = `denemeler.html?id=${enSonDeneme.id}`;
+            }
+
+            let { data: sonuclar } = await _supabase.from('deneme_sonuclari').select('*').eq('deneme_id', enSonDeneme.id);
+            if (!sonuclar || sonuclar.length === 0) {
+                document.getElementById('son-deneme-katilan').innerText = "Katılan: 0 Öğrenci";
+                document.getElementById('derece-ogrenci-govde').innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Bu denemeye ait henüz sonuç girilmemiş.</td></tr>`;
+                return;
+            }
+
+            document.getElementById('son-deneme-katilan').innerText = `Katılan: ${sonuclar.length} Öğrenci`;
+
+            let toplamNet = 0;
+            let toplamPuan = 0;
+            let puanliSayi = 0;
+
+            sonuclar.forEach(s => {
+                toplamNet += (s.toplam_net || 0);
+                if (s.lgs_puan != null) {
+                    toplamPuan += s.lgs_puan;
+                    puanliSayi++;
+                }
+            });
+
+            let netOrt = sonuclar.length > 0 ? (toplamNet / sonuclar.length).toFixed(2) : "0.00";
+            let puanOrt = puanliSayi > 0 ? (toplamPuan / puanliSayi).toFixed(2) : "0.00";
+
+            document.getElementById('son-deneme-net').innerText = netOrt;
+            document.getElementById('son-deneme-puan').innerText = puanOrt;
+
+            let ogrenciMap = {};
+            ogrencilerListesi.forEach(o => { ogrenciMap[o.id] = o; });
+
+            let siralanmisSonuclar = sonuclar
+                .filter(s => s.lgs_puan != null)
+                .sort((a, b) => b.lgs_puan - a.lgs_puan)
+                .slice(0, 5);
+
+            let tbody = document.getElementById('derece-ogrenci-govde');
+            if (siralanmisSonuclar.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Puan bilgisi girilen öğrenci bulunmuyor.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            siralanmisSonuclar.forEach((s, idx) => {
+                let ogr = ogrenciMap[s.ogrenci_id] || { ad_soyad: 'Bilinmeyen Öğrenci', sinif: '-' };
+                let madalya = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}.`));
+
+                html += `<tr>
+                    <td class="p-2.5 text-center font-bold text-slate-600">${madalya}</td>
+                    <td class="p-2.5 font-semibold text-indigo-700">
+                        <a href="ogrenci_detay.html?id=${ogr.id}" class="hover:underline">${ogr.ad_soyad}</a>
+                    </td>
+                    <td class="p-2.5 text-center text-slate-600 font-medium">${ogr.sinif}</td>
+                    <td class="p-2.5 text-center font-bold text-slate-700">${s.toplam_net ?? '-'}</td>
+                    <td class="p-2.5 text-center font-semibold text-emerald-700">${s.lgs_puan ?? '-'}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function sinifDagilimlariniYukle(ogrencilerListesi) {
+            let containerGrid = document.getElementById('sinif-kartlari-grid');
+            let parentContainer = document.getElementById('sinif-dagilim-container');
+
+            if (!ogrencilerListesi || ogrencilerListesi.length === 0) {
+                parentContainer.classList.add('hidden');
+                return;
+            }
+
+            let sinifMap = {};
+            ogrencilerListesi.forEach(o => {
+                let s = o.sinif ? o.sinif.trim() : 'Diğer';
+                if (!sinifMap[s]) sinifMap[s] = [];
+                sinifMap[s].push(o.id);
+            });
+
+            let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
+            let enSonDenemeId = denemeler && denemeler.length > 0 ? denemeler[0].id : null;
+
+            let sonuclar = [];
+            if (enSonDenemeId) {
+                let { data: res } = await _supabase.from('deneme_sonuclari').select('*').eq('deneme_id', enSonDenemeId);
+                sonuclar = res || [];
+            }
+
+            parentContainer.classList.remove('hidden');
+
+            let siniflar = Object.keys(sinifMap).sort();
+            let html = '';
+
+            siniflar.forEach(sinifAdi => {
+                let ogrIds = sinifMap[sinifAdi];
+                let sinifOgrSayisi = ogrIds.length;
+
+                let sinifSonuclari = sonuclar.filter(s => ogrIds.includes(s.ogrenci_id) && s.lgs_puan != null);
+                let toplamNet = 0;
+                let toplamPuan = 0;
+
+                sinifSonuclari.forEach(s => {
+                    toplamNet += (s.toplam_net || 0);
+                    toplamPuan += (s.lgs_puan || 0);
+                });
+
+                let netOrt = sinifSonuclari.length > 0 ? (toplamNet / sinifSonuclari.length).toFixed(2) : "0.00";
+                let puanOrt = sinifSonuclari.length > 0 ? (toplamPuan / sinifSonuclari.length).toFixed(2) : "0.00";
+
+                html += `
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-indigo-800 text-base">${sinifAdi} Şubesi</span>
+                                <span class="text-xs font-semibold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">${sinifOgrSayisi} Öğrenci</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200 text-center">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block uppercase font-semibold">Şube Net Ort.</span>
+                                <span class="text-base font-bold text-slate-700">${netOrt}</span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block uppercase font-semibold">Şube Puan Ort.</span>
+                                <span class="text-base font-bold text-emerald-600">${puanOrt}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            containerGrid.innerHTML = html || `<p class="col-span-4 text-center text-slate-400">Şube verisi bulunamadı.</p>`;
+        }
+
+        async function hedefLiseDagiliminiYukle(ogrencilerListesi) {
+            let containerGrid = document.getElementById('hedef-lise-grid');
+            let parentContainer = document.getElementById('hedef-lise-container');
+
+            if (!ogrencilerListesi || ogrencilerListesi.length === 0) {
+                parentContainer.classList.add('hidden');
+                return;
+            }
+
+            let hedefMap = {};
+            ogrencilerListesi.forEach(o => {
+                let lise = o.hedef_lisesi ? o.hedef_lisesi.trim() : 'Belirtilmemiş';
+                if (!hedefMap[lise]) hedefMap[lise] = 0;
+                hedefMap[lise]++;
+            });
+
+            parentContainer.classList.remove('hidden');
+
+            let hedefler = Object.keys(hedefMap).sort((a, b) => hedefMap[b] - hedefMap[a]);
+            let toplamOgrenci = ogrencilerListesi.length;
+            let html = '';
+
+            hedefler.forEach(liseAdi => {
+                let sayi = hedefMap[liseAdi];
+                let yuzde = toplamOgrenci > 0 ? ((sayi / toplamOgrenci) * 100).toFixed(1) : 0;
+
+                html += `
+                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col justify-between">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold text-slate-700 text-sm">${liseAdi}</span>
+                            <span class="text-xs font-semibold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">${sayi} Öğrenci</span>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500">
+                            <span>Öğrenci Oranı:</span>
+                            <span class="font-bold text-slate-700">%${yuzde}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            containerGrid.innerHTML = html || `<p class="col-span-4 text-center text-slate-400">Hedef lise verisi bulunamadı.</p>`;
+        }
 
         async function aktifKullaniciAdiGoster(oturum) {
             let isimSpan = document.getElementById('aktif-kullanici-adi');
@@ -215,15 +487,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-    e.preventDefault();
-    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-    if (oturum && oturum.rol === 'mihmandar') {
-        let hedefId = oturum.iliskili_id || oturum.id;
-        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
-    } else {
-        window.location.href = 'mihmandar_ogretmenler.html';
-    }
-}
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                let hedefId = oturum.iliskili_id || oturum.id;
+                window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
     </script>
 </body>
 </html>

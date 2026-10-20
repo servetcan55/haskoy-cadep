@@ -266,6 +266,14 @@
 
             await denemeleriYukle();
             await ogrencileriYukle();
+
+            // 👉 URL'de id parametresi varsa otomatik olarak o denemeyi seç ve sonuçları getir
+            let urlParamDenemeId = new URLSearchParams(window.location.search).get('id');
+            if (urlParamDenemeId) {
+                let select = document.getElementById('aktif-deneme-sec');
+                select.value = urlParamDenemeId;
+                await denemeDegisti();
+            }
         };
 
         async function aktifKullaniciAdiGoster(oturum) {
@@ -752,7 +760,7 @@
                     toplam.f_d += f_d; toplam.f_y += f_y; toplam.f_b += f_b;
                     toplam.ind += i_d; toplam.iny += i_y; toplam.inb += i_b;
                     toplam.d_d += d_d; toplam.d_y += d_y; toplam.d_b += d_b;
-                    toplam.ingd += ing_d; toplam.ingy += ing_y; toplam.ingb += ing_b;
+                    toplam.ingd += ing_d; toplam.ingy += ing_y; toplam.ingb += ingb;
                     toplam.net += toplamNet;
                     toplam.puan += lgsPuan;
                     toplam.yuzde += yuzdelik;
@@ -858,15 +866,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-    e.preventDefault();
-    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-    if (oturum && oturum.rol === 'mihmandar') {
-        let hedefId = oturum.iliskili_id || oturum.id;
-        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
-    } else {
-        window.location.href = 'mihmandar_ogretmenler.html';
-    }
-}
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                let hedefId = oturum.iliskili_id || oturum.id;
+                window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
     </script>
 </body>
 </html>
