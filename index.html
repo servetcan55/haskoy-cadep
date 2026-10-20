@@ -166,13 +166,29 @@
             </div>
         </div>
 
-        <!-- YENİ ÖZELLİK: HEDEF LİSE DAĞILIM ÖZETİ -->
+        <!-- HEDEF LİSE DAĞILIM ÖZETİ -->
         <div id="hedef-lise-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden">
             <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
                 <span>🎯</span> Öğrenci Hedef Lise Dağılımı
             </h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="hedef-lise-grid">
                 <!-- JS ile dinamik doldurulacak -->
+            </div>
+        </div>
+
+        <!-- YENİ ÖZELLİK: DİNAMİK DUYURU VE BİLGİLENDİRME PANOSU -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                    <span>📢</span> Duyuru ve Bilgilendirme Panosu
+                </h3>
+                <!-- Sadece Admin Duyuru Ekleyebilir -->
+                <button id="btn-duyuru-ekle" onclick="duyuruEkleModalAc()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer">
+                    + Yeni Duyuru Ekle
+                </button>
+            </div>
+            <div id="duyuru-listesi-container" class="space-y-3">
+                <p class="text-slate-400 text-sm">Duyurular yükleniyor...</p>
             </div>
         </div>
 
@@ -209,12 +225,15 @@
         const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let isAdmin = (oturum && oturum.rol === 'admin');
 
         window.onload = async function() {
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
             if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
+            } else {
+                let btnDuyuruEkle = document.getElementById('btn-duyuru-ekle');
+                if(btnDuyuruEkle) btnDuyuruEkle.classList.remove('hidden');
             }
 
             // Aktif kullanıcının gerçek adını bul ve yazdır
@@ -241,6 +260,9 @@
 
             // 4. Hedef Lise Dağılımını Yükle
             await hedefLiseDagiliminiYukle(ogrenciListesi);
+
+            // 5. Duyuruları Yükle
+            await duyurulariYukle();
         };
 
         async function sonDenemeOzetiniYukle(ogrencilerListesi) {
@@ -430,6 +452,63 @@
             });
 
             containerGrid.innerHTML = html || `<p class="col-span-4 text-center text-slate-400">Hedef lise verisi bulunamadı.</p>`;
+        }
+
+        async function duyurulariYukle() {
+            let container = document.getElementById('duyuru-listesi-container');
+            let { data, error } = await _supabase.from('cadep_duyurular').select('*').order('tarih', { ascending: false });
+
+            if (error || !data || data.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-sm">Henüz yayınlanmış duyuru bulunmuyor.</p>`;
+                return;
+            }
+
+            let html = '';
+            data.forEach(d => {
+                let silBtn = isAdmin ? `<button onclick="duyuruSil(${d.id})" class="text-xs text-red-500 hover:text-red-700 font-medium ml-2 cursor-pointer">[Sil]</button>` : '';
+                html += `
+                    <div class="bg-indigo-50/60 border border-indigo-100 p-4 rounded-xl">
+                        <div class="flex justify-between items-center mb-1">
+                            <h4 class="font-bold text-indigo-900 text-sm">${d.baslik}</h4>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] text-slate-400">${d.tarih || ''}</span>
+                                ${silBtn}
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">${d.icerik}</p>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        async function duyuruEkleModalAc() {
+            if (!isAdmin) return;
+            let baslik = prompt("Duyuru Başlığı:");
+            if (!baslik) return;
+            let icerik = prompt("Duyuru İçeriği:");
+            if (!icerik) return;
+            let tarih = new Date().toISOString().split('T')[0];
+
+            let { error } = await _supabase.from('cadep_duyurular').insert([{ baslik, icerik, tarih }]);
+            if (error) {
+                alert("Duyuru eklenirken hata oluştu: " + error.message);
+            } else {
+                alert("Duyuru başarıyla yayınlandı!");
+                duyurulariYukle();
+            }
+        }
+
+        async function duyuruSil(id) {
+            if (!isAdmin) return;
+            if (confirm("Bu duyuruyu silmek istediğinize emin misiniz?")) {
+                let { error } = await _supabase.from('cadep_duyurular').delete().eq('id', id);
+                if (error) {
+                    alert("Silme başarısız: " + error.message);
+                } else {
+                    duyurulariYukle();
+                }
+            }
         }
 
         async function aktifKullaniciAdiGoster(oturum) {
