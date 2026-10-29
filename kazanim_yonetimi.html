@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hasköy CADEP - Deneme Bazlı Kazanım ve Soru Haritası Yönetimi</title>
+    <script>
+        // Sadece Admin erişebilir, değilse ana sayfaya yönlendir
+        let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+        if (!oturum || oturum.rol !== 'admin') {
+            window.location.href = 'index.html';
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Ortak Navbar -->
+    <header class="bg-indigo-800 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-2">
+                    Hasköy CADEP Takip Sistemi
+                </h1>
+                <p class="text-indigo-200 text-sm">Deneme Bazlı Kazanım ve Soru Haritası Yönetimi</p>
+            </div>
+            <nav class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
+                <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Ana Sayfa</a>
+                <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
+                <a href="#" onclick="mihmandarLinkYonlendir(event)" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Mihmandarlar</a>
+                <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
+                <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
+                <a href="kullanicilar.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
+                <a href="#" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Kazanım Yönetimi</a>
+                <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
+                
+                <!-- Aktif Kullanıcı İsim Alanı -->
+                <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
+                </div>
+
+                <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-8">
+        
+        <!-- ANA KONTROL: DENEME SEÇİMİ -->
+        <div class="bg-indigo-50 border border-indigo-200 p-4 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <h3 class="font-bold text-indigo-900 text-base">İşlem Yapılacak Deneme Sınavını Seçin</h3>
+                <p class="text-xs text-indigo-700">Aşağıdaki kazanım ekleme ve soru haritası işlemleri seçilen bu denemeye göre filtrelenecektir.</p>
+            </div>
+            <div class="w-full sm:w-72">
+                <select id="ana-deneme-sec" onchange="aktifDenemeDegisti()" class="w-full border border-indigo-300 rounded-xl p-2.5 text-sm bg-white font-semibold text-indigo-900 focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    <option value="">Deneme Seçiniz...</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- DENEME SEÇİLMEDEN GÖSTERİLECEK UYARI -->
+        <div id="secim-uyari" class="bg-amber-50 border border-amber-200 p-8 rounded-2xl text-center text-amber-800">
+            <span class="text-3xl block mb-2">👈</span>
+            <h3 class="text-lg font-bold">Lütfen yukarıdan işlem yapmak istediğiniz deneme sınavını seçin.</h3>
+            <p class="text-sm text-amber-600 mt-1">Deneme seçimi yapıldıktan sonra kazanım ve soru haritası yönetim paneli aktifleşecektir.</p>
+        </div>
+
+        <!-- ASIL İÇERİK ALANI (BAŞLANGIÇTA GİZLİ) -->
+        <div id="yonetim-paneli" class="space-y-8 hidden">
+            
+            <!-- ÜST BÖLÜM: SEÇİLEN DENEMEYE AİT KAZANIM EKLEME VE LİSTELEME -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Kazanım Ekleme / Düzenleme Formu -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-1">
+                    <h3 id="kazanim-form-baslik" class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <span>📚</span> Bu Denemeye Kazanım Ekle
+                    </h3>
+                    <form id="kazanim-form" onsubmit="kazanimKaydet(event)" class="space-y-4">
+                        <input type="hidden" id="duzenlenen-kazanim-id" value="">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Ders Adı *</label>
+                            <select id="k-ders" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Seçiniz...</option>
+                                <option value="Türkçe">Türkçe</option>
+                                <option value="Matematik">Matematik</option>
+                                <option value="Fen Bilimleri">Fen Bilimleri</option>
+                                <option value="T.C. İnkılap Tarihi">T.C. İnkılap Tarihi</option>
+                                <option value="Din Kültürü">Din Kültürü</option>
+                                <option value="İngilizce">İngilizce</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Kazanım Açıklaması *</label>
+                            <textarea id="k-aciklama" required rows="3" placeholder="Örn: Metindeki söz sanatlarını tespit eder." class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500"></textarea>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" id="btn-kazanim-kaydet" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer">Kazanımı Kaydet</button>
+                            <button type="button" id="btn-kazanim-iptal" onclick="kazanimFormuSifirla()" class="hidden bg-slate-300 hover:bg-slate-400 text-slate-700 px-3 py-2 rounded-lg text-sm font-semibold transition cursor-pointer">İptal</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Seçilen Denemenin Kazanım Havuzu -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <span>🗂️</span> Seçilen Denemenin Kazanım Listesi
+                    </h3>
+                    <div class="overflow-y-auto max-h-72 border border-slate-200 rounded-lg">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase sticky top-0">
+                                <tr>
+                                    <th class="p-3">Ders</th>
+                                    <th class="p-3">Kazanım</th>
+                                    <th class="p-3 w-28 text-center">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kazanim-liste-govde" class="divide-y divide-slate-100">
+                                <tr><td colspan="3" class="p-4 text-center text-slate-400">Bu denemeye ait kazanım bulunmuyor.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ALT BÖLÜM: DENEME SORU HARİTASI (CEVAP ANAHTARI) -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 id="harita-form-baslik" class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <span>🗺️</span> Soru ve Cevap Anahtarı Haritası (Cevap Anahtarı)
+                </h3>
+                <p class="text-sm text-slate-500 mb-6">Seçilen deneme için soruların doğru cevaplarını ve yukarıda tanımlanan kazanımlarla eşleştirmesini yapın.</p>
+                
+                <form id="harita-form" onsubmit="haritaKaydet(event)" class="grid grid-cols-1 sm:grid-cols-5 gap-4 items-end bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                    <input type="hidden" id="duzenlenen-harita-id" value="">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Kitapçık *</label>
+                        <select id="h-kitapcik" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500" onchange="haritayiListele()">
+                            <option value="A">A Kitapçığı</option>
+                            <option value="B">B Kitapçığı</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Ders *</label>
+                        <select id="h-ders" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500" onchange="dersDegisti()">
+                            <option value="">Seçiniz...</option>
+                            <option value="Türkçe">Türkçe</option>
+                            <option value="Matematik">Matematik</option>
+                            <option value="Fen Bilimleri">Fen Bilimleri</option>
+                            <option value="T.C. İnkılap Tarihi">T.C. İnkılap Tarihi</option>
+                            <option value="Din Kültürü">Din Kültürü</option>
+                            <option value="İngilizce">İngilizce</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Soru No *</label>
+                        <input type="number" id="h-soru-no" min="1" max="20" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Doğru Şık *</label>
+                        <select id="h-cevap" required class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" id="btn-harita-kaydet" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer flex items-center justify-center gap-1">
+                            + Soru Ekle
+                        </button>
+                        <button type="button" id="btn-harita-iptal" onclick="haritaFormuSifirla()" class="hidden bg-slate-300 hover:bg-slate-400 text-slate-700 px-3 py-2 rounded-lg text-sm font-semibold transition cursor-pointer">İptal</button>
+                    </div>
+                    <div class="sm:col-span-5">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">İlgili Kazanım (Opsiyonel)</label>
+                        <select id="h-kazanim" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Kazanım Seçilmedi (İsteğe Bağlı)</option>
+                        </select>
+                    </div>
+                </form>
+
+                <!-- Harita Listesi -->
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-indigo-50 text-indigo-800 text-xs uppercase">
+                            <tr>
+                                <th class="p-3 w-20 text-center">Kitapçık</th>
+                                <th class="p-3 w-20 text-center">Soru No</th>
+                                <th class="p-3">Ders</th>
+                                <th class="p-3 text-center">Doğru Cevap</th>
+                                <th class="p-3">Eşleşen Kazanım</th>
+                                <th class="p-3 w-28 text-center">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="harita-liste-govde" class="divide-y divide-slate-100">
+                            <tr><td colspan="6" class="p-4 text-center text-slate-400">Kitapçık seçerek haritayı görüntüleyin.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto">
+        Hasköy Akademik Destek Programı (CADEP) Takip Otomasyonu &copy; 2026
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let globalDenemeler = [];
+        let seciliDenemeId = "";
+
+        window.onload = async function() {
+            await aktifKullaniciAdiGoster(oturum);
+            await denemeleriYukle();
+        };
+
+        async function aktifKullaniciAdiGoster(oturum) {
+            let isimSpan = document.getElementById('aktif-kullanici-adi');
+            if (!oturum || !isimSpan) return;
+
+            let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
+            if (oturum.iliskili_id) {
+                let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
+                if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+            } else {
+                let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
+                if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
+            }
+            isimSpan.innerText = gorunurIsim + " (Yönetici)";
+        }
+
+        async function denemeleriYukle() {
+            let { data } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
+            globalDenemeler = data || [];
+            let select = document.getElementById('ana-deneme-sec');
+            let opts = '<option value="">Deneme Seçiniz...</option>';
+            globalDenemeler.forEach(d => {
+                opts += `<option value="${d.id}">${d.deneme_adi} (${d.tarih})</option>`;
+            });
+            select.innerHTML = opts;
+        }
+
+        async function aktifDenemeDegisti() {
+            seciliDenemeId = document.getElementById('ana-deneme-sec').value;
+            let uyari = document.getElementById('secim-uyari');
+            let panel = document.getElementById('yonetim-paneli');
+
+            if (!seciliDenemeId) {
+                uyari.classList.remove('hidden');
+                panel.classList.add('hidden');
+                return;
+            }
+
+            uyari.classList.add('hidden');
+            panel.classList.remove('hidden');
+
+            kazanimFormuSifirla();
+            haritaFormuSifirla();
+            await verileriGetir();
+        }
+
+        async function verileriGetir() {
+            if (!seciliDenemeId) return;
+
+            let { data: kazData } = await _supabase.from('cadep_kazanimlar').select('*').eq('deneme_id', seciliDenemeId).order('ders_adi');
+            kazanimlariListele(kazData || []);
+            await dersDegisti();
+
+            let { data: haritaData } = await _supabase.from('cadep_deneme_soru_haritasi').select('*').eq('deneme_id', seciliDenemeId);
+            haritayiListele(haritaData || [], kazData || []);
+        }
+
+        /* --- KAZANIM İŞLEMLERİ --- */
+        async function kazanimKaydet(e) {
+            e.preventDefault();
+            if (!seciliDenemeId) return alert("Önce deneme seçmelisiniz!");
+
+            let id = document.getElementById('duzenlenen-kazanim-id').value;
+            let ders_adi = document.getElementById('k-ders').value;
+            let kazanim_adi = document.getElementById('k-aciklama').value;
+
+            let error;
+            if (id) {
+                let res = await _supabase.from('cadep_kazanimlar').update({ ders_adi, kazanim_adi }).eq('id', id);
+                error = res.error;
+            } else {
+                let res = await _supabase.from('cadep_kazanimlar').insert([{ deneme_id: seciliDenemeId, ders_adi, kazanim_adi, sinif_duzey: '8' }]);
+                error = res.error;
+            }
+
+            if (error) {
+                alert("Kazanım kaydedilirken hata: " + error.message);
+            } else {
+                kazanimFormuSifirla();
+                await verileriGetir();
+            }
+        }
+
+        function kazanimDuzenleBaslat(id, dersAdi, aciklama) {
+            document.getElementById('duzenlenen-kazanim-id').value = id;
+            document.getElementById('k-ders').value = dersAdi;
+            document.getElementById('k-aciklama').value = aciklama;
+            document.getElementById('kazanim-form-baslik').innerText = "Kazanımı Güncelle";
+            document.getElementById('btn-kazanim-kaydet').innerText = "Değişikliği Kaydet";
+            document.getElementById('btn-kazanim-iptal').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function kazanimFormuSifirla() {
+            document.getElementById('kazanim-form').reset();
+            document.getElementById('duzenlenen-kazanim-id').value = '';
+            document.getElementById('kazanim-form-baslik').innerHTML = "<span>📚</span> Bu Denemeye Kazanım Ekle";
+            document.getElementById('btn-kazanim-kaydet').innerText = "Kazanımı Kaydet";
+            document.getElementById('btn-kazanim-iptal').classList.add('hidden');
+        }
+
+        function kazanimlariListele(kazListesi) {
+            let tbody = document.getElementById('kazanim-liste-govde');
+            if (kazListesi.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">Bu denemeye ait henüz kazanım eklenmemiş.</td></tr>`;
+                return;
+            }
+            let html = '';
+            kazListesi.forEach(k => {
+                html += `<tr>
+                    <td class="p-3 font-semibold text-indigo-700">${k.ders_adi}</td>
+                    <td class="p-3 text-slate-700">${k.kazanim_adi}</td>
+                    <td class="p-3 text-center space-x-2">
+                        <button onclick="kazanimDuzenleBaslat(${k.id}, '${k.ders_adi}', '${k.kazanim_adi.replace(/'/g, "\\'")}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold cursor-pointer">[Düzenle]</button>
+                        <button onclick="kazanimSil(${k.id})" class="text-red-500 hover:text-red-700 text-xs font-bold cursor-pointer">[Sil]</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function kazanimSil(id) {
+            if(confirm("Bu kazanımı silmek istediğinize emin misiniz?")) {
+                let { error } = await _supabase.from('cadep_kazanimlar').delete().eq('id', id);
+                if (!error) await verileriGetir();
+            }
+        }
+
+        /* --- SORU HARİTASI İŞLEMLERİ --- */
+        async function dersDegisti(secilenKazanimId = null) {
+            let seciliDers = document.getElementById('h-ders').value;
+            let kazSelect = document.getElementById('h-kazanim');
+            
+            if (!seciliDers) {
+                kazSelect.innerHTML = '<option value="">Kazanım Seçilmedi (İsteğe Bağlı)</option>';
+                return;
+            }
+
+            let { data: kazData } = await _supabase.from('cadep_kazanimlar').select('*').eq('deneme_id', seciliDenemeId).eq('ders_adi', seciliDers);
+            let filtrelenmisKazanimlar = kazData || [];
+
+            let opts = '<option value="">Kazanım Seçilmedi (İsteğe Bağlı)</option>';
+            filtrelenmisKazanimlar.forEach(k => {
+                let seciliAttr = (secilenKazanimId && k.id == secilenKazanimId) ? 'selected' : '';
+                opts += `<option value="${k.id}" ${seciliAttr}>${k.kazanim_adi}</option>`;
+            });
+            kazSelect.innerHTML = opts;
+        }
+
+        async function haritaKaydet(e) {
+            e.preventDefault();
+            if (!seciliDenemeId) return alert("Önce deneme seçmelisiniz!");
+
+            let id = document.getElementById('duzenlenen-harita-id').value;
+            let kitapcik_turu = document.getElementById('h-kitapcik').value;
+            let ders_adi = document.getElementById('h-ders').value;
+            let soru_no = document.getElementById('h-soru-no').value;
+            let dogru_cevap = document.getElementById('h-cevap').value;
+            let kazanim_id = document.getElementById('h-kazanim').value || null;
+
+            let { data: mevcutHarita } = await _supabase.from('cadep_deneme_soru_haritasi').select('*').eq('deneme_id', seciliDenemeId).eq('kitapcik_turu', kitapcik_turu);
+            let mevcutMu = (mevcutHarita || []).find(h => h.ders_adi === ders_adi && h.soru_no == soru_no && h.id != id);
+            
+            if (mevcutMu) {
+                alert("Bu soru numarası için bu kitapçıkta zaten bir eşleştirme var!");
+                return;
+            }
+
+            let yeniVeri = { deneme_id: seciliDenemeId, kitapcik_turu, ders_adi, soru_no, dogru_cevap, kazanim_id };
+            
+            let error;
+            if (id) {
+                let res = await _supabase.from('cadep_deneme_soru_haritasi').update(yeniVeri).eq('id', id);
+                error = res.error;
+            } else {
+                let res = await _supabase.from('cadep_deneme_soru_haritasi').insert([yeniVeri]);
+                error = res.error;
+            }
+
+            if (error) {
+                alert("Hata: " + error.message);
+            } else {
+                haritaFormuSifirla();
+                await verileriGetir();
+            }
+        }
+
+        async function haritaDuzenleBaslat(id, kitapcik, ders, soruNo, dogruCevap, kazanimId) {
+            document.getElementById('duzenlenen-harita-id').value = id;
+            document.getElementById('h-kitapcik').value = kitapcik;
+            document.getElementById('h-ders').value = ders;
+            document.getElementById('h-soru-no').value = soruNo;
+            document.getElementById('h-cevap').value = dogruCevap;
+            
+            await dersDegisti(kazanimId);
+
+            document.getElementById('harita-form-baslik').innerText = "Soru Haritasını Güncelle";
+            document.getElementById('btn-harita-kaydet').innerText = "Değişikliği Kaydet";
+            document.getElementById('btn-harita-iptal').classList.remove('hidden');
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        function haritaFormuSifirla() {
+            document.getElementById('harita-form').reset();
+            document.getElementById('duzenlenen-harita-id').value = '';
+            document.getElementById('harita-form-baslik').innerHTML = "<span>🗺️</span> Soru ve Cevap Anahtarı Haritası (Cevap Anahtarı)";
+            document.getElementById('btn-harita-kaydet').innerText = "+ Soru Ekle";
+            document.getElementById('btn-harita-iptal').classList.add('hidden');
+            document.getElementById('h-kazanim').innerHTML = '<option value="">Kazanım Seçilmedi (İsteğe Bağlı)</option>';
+        }
+
+        async function haritayiListele() {
+            let tbody = document.getElementById('harita-liste-govde');
+            let kitapcik = document.getElementById('h-kitapcik').value;
+
+            let { data: haritaData } = await _supabase.from('cadep_deneme_soru_haritasi').select('*').eq('deneme_id', seciliDenemeId).eq('kitapcik_turu', kitapcik);
+            let { data: kazData } = await _supabase.from('cadep_kazanimlar').select('*').eq('deneme_id', seciliDenemeId);
+
+            let filtrelenmis = haritaData || [];
+            let kazanımlar = kazData || [];
+
+            let dersSira = {"Türkçe":1, "T.C. İnkılap Tarihi":2, "Din Kültürü":3, "İngilizce":4, "Matematik":5, "Fen Bilimleri":6};
+            filtrelenmis.sort((a, b) => {
+                if (dersSira[a.ders_adi] !== dersSira[b.ders_adi]) return dersSira[a.ders_adi] - dersSira[b.ders_adi];
+                return a.soru_no - b.soru_no;
+            });
+
+            if (filtrelenmis.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Bu kitapçık için henüz harita oluşturulmamış.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            filtrelenmis.forEach(h => {
+                let kazanimText = "-";
+                let kazObj = kazanımlar.find(k => k.id == h.kazanim_id);
+                if(kazObj) kazanimText = kazObj.kazanim_adi;
+
+                let kitapcikBadge = h.kitapcik_turu === 'A' 
+                    ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-bold text-xs">A</span>' 
+                    : '<span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-bold text-xs">B</span>';
+
+                html += `<tr>
+                    <td class="p-3 text-center">${kitapcikBadge}</td>
+                    <td class="p-3 font-bold text-slate-600 text-center">${h.soru_no}</td>
+                    <td class="p-3 font-semibold text-indigo-700">${h.ders_adi}</td>
+                    <td class="p-3 text-center font-bold text-emerald-600">${h.dogru_cevap}</td>
+                    <td class="p-3 text-slate-700 text-xs">${kazanimText}</td>
+                    <td class="p-3 text-center space-x-2">
+                        <button onclick="haritaDuzenleBaslat(${h.id}, '${h.kitapcik_turu}', '${h.ders_adi}', ${h.soru_no}, '${h.dogru_cevap}', '${h.kazanim_id || ''}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold cursor-pointer">[Düzenle]</button>
+                        <button onclick="haritaSil(${h.id})" class="text-red-500 hover:text-red-700 text-xs font-bold cursor-pointer">[Sil]</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function haritaSil(id) {
+            if(confirm("Bu eşleştirmeyi silmek istediğinize emin misiniz?")) {
+                let { error } = await _supabase.from('cadep_deneme_soru_haritasi').delete().eq('id', id);
+                if (!error) await verileriGetir();
+            }
+        }
+
+        function mihmandarLinkYonlendir(e) {
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                let hedefId = oturum.iliskili_id || oturum.id;
+                window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
+    </script>
+</body>
+</html>

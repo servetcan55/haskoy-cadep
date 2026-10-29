@@ -39,6 +39,10 @@
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
                 
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
+                
+                <!-- YENİ EKLENEN KAZANIM YÖNETİMİ BUTONU -->
+                <a href="kazanim_yonetimi.html" id="menu-kazanim" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
+
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
                 <!-- Aktif Kullanıcı İsim Alanı -->
@@ -295,6 +299,10 @@
             if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
+
+                // YENİ EKLENEN GİZLEME KURALI
+                let kazanimMenu = document.getElementById('menu-kazanim');
+                if (kazanimMenu) kazanimMenu.style.display = 'none';
             }
 
             await aktifKullaniciAdiGoster(oturum);

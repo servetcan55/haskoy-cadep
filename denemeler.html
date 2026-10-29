@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hasköy CADEP Takip Sistemi - Deneme & Net Analizi</title>
     <script>
-    // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
-    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-    if (!oturum) {
-        window.location.href = 'giris.html';
-    }
-</script>
+        // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
+        let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+        if (!oturum) {
+            window.location.href = 'giris.html';
+        }
+    </script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS Client v2 -->
@@ -39,6 +39,10 @@
                 <a href="denemeler.html" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Denemeler & Sonuçlar</a>
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
+                
+                <!-- Kazanım Yönetimi Butonu -->
+                <a href="kazanim_yonetimi.html" id="menu-kazanim" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
+
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
                 <!-- Aktif Kullanıcı İsim Alanı -->
@@ -62,11 +66,18 @@
                 <h2 class="text-2xl font-bold text-slate-700">Deneme Sınavları ve Sonuçları</h2>
                 <p class="text-sm text-slate-500">Deneme sonuçlarını listeleyin. (Karne için öğrenci adına tıklayın)</p>
             </div>
-            <!-- Rapor Butonları Herkese Açık, Yeni Deneme Ekle Sadece Admin -->
-            <div class="flex flex-wrap gap-2">
-                <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📄 PDF Raporu</button>
-                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Raporu İndir</button>
-                <button id="btn-deneme-ekle" onclick="denemeEkle()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hidden cursor-pointer">+ Yeni Deneme Ekle</button>
+            
+            <!-- Rapor ve Aksiyon Butonları (Tek Satıra Sığdırılmış) -->
+            <div class="flex flex-nowrap overflow-x-auto pb-1 gap-1.5 sm:gap-2 w-full lg:w-auto justify-start lg:justify-end">
+                <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium flex-shrink-0 flex items-center gap-1 cursor-pointer">📄 PDF Raporu</button>
+                
+                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium flex-shrink-0 flex items-center gap-1 cursor-pointer">📊 Excel İndir</button>
+                
+                <a href="deneme_kazanim_raporu.html" id="btn-sinif-analizi" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium flex-shrink-0 flex items-center gap-1 cursor-pointer">🎯 Sınıf Analizi</a>
+
+                <button id="btn-deneme-ekle" onclick="denemeEkle()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium hidden cursor-pointer flex-shrink-0">+ Yeni Ekle</button>
+                
+                <a href="optik_yukleme.html" id="btn-optik-yukle" class="bg-teal-600 hover:bg-teal-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium hidden cursor-pointer items-center gap-1 flex flex-shrink-0">📥 Optik Yükle</a>
             </div>
         </div>
         
@@ -240,14 +251,24 @@
         let isAdmin = (oturum && oturum.rol === 'admin');
 
         window.onload = async function() {
-            // Kullanıcılar menü linkini ve admin yetki alanlarını role göre ayarla
+            // Öğrenci ise Sınıf Kazanım Analizi butonunu gizle
+            if (oturum && oturum.rol === 'ogrenci') {
+                let sinifAnaliziBtn = document.getElementById('btn-sinif-analizi');
+                if (sinifAnaliziBtn) sinifAnaliziBtn.style.display = 'none';
+            }
+
             if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
+
+                let kazanimMenu = document.getElementById('menu-kazanim');
+                if (kazanimMenu) kazanimMenu.style.display = 'none';
             } else {
-                // Admin ise yeni deneme ekle, deneme sil ve sekme butonlarını göster
                 let btnDenemeEkle = document.getElementById('btn-deneme-ekle');
                 if (btnDenemeEkle) btnDenemeEkle.classList.remove('hidden');
+                
+                let btnOptikYukle = document.getElementById('btn-optik-yukle');
+                if (btnOptikYukle) btnOptikYukle.classList.remove('hidden');
 
                 let btnDenemeSil = document.getElementById('btn-deneme-sil');
                 if (btnDenemeSil) btnDenemeSil.classList.remove('hidden');
@@ -256,7 +277,6 @@
                 if (gorunumButonlari) gorunumButonlari.classList.remove('hidden');
             }
 
-            // Aktif kullanıcının gerçek adını üst menüde göster
             await aktifKullaniciAdiGoster(oturum);
 
             let kaydedilenSiralama = localStorage.getItem('cadep_deneme_siralama');
@@ -267,7 +287,6 @@
             await denemeleriYukle();
             await ogrencileriYukle();
 
-            // 👉 URL'de id parametresi varsa otomatik olarak o denemeyi seç ve sonuçları getir
             let urlParamDenemeId = new URLSearchParams(window.location.search).get('id');
             if (urlParamDenemeId) {
                 let select = document.getElementById('aktif-deneme-sec');
@@ -760,7 +779,7 @@
                     toplam.f_d += f_d; toplam.f_y += f_y; toplam.f_b += f_b;
                     toplam.ind += i_d; toplam.iny += i_y; toplam.inb += i_b;
                     toplam.d_d += d_d; toplam.d_y += d_y; toplam.d_b += d_b;
-                    toplam.ingd += ing_d; toplam.ingy += ing_y; toplam.ingb += ingb;
+                    toplam.ingd += ing_d; toplam.ingy += ingy; toplam.ingb += ing_b;
                     toplam.net += toplamNet;
                     toplam.puan += lgsPuan;
                     toplam.yuzde += yuzdelik;

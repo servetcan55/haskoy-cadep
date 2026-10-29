@@ -42,6 +42,10 @@
                 <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
+                
+                <!-- YENİ EKLENEN KAZANIM YÖNETİMİ BUTONU -->
+                <a href="kazanim_yonetimi.html" id="menu-kazanim" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
+
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
                 <!-- Aktif Kullanıcı İsim Alanı -->
@@ -142,10 +146,14 @@
         let isGozlemci = (oturum && oturum.rol === 'gozlemci');
 
         window.onload = async function() {
-            // Kullanıcılar menü linkini sadece admin görebilir
+            // Kullanıcılar ve Kazanım Yönetimi menü linkini sadece admin görebilir
             if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
+                
+                // YENİ EKLENEN GİZLEME KURALI
+                let kazanimMenu = document.getElementById('menu-kazanim');
+                if (kazanimMenu) kazanimMenu.style.display = 'none';
             }
 
             // Admin ise "+ Yeni Öğrenci Ekle" butonunu ve işlemler sütununu göster
@@ -476,15 +484,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-    e.preventDefault();
-    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-    if (oturum && oturum.rol === 'mihmandar') {
-        let hedefId = oturum.iliskili_id || oturum.id;
-        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
-    } else {
-        window.location.href = 'mihmandar_ogretmenler.html';
-    }
-}
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                let hedefId = oturum.iliskili_id || oturum.id;
+                window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
     </script>
 </body>
 </html>
