@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hasköy CADEP Takip Sistemi - Deneme & Net Analizi</title>
+    <title>Hasköy CADEP - Deneme & Net Analizi</title>
     <script>
-        // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
+        // Oturum ve Yetki Kontrolü: Giriş yapılmamışsa giriş sayfasına, öğrenci ise kendi detay sayfasına yönlendirir
         let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
         if (!oturum) {
             window.location.href = 'giris.html';
+        } else if (oturum.rol === 'ogrenci') {
+            window.location.href = 'ogrenci_detay.html';
         }
     </script>
     <!-- Tailwind CSS -->
@@ -251,7 +253,6 @@
         let isAdmin = (oturum && oturum.rol === 'admin');
 
         window.onload = async function() {
-            // Öğrenci ise Sınıf Kazanım Analizi butonunu gizle
             if (oturum && oturum.rol === 'ogrenci') {
                 let sinifAnaliziBtn = document.getElementById('btn-sinif-analizi');
                 if (sinifAnaliziBtn) sinifAnaliziBtn.style.display = 'none';
@@ -779,7 +780,7 @@
                     toplam.f_d += f_d; toplam.f_y += f_y; toplam.f_b += f_b;
                     toplam.ind += i_d; toplam.iny += i_y; toplam.inb += i_b;
                     toplam.d_d += d_d; toplam.d_y += d_y; toplam.d_b += d_b;
-                    toplam.ingd += ing_d; toplam.ingy += ingy; toplam.ingb += ing_b;
+                    toplam.ingd += ing_d; toplam.ingy += ing_y; toplam.ingb += ing_b;
                     toplam.net += toplamNet;
                     toplam.puan += lgsPuan;
                     toplam.yuzde += yuzdelik;

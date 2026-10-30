@@ -5,11 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hasköy CADEP Takip Sistemi - Ana Sayfa</title>
     <script>
+    // Oturum Kontrolü ve Yetkilendirme
     let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+    
+    // 1. Hiç giriş yapılmamışsa login sayfasına at
     if (!oturum) {
         window.location.href = 'giris.html';
+    } 
+    // 2. Giriş yapan kişi "öğrenci" ise dashboard'a girmesini engelle ve kendi sayfasına geri fırlat
+    else if (oturum.rol === 'ogrenci') {
+        window.location.href = 'ogrenci_detay.html';
     }
-</script>
+    </script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS Client v2 -->

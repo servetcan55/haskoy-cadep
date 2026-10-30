@@ -60,12 +60,10 @@
                 <div>
                     <div class="flex items-center gap-3">
                         <h3 class="text-base sm:text-lg font-bold">LGS Büyük Buluşmaya Kalan Zaman</h3>
-                        <!-- Sadece Admin Tarih Değiştirebilsin -->
                         <div id="lgs-ayar-container" class="hidden items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg border border-white/20">
                             <span class="text-[10px] text-indigo-200">Sınav Tarihi:</span>
                             <input type="date" id="lgs-tarih-input" onchange="lgsTarihGuncelle(this.value)" class="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer">
                         </div>
-                        <!-- Mihmandar, Gözlemci ve Öğrenciler İçin Salt Okunur Tarih Gösterimi -->
                         <div id="lgs-bilgi-container" class="hidden items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg border border-white/20">
                             <span class="text-[10px] text-indigo-200">Sınav Tarihi:</span>
                             <span id="lgs-tarih-yazi" class="text-xs font-bold text-white">--.--.----</span>
@@ -75,7 +73,6 @@
                 </div>
             </div>
 
-            <!-- Sayacın Kutuları -->
             <div class="grid grid-cols-4 gap-2 sm:gap-4 text-center">
                 <div class="bg-white/10 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
                     <span id="sayac-gun" class="text-xl sm:text-2xl font-black text-white">00</span>
@@ -158,12 +155,18 @@
             </div>
         </div>
 
-        <!-- SORU ÇÖZÜM KUMBARASI -->
+        <!-- SORU ÇÖZÜM KUMBARASI & KESİNTİSİZ SERİ -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
                 <div>
-                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2"><span>🧠</span> Soru Çözüm Kumbarası</h3>
-                    <p class="text-xs text-slate-500">Günlük çözdüğünüz soru sayılarını ders bazlı girerek kumbaranızı doldurun ve istikrarınızı koruyun!</p>
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <span>🧠</span> Soru Çözüm Kumbarası
+                        <!-- Seri Rozeti Buraya Eklendi -->
+                        <span id="streak-badge" class="hidden items-center gap-1 bg-gradient-to-r from-orange-100 to-amber-100 text-orange-600 text-xs font-black px-2.5 py-1 rounded-lg border border-orange-200 shadow-sm animate-pulse">
+                            🔥 <span id="streak-count">0</span> Günlük Seri!
+                        </span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">Günlük çözdüğünüz soru sayılarını girin, zinciri kırmayın ve serinizi alevlendirin!</p>
                 </div>
                 <div id="soru-giris-formu-tetik" class="w-full sm:w-auto"></div>
             </div>
@@ -308,10 +311,8 @@
                 if (kazanimMenu) kazanimMenu.style.display = 'none';
             }
 
-            // Supabase'den ortak LGS tarihini çekelim
             await lgsTarihiniGetir();
 
-            // Sadece Admin ise tarih değiştirici inputu göster, Mihmandar/Gözlemci/Öğrenci ise salt okunur yazı göster
             if (oturum && oturum.rol === 'admin') {
                 let ayarContainer = document.getElementById('lgs-ayar-container');
                 if (ayarContainer) {
@@ -343,22 +344,15 @@
                 if (data && data.deger) {
                     lgsHedefTarih = data.deger;
                 }
-            } catch (e) {
-                console.log("LGS tarihi veritabanından alınamadı, varsayılan kullanılıyor.");
-            }
+            } catch (e) {}
         }
 
         async function lgsTarihGuncelle(yeniTarih) {
             if (!yeniTarih || oturum.rol !== 'admin') return;
             lgsHedefTarih = yeniTarih + 'T10:00:00';
-
-            // Veritabanına kaydedelim ki tüm kullanıcılarda ortak olsun
             let { error } = await _supabase.from('cadep_genel_ayarlar').upsert({ anahtar: 'lgs_tarih', deger: lgsHedefTarih }, { onConflict: 'anahtar' });
-            if (error) {
-                alert("Tarih güncellenirken hata oluştu: " + error.message);
-            } else {
-                alert("LGS sınav tarihi tüm kullanıcılar için güncellendi!");
-            }
+            if (error) alert("Tarih güncellenirken hata oluştu: " + error.message);
+            else alert("LGS sınav tarihi tüm kullanıcılar için güncellendi!");
         }
 
         function lgsGeriSayimBaslat() {
@@ -493,13 +487,65 @@
         }
 
         // ==========================================
-        // SORU ÇÖZÜM KUMBARASI
+        // SORU ÇÖZÜM KUMBARASI & SERİ HESAPLAMA
         // ==========================================
         async function soruKumbarasiniGetir() {
             let tbody = document.getElementById('soru-kumbarasi-govde');
+            let streakBadge = document.getElementById('streak-badge');
+            let streakCount = document.getElementById('streak-count');
+
             try {
                 let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
                 if (error || !data) throw error;
+
+                // Seri Hesaplama Algoritması
+                if (data.length > 0) {
+                    let formatTarih = (d) => { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+                    
+                    let tarihler = [...new Set(data.map(s => s.tarih))];
+                    let bugun = new Date();
+                    let dun = new Date();
+                    dun.setDate(dun.getDate() - 1);
+                    
+                    let bugunStr = formatTarih(bugun);
+                    let dunStr = formatTarih(dun);
+                    
+                    let kontrolTarihi = null;
+                    let seri = 0;
+                    
+                    // Öğrenci bugün veya dün soru girmişse seri hala yaşıyor demektir
+                    if (tarihler.includes(bugunStr)) {
+                        kontrolTarihi = bugun;
+                    } else if (tarihler.includes(dunStr)) {
+                        kontrolTarihi = dun;
+                    }
+                    
+                    // Geriye dönük hiç boşluk bırakmadan kaç gün girilmiş sayalım
+                    if (kontrolTarihi) {
+                        let anlikTarih = new Date(kontrolTarihi);
+                        while (true) {
+                            let anlikStr = formatTarih(anlikTarih);
+                            if (tarihler.includes(anlikStr)) {
+                                seri++;
+                                anlikTarih.setDate(anlikTarih.getDate() - 1);
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (seri > 0) {
+                        streakCount.innerText = seri;
+                        streakBadge.classList.remove('hidden');
+                        streakBadge.classList.add('inline-flex');
+                    } else {
+                        streakBadge.classList.add('hidden');
+                        streakBadge.classList.remove('inline-flex');
+                    }
+                } else {
+                    streakBadge.classList.add('hidden');
+                    streakBadge.classList.remove('inline-flex');
+                }
 
                 if (data.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 text-xs">Henüz soru kumbarasına kayıt eklenmemiş. İlk sorularınızı ekleyin!</td></tr>`;

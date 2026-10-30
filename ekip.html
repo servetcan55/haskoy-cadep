@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hasköy CADEP Takip Sistemi - Ekip Yönetimi</title>
     <script>
-        // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
+        // Oturum ve Yetki Kontrolü: Giriş yapılmamışsa giriş sayfasına, öğrenci ise kendi detay sayfasına yönlendirir
         let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
         if (!oturum) {
             window.location.href = 'giris.html';
+        } else if (oturum.rol === 'ogrenci') {
+            window.location.href = 'ogrenci_detay.html';
         }
     </script>
     <!-- Tailwind CSS -->
@@ -40,7 +42,7 @@
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
                 
-                <!-- YENİ EKLENEN KAZANIM YÖNETİMİ BUTONU -->
+                <!-- KAZANIM YÖNETİMİ BUTONU -->
                 <a href="kazanim_yonetimi.html" id="menu-kazanim" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
 
                 <a href="ekip.html" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">CADEP Ekibi</a>
@@ -67,7 +69,6 @@
                 <p class="text-sm text-slate-500">Okul koordinatörleri ve branş öğretmenlerinin listesi.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <!-- Rapor Butonları Herkese / Yetkililere Açık, Yeni Üye Sadece Admin -->
                 <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📄 PDF Raporu İndir</button>
                 <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Raporu İndir</button>
                 <button id="btn-yeni-uye" onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium hidden cursor-pointer">+ Yeni Ekip Üyesi Ekle</button>
@@ -131,15 +132,12 @@
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
 
-                // YENİ EKLENEN GİZLEME KURALI
                 let kazanimMenu = document.getElementById('menu-kazanim');
                 if (kazanimMenu) kazanimMenu.style.display = 'none';
             }
 
-            // Aktif kullanıcının gerçek adını üst menüde göster
             await aktifKullaniciAdiGoster(oturum);
 
-            // Eğer kullanıcı admin ise yeni üye ekleme butonunu, telefon sütununu ve işlemler sütununu aç
             if (isAdmin) {
                 document.getElementById('btn-yeni-uye').classList.remove('hidden');
                 document.getElementById('th-telefon').classList.remove('hidden');
@@ -222,12 +220,10 @@
                     <td class="p-3 text-slate-700">${uye.unvan || '-'}</td>
                     <td class="p-3">${uye.brans}</td>`;
                 
-                // Sadece admin ise Telefon sütununu göster
                 if (isAdmin) {
                     html += `<td class="p-3">${uye.telefon || '-'}</td>`;
                 }
 
-                // Sadece admin ise İşlemler butonlarını göster
                 if (isAdmin) {
                     html += `<td class="p-3 text-right">
                         <button onclick="formuAc('${uye.id}', '${uye.ad_soyad || ''}', '${uye.brans || ''}', '${uye.telefon || ''}', '${uye.unvan || ''}', '${uye.sira || 0}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium mr-2 cursor-pointer">Düzenle</button>
@@ -408,15 +404,15 @@
         }
 
         function mihmandarLinkYonlendir(e) {
-    e.preventDefault();
-    let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-    if (oturum && oturum.rol === 'mihmandar') {
-        let hedefId = oturum.iliskili_id || oturum.id;
-        window.location.href = `mihmandar_detay.html?id=${hedefId}`;
-    } else {
-        window.location.href = 'mihmandar_ogretmenler.html';
-    }
-}
+            e.preventDefault();
+            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+            if (oturum && oturum.rol === 'mihmandar') {
+                let hedefId = oturum.iliskili_id || oturum.id;
+                window.location.href = `mihmandar_detay.html?id=${hedefId}`;
+            } else {
+                window.location.href = 'mihmandar_ogretmenler.html';
+            }
+        }
     </script>
 </body>
 </html>

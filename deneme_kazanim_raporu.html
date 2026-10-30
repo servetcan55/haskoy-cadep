@@ -6,9 +6,11 @@
     <title>Hasköy CADEP - Sınıf ve Grup Kazanım Analizi</title>
     <script>
         let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-        // Eğer oturum yoksa veya kullanıcı "ogrenci" ise ana sayfaya at
-        if (!oturum || oturum.rol === 'ogrenci') {
-            window.location.href = 'index.html';
+        // Eğer oturum yoksa giriş sayfasına, öğrenci ise kendi detay sayfasına yönlendir
+        if (!oturum) {
+            window.location.href = 'giris.html';
+        } else if (oturum.rol === 'ogrenci') {
+            window.location.href = 'ogrenci_detay.html';
         }
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
