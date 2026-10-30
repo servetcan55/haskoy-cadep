@@ -73,12 +73,19 @@
                 <h2 id="ogr-baslik" class="text-2xl font-bold text-slate-700">Öğrenci Deneme Karnesi</h2>
                 <p id="ogr-detay-bilgi" class="text-sm text-slate-500">Öğrencinin tüm deneme sınavlarındaki başarı ve net analizleri.</p>
             </div>
-            <div>
-                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Karnesi İndir</button>
+            <div class="flex flex-wrap gap-2">
+                <!-- WHATSAPP BİLGİLENDİRME BUTONU -->
+                <button onclick="veliWhatsAppBildirimi()" id="btn-whatsapp" class="bg-[#25D366] hover:bg-[#128C7E] text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-2 cursor-pointer transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/>
+                    </svg>
+                    Veliye Gönder
+                </button>
+                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer transition">📊 Excel İndir</button>
             </div>
         </div>
 
-        <!-- GRAFİK VE YENİ HEDEF LİSE BAROMETRESİ (GRID) -->
+        <!-- GRAFİK VE HEDEF LİSE BAROMETRESİ (GRID) -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             <!-- Sol: Öğrenci Gelişim Grafiği (2 Kolon) -->
@@ -91,9 +98,8 @@
                 </div>
             </div>
 
-            <!-- YENİ: Sağ: Hedef Lise Gerçeklik Barometresi (1 Kolon) -->
+            <!-- Sağ: Hedef Lise Gerçeklik Barometresi (1 Kolon) -->
             <div id="barometre-container" class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-md border border-slate-700 text-white flex flex-col justify-center relative overflow-hidden min-h-[300px]">
-                <!-- Arka plan efekti -->
                 <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-5 blur-2xl"></div>
                 <div class="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-indigo-500 opacity-10 blur-xl"></div>
                 
@@ -174,6 +180,11 @@
 
                 let geriDonBtn = document.getElementById('btn-geri-don');
                 if (geriDonBtn) geriDonBtn.style.display = 'none';
+                
+                // Öğrenci kendisine whatsapp atamasın diye butonu gizle
+                let wpBtn = document.getElementById('btn-whatsapp');
+                if (wpBtn) wpBtn.style.display = 'none';
+
             } else if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
@@ -305,16 +316,64 @@
             ogrenciGelisimGrafiginiCiz();
             eksikKazanimlariGoster();
             
-            // YENİ: Hedef Lise Barometresini Çalıştır
             hedefBarometresiOlustur();
         }
 
-        // YENİ EKLENEN BAROMETRE FONKSİYONU
+        function veliWhatsAppBildirimi() {
+            if (!globalOgrenci) return;
+
+            let tumSinavlar = [];
+            globalDenemeler.forEach(d => {
+                let s = globalSonuclar.find(res => res.deneme_id === d.id);
+                if (s && s.lgs_puan != null) tumSinavlar.push({ tarih: d.tarih, puan: s.lgs_puan, net: s.toplam_net, ad: d.deneme_adi });
+            });
+            globalOzelDenemeler.forEach(od => {
+                if(od.lgs_puan != null) tumSinavlar.push({ tarih: od.tarih, puan: od.lgs_puan, net: od.toplam_net, ad: od.deneme_adi + " (Özel)" });
+            });
+
+            if (tumSinavlar.length === 0) {
+                alert("Öğrenciye ait puanlı bir sınav sonucu bulunmuyor.");
+                return;
+            }
+
+            // En son sınavı bul
+            tumSinavlar.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+            let sonSinav = tumSinavlar[0];
+            let hedefLise = globalOgrenci.hedef_lisesi && globalOgrenci.hedef_lisesi.trim() !== "" ? globalOgrenci.hedef_lisesi : "Belirtilmemiş";
+
+            // Emojiler WhatsApp URL encode aşamasında sorun yaşatmaması için kaldırıldı
+            let mesaj = `Sayın Velimiz, iyi günler dilerim.\n\n`;
+            mesaj += `Öğrencimiz *${globalOgrenci.ad_soyad}* (${globalOgrenci.sinif}), okulumuzda uygulanan son deneme sınavında (*${sonSinav.ad}*) aşağıdaki sonuçları elde etmiştir:\n\n`;
+            mesaj += `*Toplam Net:* ${sonSinav.net}\n`;
+            mesaj += `*LGS Puanı:* ${sonSinav.puan.toFixed(2)}\n`;
+
+            if (hedefLise !== "Belirtilmemiş") {
+                mesaj += `\nÖğrencimizin hedefi olan *${hedefLise}* için çalışmalarını yakından takip ediyoruz. `;
+            } else {
+                mesaj += `\nÖğrencimizin deneme gelişimini sistemimiz üzerinden yakından takip ediyoruz. `;
+            }
+
+            mesaj += `Eksik konularına yönelik analiz raporu öğretmenlerimiz tarafından değerlendirilmektedir.\n\nİyi çalışmalar dileriz.\n- Hasköy Ortaokulu LGS Koordinatörlüğü`;
+
+            // WhatsApp Web/App Yönlendirme Linki
+            let url = `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
+            
+            // veli_telefonu sütunundan otomatik numara çekme
+            if (globalOgrenci.veli_telefonu && globalOgrenci.veli_telefonu.length >= 10) {
+                let tel = globalOgrenci.veli_telefonu.replace(/[^0-9]/g, '');
+                if(tel.length === 10) tel = "90" + tel;
+                if(tel.length === 11 && tel.startsWith("0")) tel = "9" + tel;
+                url = `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`;
+            }
+
+            // WhatsApp'ı Yeni Sekmede Aç
+            window.open(url, '_blank');
+        }
+
         function hedefBarometresiOlustur() {
             let container = document.getElementById('barometre-container');
             let hedefLise = globalOgrenci.hedef_lisesi || "Belirtilmemiş";
 
-            // Son girilen sınavı bul
             let tumSinavlar = [];
             globalDenemeler.forEach(d => {
                 let s = globalSonuclar.find(res => res.deneme_id === d.id);
@@ -338,40 +397,24 @@
             let sonSinav = tumSinavlar[0];
             let sonPuan = Number(sonSinav.puan);
 
-            // Yapay Zeka Tabanlı Lise Puan Sözlüğü (Samsun ve Türkiye Geneli Örnekler)
             const lisePuanlari = {
-                "galatasaray": 498,
-                "kabataş": 493,
-                "ankara fen": 495,
-                "garip zeycan": 485,
-                "canik fen": 472,
-                "aziz atik": 458,
-                "samsun anadolu": 445,
-                "tülay başaran": 435,
-                "onur ateş": 420,
-                "atatürk anadolu": 410,
-                "fen lisesi": 460, // Genel fen yazarsa
-                "anadolu lisesi": 420 // Genel anadolu yazarsa
+                "galatasaray": 498, "kabataş": 493, "ankara fen": 495, "garip zeycan": 485,
+                "canik fen": 472, "aziz atik": 458, "samsun anadolu": 445, "tülay başaran": 435,
+                "onur ateş": 420, "atatürk anadolu": 410, "fen lisesi": 460, "anadolu lisesi": 420
             };
 
             let aranan = hedefLise.toLowerCase();
-            let targetPuan = 430; // Eğer sözlükte bulamazsa varsayılan puan
+            let targetPuan = 430;
             for (let key in lisePuanlari) {
-                if (aranan.includes(key)) {
-                    targetPuan = lisePuanlari[key];
-                    break;
-                }
+                if (aranan.includes(key)) { targetPuan = lisePuanlari[key]; break; }
             }
 
-            // Hesaplamalar
             let yuzde = (sonPuan / targetPuan) * 100;
             if (yuzde > 100) yuzde = 100;
             if (yuzde < 0) yuzde = 0;
 
             let kalanPuan = (targetPuan - sonPuan).toFixed(2);
-            let mesaj = "";
-            let renk = "";
-            let emoji = "";
+            let mesaj = ""; let renk = ""; let emoji = "";
 
             if (sonPuan >= targetPuan) {
                 mesaj = "Hedefine ulaştın! Harika gidiyorsun, şimdi sıranı koruma vakti.";
@@ -713,7 +756,82 @@
                 ["Hasköy Ortaokulu"], ["2026 - 2027 Eğitim Öğretim Yılı"], [globalOgrenci.ad_soyad + " - Öğrenci Deneme Karnesi Raporu"], [""],
                 ["Sıra", "Deneme Adı", "Tarih", "Derece", "Türkçe (D/Y/B)", "Matematik (D/Y/B)", "Fen (D/Y/B)", "İnkılap (D/Y/B)", "Din (D/Y/B)", "İngilizce (D/Y/B)", "Toplam Net", "LGS Puanı", "Yüzdelik Dilim"]
             ];
-            // ... (Excel içeriği mevcut yapınızla aynı mantıkta doldurulur) ...
+            
+            let siraNo = 1;
+            let katildigiSinavSayisi = 0;
+            let toplam = {
+                t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0,
+                ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0,
+                net: 0, puan: 0, yuzde: 0
+            };
+
+            globalDenemeler.forEach((deneme) => {
+                let s = globalSonuclar.find(res => res.deneme_id === deneme.id) || {};
+                let hasData = globalSonuclar.some(res => res.deneme_id === deneme.id);
+                let siraText = "-";
+                if(hasData && s.lgs_puan != null) {
+                    let sinifSonuclari = tumDenemeSonuclari
+                        .filter(res => res.deneme_id === deneme.id && res.lgs_puan != null)
+                        .sort((a, b) => b.lgs_puan - a.lgs_puan);
+                    let sira = sinifSonuclari.findIndex(res => res.ogrenci_id === ogrenciId) + 1;
+                    if(sira > 0) siraText = `${sira}.`;
+                }
+
+                if(hasData) {
+                    katildigiSinavSayisi++;
+                    toplam.t_d += (s.turkce_d ?? 0); toplam.t_y += (s.turkce_y ?? 0); toplam.t_b += (s.turkce_b ?? (20 - (s.turkce_d ?? 0) - (s.turkce_y ?? 0)));
+                    toplam.m_d += (s.matematik_d ?? 0); toplam.m_y += (s.matematik_y ?? 0); toplam.m_b += (s.matematik_b ?? (20 - (s.matematik_d ?? 0) - (s.matematik_y ?? 0)));
+                    toplam.f_d += (s.fen_d ?? 0); toplam.f_y += (s.fen_y ?? 0); toplam.f_b += (s.fen_b ?? (20 - (s.fen_d ?? 0) - (s.fen_y ?? 0)));
+                    toplam.ind += (s.inkilap_d ?? 0); toplam.iny += (s.inkilap_y ?? 0); toplam.inb += (s.inkilap_b ?? (10 - (s.inkilap_d ?? 0) - (s.inkilap_y ?? 0)));
+                    toplam.d_d += (s.din_d ?? 0); toplam.d_y += (s.din_y ?? 0); toplam.d_b += (s.din_b ?? (10 - (s.din_d ?? 0) - (s.din_y ?? 0)));
+                    toplam.ingd += (s.ingilizce_d ?? 0); toplam.ingy += (s.ingilizce_y ?? 0); toplam.ingb += (s.ingilizce_b ?? (10 - (s.ingilizce_d ?? 0) - (s.ingilizce_y ?? 0)));
+                    toplam.net += (s.toplam_net ?? 0); toplam.puan += (s.lgs_puan ?? 0); toplam.yuzde += (s.yuzdelik_dilim ?? 0);
+                }
+
+                excelVerisi.push([
+                    siraNo++, deneme.deneme_adi, deneme.tarih || "", siraText,
+                    hasData ? `${s.turkce_d ?? 0}/${s.turkce_y ?? 0}/${s.turkce_b ?? 0}` : "-",
+                    hasData ? `${s.matematik_d ?? 0}/${s.matematik_y ?? 0}/${s.matematik_b ?? 0}` : "-",
+                    hasData ? `${s.fen_d ?? 0}/${s.fen_y ?? 0}/${s.fen_b ?? 0}` : "-",
+                    hasData ? `${s.inkilap_d ?? 0}/${s.inkilap_y ?? 0}/${s.inkilap_b ?? 0}` : "-",
+                    hasData ? `${s.din_d ?? 0}/${s.din_y ?? 0}/${s.din_b ?? 0}` : "-",
+                    hasData ? `${s.ingilizce_d ?? 0}/${s.ingilizce_y ?? 0}/${s.ingilizce_b ?? 0}` : "-",
+                    s.toplam_net != null ? Number(s.toplam_net) : 0, s.lgs_puan != null ? Number(s.lgs_puan) : 0, s.yuzdelik_dilim != null ? Number(s.yuzdelik_dilim) : 0
+                ]);
+            });
+
+            globalOzelDenemeler.forEach(od => {
+                katildigiSinavSayisi++;
+                toplam.t_d += (od.turkce_d ?? 0); toplam.t_y += (od.turkce_y ?? 0); toplam.t_b += (od.turkce_b ?? 0);
+                toplam.m_d += (od.matematik_d ?? 0); toplam.m_y += (od.matematik_y ?? 0); toplam.m_b += (od.matematik_b ?? 0);
+                toplam.f_d += (od.fen_d ?? 0); toplam.f_y += (od.fen_y ?? 0); toplam.f_b += (od.fen_b ?? 0);
+                toplam.ind += (od.inkilap_d ?? 0); toplam.iny += (od.inkilap_y ?? 0); toplam.inb += (od.inkilap_b ?? 0);
+                toplam.d_d += (od.din_d ?? 0); toplam.d_y += (od.din_y ?? 0); toplam.d_b += (od.din_b ?? 0);
+                toplam.ingd += (od.ingilizce_d ?? 0); toplam.ingy += (od.ingilizce_y ?? 0); toplam.ingb += (od.ingilizce_b ?? 0);
+                toplam.net += (od.toplam_net ?? 0); toplam.puan += (od.lgs_puan ?? 0); toplam.yuzde += (od.yuzdelik_dilim ?? 0);
+
+                excelVerisi.push([
+                    siraNo++, od.deneme_adi + " (Özel)", od.tarih || "", "-",
+                    `${od.turkce_d ?? 0}/${od.turkce_y ?? 0}/${od.turkce_b ?? 0}`, `${od.matematik_d ?? 0}/${od.matematik_y ?? 0}/${od.matematik_b ?? 0}`,
+                    `${od.fen_d ?? 0}/${od.fen_y ?? 0}/${od.fen_b ?? 0}`, `${od.inkilap_d ?? 0}/${od.inkilap_y ?? 0}/${od.inkilap_b ?? 0}`,
+                    `${od.din_d ?? 0}/${od.din_y ?? 0}/${od.din_b ?? 0}`, `${od.ingilizce_d ?? 0}/${od.ingilizce_y ?? 0}/${od.ingilizce_b ?? 0}`,
+                    od.toplam_net != null ? Number(od.toplam_net) : 0, od.lgs_puan != null ? Number(od.lgs_puan) : 0, od.yuzdelik_dilim != null ? Number(od.yuzdelik_dilim) : 0
+                ]);
+            });
+
+            if(katildigiSinavSayisi > 0) {
+                let fmtExcel = (val, dec = 2) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n : Number(n.toFixed(dec)); };
+                let fmtExcelPuan = (val) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n : Number(n.toFixed(3)); };
+
+                excelVerisi.push([
+                    "GENEL ORTALAMA", "", "", "",
+                    `${fmtExcel(toplam.t_d)}/${fmtExcel(toplam.t_y)}/${fmtExcel(toplam.t_b)}`, `${fmtExcel(toplam.m_d)}/${fmtExcel(toplam.m_y)}/${fmtExcel(toplam.m_b)}`,
+                    `${fmtExcel(toplam.f_d)}/${fmtExcel(toplam.f_y)}/${fmtExcel(toplam.f_b)}`, `${fmtExcel(toplam.ind)}/${fmtExcel(toplam.iny)}/${fmtExcel(toplam.inb)}`,
+                    `${fmtExcel(toplam.d_d)}/${fmtExcel(toplam.d_y)}/${fmtExcel(toplam.d_b)}`, `${fmtExcel(toplam.ingd)}/${fmtExcel(toplam.ingy)}/${fmtExcel(toplam.ingb)}`,
+                    fmtExcel(toplam.net), fmtExcelPuan(toplam.puan), fmtExcel(toplam.yuzde)
+                ]);
+            }
+
             let worksheet = XLSX.utils.aoa_to_sheet(excelVerisi);
             let workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Ogrenci Karnesi");
