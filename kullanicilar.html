@@ -551,7 +551,7 @@
                 if(secilenId) iliskili_id = secilenId;
             } else if (rol === 'admin') {
                 let secilenId = document.getElementById('secilen-admin-id').value;
-                if(secilenId) iliskili_id = secilenId; eş
+                if(secilenId) iliskili_id = secilenId;
             } else if (rol === 'gozlemci') {
                 let gozlemciAd = document.getElementById('gozlemci-ad-soyad').value.trim();
                 if(gozlemciAd) iliskili_id = gozlemciAd;
@@ -592,7 +592,6 @@
 
         function kullaniciDuzenleBaslat(id, rol, kullaniciAdi, sifre, iliskiliId) {
             document.getElementById('duzenlenen-id').value = id;
-            jobrol = rol;
             document.getElementById('yeni-rol').value = rol;
             document.getElementById('yeni-kullanici-adi').value = kullaniciAdi;
             document.getElementById('yeni-sifre').value = sifre;
@@ -637,18 +636,10 @@
         function formuSifirla() {
             document.getElementById('kullanici-form').reset();
             document.getElementById('duzenlenen-id').value = '';
-            document.getElementById('form-baslik').innerText = "Yeni Kullanıcı / Şifre Tanımla</h4>"; // Ufak temizlik
             document.getElementById('form-baslik').innerText = "Yeni Kullanıcı / Şifre Tanımla";
             document.getElementById('btn-kaydet').innerText = "Kullanıcıyı Kaydet";
             document.getElementById('btn-iptal').classList.add('hidden');
             rolDegisti();
-        }
-
-        async function kullanicilariGetir() {
-            // tablodaki verileri güncelle
-            let tbody = document.getElementById('kullanici-listesi-govde');
-            let { data, error } = await _supabase.from('kullanicilar').select('*');
-            // ... (diğer işlemler)
         }
 
         async function kullaniciSil(id) {
