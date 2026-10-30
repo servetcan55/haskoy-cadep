@@ -8,6 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Supabase JS Client v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS (Excel Çıktısı İçin) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF (PDF Çıktısı İçin) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
@@ -44,12 +48,9 @@
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Kullanıcılar</a>
                 
-                <!-- KAZANIM YÖNETİMİ BUTONU -->
                 <a href="kazanim_yonetimi.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
-                
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
-                <!-- Aktif Kullanıcı İsim Alanı -->
                 <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -57,14 +58,13 @@
                     <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
                 </div>
 
-                <!-- Çıkış Yap Butonu -->
                 <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
             </nav>
         </div>
     </header>
 
     <!-- Ana İçerik -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             <!-- Kullanıcı Ekleme / Düzenleme Formu -->
@@ -139,22 +139,28 @@
             </div>
 
             <!-- Kullanıcı Listesi -->
-            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h2 class="text-lg font-bold text-slate-700 mb-4 pb-2 border-b">Sistemdeki Kayıtlı Kullanıcılar</h2>
-                <div class="overflow-x-auto">
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-2 border-b gap-3">
+                    <h2 class="text-lg font-bold text-slate-700">Sistemdeki Kayıtlı Kullanıcılar</h2>
+                    <button onclick="kullanicilariExcelIndir()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition">
+                        📊 Toplu Excel Raporu
+                    </button>
+                </div>
+                <div class="overflow-x-auto flex-grow">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
                             <tr class="bg-slate-100 text-slate-600 uppercase tracking-wider text-[11px]">
-                                <th class="p-3 w-16 text-center">Sıra</th>
+                                <th class="p-3 w-12 text-center">Sıra</th>
                                 <th class="p-3">Üye Adı Soyadı</th>
                                 <th class="p-3">Giriş Adı / No</th>
                                 <th class="p-3">Rolü</th>
                                 <th class="p-3">Şifresi</th>
+                                <th class="p-3 text-center">İletişim / Belge</th>
                                 <th class="p-3 text-center">İşlemler</th>
                             </tr>
                         </thead>
                         <tbody id="kullanici-listesi-govde" class="divide-y divide-slate-200">
-                            <tr><td colspan="6" class="p-4 text-center text-slate-400">Yükleniyor...</td></tr>
+                            <tr><td colspan="7" class="p-4 text-center text-slate-400">Yükleniyor...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -175,19 +181,22 @@
 
         let ogrenciIsimMap = {};
         let ogrenciNoMap = {};
+        let ogrenciTelMap = {};
         let tumOgrencilerListesi = [];
         
         let mihmandarIsimMap = {};
+        let mihmandarTelMap = {};
         let tumMihmandarlarListesi = [];
 
         let adminIsimMap = {};
+        let adminTelMap = {};
         let tumAdminlerListesi = [];
 
+        let islenmisKullaniciCache = [];
+
         window.onload = async function() {
-            // Aktif kullanıcının gerçek adını üst menüde göster
             await aktifKullaniciAdiGoster(oturum);
 
-            // 1. Öğrencileri Çek
             let { data: ogrData } = await _supabase.from('cadep_ogrenciler').select('*');
             if(ogrData) {
                 tumOgrencilerListesi = ogrData;
@@ -197,12 +206,12 @@
                     ogrenciIsimMap[o.id] = o.ad_soyad;
                     if(o.ogrenci_no) ogrenciNoMap[o.ogrenci_no.toString().trim()] = o.ad_soyad;
                     if(o.okul_no) ogrenciNoMap[o.okul_no.toString().trim()] = o.ad_soyad;
+                    if(o.veli_telefonu) ogrenciTelMap[o.id] = o.veli_telefonu;
                     optionsHtml += `<option value="${o.id}">${o.ad_soyad} (No: ${o.ogrenci_no || o.okul_no || '-'})</option>`;
                 });
                 selectElement.innerHTML = optionsHtml;
             }
 
-            // 2. Mihmandar Öğretmenleri Çek
             let { data: mihData } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*');
             if(mihData) {
                 tumMihmandarlarListesi = mihData;
@@ -211,12 +220,12 @@
                 mihData.forEach(m => {
                     let adSoyad = m.ad_soyad || m.ogretmen_adi || m.kullanici_adi || 'Öğretmen';
                     mihmandarIsimMap[m.id] = adSoyad;
+                    if(m.telefon) mihmandarTelMap[m.id] = m.telefon;
                     optionsHtml += `<option value="${m.id}">${adSoyad} (${m.brans || ''})</option>`;
                 });
                 selectElement.innerHTML = optionsHtml;
             }
 
-            // 3. Admin / CADEP Ekibi Üyelerini Çek
             let { data: ekpData } = await _supabase.from('cadep_ekip').select('*');
             if(ekpData) {
                 tumAdminlerListesi = ekpData;
@@ -225,6 +234,7 @@
                 ekpData.forEach(e => {
                     let adSoyad = e.ad_soyad || e.uye_adi || e.kullanici_adi || 'Yönetici';
                     adminIsimMap[e.id] = adSoyad;
+                    if(e.telefon) adminTelMap[e.id] = e.telefon;
                     optionsHtml += `<option value="${e.id}">${adSoyad} (${e.unvan || e.brans || ''})</option>`;
                 });
                 selectElement.innerHTML = optionsHtml;
@@ -237,28 +247,14 @@
         async function aktifKullaniciAdiGoster(oturum) {
             let isimSpan = document.getElementById('aktif-kullanici-adi');
             if (!oturum) return;
-
             let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
-
             if (oturum.rol === 'admin') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
                     if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else {
-                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
-                    if (data && data.ad_soyad) {
-                        gorunurIsim = data.ad_soyad;
-                    } else {
-                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
-                        if (allEkip && allEkip.length > 0) {
-                            let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
-                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
-                            else gorunurIsim = allEkip[0].ad_soyad;
-                        }
-                    }
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
-            } 
+            }
         }
 
         function rolDegisti() {
@@ -331,20 +327,23 @@
             let { data, error } = await _supabase.from('kullanicilar').select('*');
 
             if(error) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">Tablo okunamadı! (${error.message})</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Tablo okunamadı! (${error.message})</td></tr>`;
                 return;
             }
 
             if(!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Henüz kayıtlı kullanıcı bulunmuyor.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Henüz kayıtlı kullanıcı bulunmuyor.</td></tr>`;
+                islenmisKullaniciCache = [];
                 return;
             }
 
-            let islenmisListe = data.map(k => {
+            islenmisKullaniciCache = data.map(k => {
                 let adSoyadGosterge = "-";
+                let telefon = "";
                 if(k.rol === 'ogrenci') {
                     if(k.iliskili_id && ogrenciIsimMap[k.iliskili_id]) {
                         adSoyadGosterge = ogrenciIsimMap[k.iliskili_id];
+                        telefon = ogrenciTelMap[k.iliskili_id] || "";
                     } else if(k.kullanici_adi && ogrenciNoMap[k.kullanici_adi.trim()]) {
                         adSoyadGosterge = ogrenciNoMap[k.kullanici_adi.trim()];
                     } else {
@@ -353,27 +352,33 @@
                 } else if(k.rol === 'mihmandar') {
                     if(k.iliskili_id && mihmandarIsimMap[k.iliskili_id]) {
                         adSoyadGosterge = mihmandarIsimMap[k.iliskili_id];
+                        telefon = mihmandarTelMap[k.iliskili_id] || "";
                     } else {
                         let bulunanMih = tumMihmandarlarListesi.find(m => m.kullanici_adi === k.kullanici_adi || m.id == k.iliskili_id);
                         adSoyadGosterge = bulunanMih ? (bulunanMih.ad_soyad || bulunanMih.ogretmen_adi) : k.kullanici_adi;
+                        telefon = bulunanMih ? (bulunanMih.telefon || "") : "";
                     }
                 } else if(k.rol === 'admin') {
                     if(k.iliskili_id && adminIsimMap[k.iliskili_id]) {
                         adSoyadGosterge = adminIsimMap[k.iliskili_id];
+                        telefon = adminTelMap[k.iliskili_id] || "";
                     } else {
                         let bulunanAdm = tumAdminlerListesi.find(e => e.kullanici_adi === k.kullanici_adi || e.id == k.iliskili_id);
                         adSoyadGosterge = bulunanAdm ? (bulunanAdm.ad_soyad || bulunanAdm.uye_adi) : ("Sistem Yöneticisi (" + k.kullanici_adi + ")");
+                        telefon = bulunanAdm ? (bulunanAdm.telefon || "") : "";
                     }
                 } else if(k.rol === 'gozlemci') {
                     adSoyadGosterge = k.iliskili_id && isNaN(k.iliskili_id) ? k.iliskili_id : ("Gözlemci (" + k.kullanici_adi + ")");
+                    let bulunanAdm = tumAdminlerListesi.find(e => e.ad_soyad === adSoyadGosterge || e.kullanici_adi === k.kullanici_adi);
+                    telefon = bulunanAdm ? (bulunanAdm.telefon || "") : "";
                 } else {
                     adSoyadGosterge = k.kullanici_adi;
                 }
 
-                return { ...k, adSoyadGosterge };
+                return { ...k, adSoyadGosterge, telefon };
             });
 
-            islenmisListe.sort((a, b) => {
+            islenmisKullaniciCache.sort((a, b) => {
                 let rolSkoru = (rol) => {
                     if (rol === 'admin') return 1;
                     if (rol === 'gozlemci') return 2;
@@ -389,7 +394,7 @@
             });
 
             let html = '';
-            islenmisListe.forEach((k, index) => {
+            islenmisKullaniciCache.forEach((k, index) => {
                 let badgeColor = k.rol === 'admin' ? 'bg-purple-100 text-purple-700' : (k.rol === 'gozlemci' ? 'bg-amber-100 text-amber-800' : (k.rol === 'mihmandar' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'));
                 let gorunurRol = k.rol ? k.rol.toUpperCase() : 'ÖĞRENCİ';
 
@@ -400,12 +405,134 @@
                     <td class="p-3"><span class="px-2 py-1 rounded text-xs font-bold uppercase ${badgeColor}">${gorunurRol}</span></td>
                     <td class="p-3 text-slate-600 font-mono">${k.sifre}</td>
                     <td class="p-3 text-center space-x-1">
-                        <button type="button" onclick="kullaniciDuzenleBaslat(${k.id}, '${k.rol || 'ogrenci'}', '${k.kullanici_adi}', '${k.sifre}', '${k.iliskili_id || ''}')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer">Düzenle</button>
-                        <button type="button" onclick="kullaniciSil(${k.id})" class="bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer">Sil</button>
+                        <button type="button" onclick="bireyselPdfIndir(${index})" class="bg-red-50 hover:bg-red-100 text-red-700 px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer" title="PDF Kartı İndir">📄 PDF</button>
+                        <button type="button" onclick="whatsappBilgiGonder(${index})" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded text-xs font-semibold transition cursor-pointer" title="WhatsApp ile Gönder">📱 WhatsApp</button>
+                    </td>
+                    <td class="p-3 text-center space-x-1">
+                        <button type="button" onclick="kullaniciDuzenleBaslat(${k.id}, '${k.rol || 'ogrenci'}', '${k.kullanici_adi}', '${k.sifre}', '${k.iliskili_id || ''}')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-medium transition cursor-pointer">Düzenle</button>
+                        <button type="button" onclick="kullaniciSil(${k.id})" class="bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-medium transition cursor-pointer">Sil</button>
                     </td>
                 </tr>`;
             });
             tbody.innerHTML = html;
+        }
+
+        function bireyselPdfIndir(idx) {
+            let k = islenmisKullaniciCache[idx];
+            if (!k) return;
+
+            let bazUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            let girisLink = bazUrl + "giris.html";
+            let rolTr = k.rol === 'admin' ? 'Yönetici' : (k.rol === 'gozlemci' ? 'Gözlemci' : (k.rol === 'mihmandar' ? 'Mihmandar Öğretmen' : 'Öğrenci'));
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            function trKarakter(text) {
+                if (!text) return "";
+                return text.replace(/ğ/g, "g").replace(/Ğ/g, "G").replace(/ü/g, "u").replace(/Ü/g, "U").replace(/ş/g, "s").replace(/Ş/g, "S").replace(/ı/g, "i").replace(/İ/g, "I").replace(/ö/g, "o").replace(/Ö/g, "O").replace(/ç/g, "c").replace(/Ç/g, "C");
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(trKarakter("Hasköy Ortaokulu"), 105, 20, { align: "center" });
+            doc.setFontSize(11);
+            doc.text("CADEP Takip Sistemi - Kullanici Giris Bilgileri", 105, 27, { align: "center" });
+
+            doc.setLineWidth(0.5);
+            doc.line(20, 32, 190, 32);
+
+            doc.setFontSize(12);
+            doc.setTextColor(79, 70, 229);
+            doc.text(trKarakter("Sayin " + k.adSoyadGosterge + ","), 20, 45);
+
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            let aciklama = "Hasköy Akademik Destek Programi (CADEP) sistemine giris yapabilmeniz için size özel olusturulan hesap bilgileriniz aşağıdadır. Bu bilgileri kimseyle paylaşmayınız.";
+            doc.text(doc.splitTextToSize(trKarakter(aciklama), 170), 20, 53);
+
+            doc.setFillColor(245, 247, 250);
+            doc.roundedRect(20, 68, 170, 50, 3, 3, 'F');
+            doc.setLineWidth(0.2);
+            doc.setDrawColor(200, 200, 200);
+            doc.roundedRect(20, 68, 170, 50, 3, 3, 'S');
+
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text("Kullanici Rolü:", 25, 78);
+            doc.text("Giris Adi / Okul No:", 25, 88);
+            doc.text("Şifre:", 25, 98);
+            doc.text("Sistem Linki:", 25, 108);
+
+            doc.setFont("helvetica", "normal");
+            doc.text(trKarakter(rolTr), 70, 78);
+            doc.text(trKarakter(k.kullanici_adi), 70, 88);
+            doc.text(trKarakter(k.sifre), 70, 98);
+            doc.setTextColor(79, 70, 229);
+            doc.text(girisLink, 70, 108);
+
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.text(trKarakter("Hasköy Ortaokulu LGS Koordinatörlüğü © 2026"), 105, 135, { align: "center" });
+
+            doc.save(`CADEP_Giris_Bilgileri_${k.adSoyadGosterge.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+        }
+
+        function whatsappBilgiGonder(idx) {
+            let k = islenmisKullaniciCache[idx];
+            if (!k) return;
+
+            let bazUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            let girisLink = bazUrl + "giris.html";
+            let rolTr = k.rol === 'admin' ? 'Yönetici' : (k.rol === 'gozlemci' ? 'Gözlemci' : (k.rol === 'mihmandar' ? 'Mihmandar Öğretmen' : 'Öğrenci'));
+
+            let mesaj = `Sayın *${k.adSoyadGosterge}*,\n\nHasköy Ortaokulu CADEP Takip Sistemi için hesap bilgileriniz:\n\n*Rol:* ${rolTr}\n*Giriş Adı / No:* ${k.kullanici_adi}\n*Şifre:* ${k.sifre}\n\n*Giriş Linki:* ${girisLink}\n\nİyi çalışmalar dileriz.\n- Hasköy Ortaokulu LGS Koordinatörlüğü`;
+
+            if (!k.telefon || k.telefon.length < 10) {
+                let url = `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
+                window.open(url, '_blank');
+                return;
+            }
+
+            let tel = k.telefon.replace(/[^0-9]/g, '');
+            if(tel.length === 10) tel = "90" + tel;
+            if(tel.length === 11 && tel.startsWith("0")) tel = "9" + tel;
+            
+            let url = `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`;
+            window.open(url, '_blank');
+        }
+
+        function kullanicilariExcelIndir() {
+            if (!islenmisKullaniciCache || islenmisKullaniciCache.length === 0) {
+                alert("İndirilecek kullanıcı bulunmuyor!");
+                return;
+            }
+            let bazUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            let girisLink = bazUrl + "giris.html";
+
+            let excelVerisi = islenmisKullaniciCache.map((k, index) => {
+                let rolTr = k.rol === 'admin' ? 'Yönetici' : (k.rol === 'gozlemci' ? 'Gözlemci' : (k.rol === 'mihmandar' ? 'Mihmandar Öğretmen' : 'Öğrenci'));
+                return {
+                    "Sıra": index + 1,
+                    "Üye Adı Soyadı": k.adSoyadGosterge,
+                    "Rolü": rolTr,
+                    "Giriş Adı / Okul No": k.kullanici_adi,
+                    "Şifre": k.sifre,
+                    "Sistem Giriş Linki": girisLink
+                };
+            });
+
+            let worksheet = XLSX.utils.aoa_to_sheet([
+                ["Hasköy Ortaokulu - CADEP Takip Sistemi"],
+                ["Kullanıcı Giriş Bilgileri ve Erişim Linkleri Raporu"],
+                [""]
+            ]);
+
+            XLSX.utils.sheet_add_json(worksheet, excelVerisi, { origin: "A4" });
+
+            let workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Kullanici Bilgileri");
+            XLSX.writeFile(workbook, "Haskoy_CADEP_Kullanici_Bilgileri.xlsx");
         }
 
         async function kullaniciKaydet(e) {
@@ -474,7 +601,9 @@
 
             if(rol === 'ogrenci') {
                 let selectOgr = document.getElementById('secilen-ogrenci-id');
-                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') selectOgr.value = iliskiliId;
+                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {
+                    selectOgr.value = iliskiliId;
+                }
             } else if(rol === 'mihmandar') {
                 let selectMih = document.getElementById('secilen-mihmandar-id');
                 if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {
