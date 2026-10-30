@@ -5,22 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hasköy CADEP - Öğrenci Deneme Karnesi</title>
     <script>
-        // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
         let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-        if (!oturum) {
-            window.location.href = 'giris.html';
-        }
-
+        if (!oturum) { window.location.href = 'giris.html'; }
         let urlParams = new URLSearchParams(window.location.search);
         let ogrenciId = urlParams.get('id');
     </script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS Client v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- SheetJS (Excel Çıktısı İçin) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Chart.js Kütüphanesi -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
@@ -29,12 +21,9 @@
     <header class="bg-indigo-800 text-white shadow-md">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    Hasköy CADEP Takip Sistemi
-                </h1>
+                <h1 class="text-2xl font-bold flex items-center gap-2">Hasköy CADEP Takip Sistemi</h1>
                 <p class="text-indigo-200 text-sm">8. Sınıf LGS Öğrenci ve Deneme Analiz Platformu - Hasköy Ortaokulu</p>
             </div>
-            <!-- Üst Menü (Öğrenci ise gizlenecek) -->
             <nav id="ogrenci-nav-menu" class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
                 <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Ana Sayfa</a>
                 <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
@@ -46,18 +35,14 @@
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
                 <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
                 </div>
                 <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
             </nav>
             <div id="ogrenci-cikis-container" class="hidden mt-3 sm:mt-0 flex items-center gap-3">
                 <div class="flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     <span id="aktif-kullanici-adi-ogr" class="font-bold text-white">Yükleniyor...</span>
                 </div>
                 <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white shadow">Çıkış Yap</button>
@@ -74,7 +59,6 @@
                 <p id="ogr-detay-bilgi" class="text-sm text-slate-500">Öğrencinin tüm deneme sınavlarındaki başarı ve net analizleri.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <!-- WHATSAPP BİLGİLENDİRME BUTONU -->
                 <button onclick="veliWhatsAppBildirimi()" id="btn-whatsapp" class="hidden bg-[#25D366] hover:bg-[#128C7E] text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-2 cursor-pointer transition">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>
                     Veliye Gönder
@@ -86,9 +70,7 @@
         <!-- GRAFİK VE HEDEF LİSE BAROMETRESİ -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
-                <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                    <span>📈</span> Öğrenci Sınav Gelişim Grafiği
-                </h3>
+                <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2"><span>📈</span> Öğrenci Sınav Gelişim Grafiği</h3>
                 <div class="relative w-full h-64 sm:h-72 flex-grow"><canvas id="gelisimGrafik"></canvas></div>
             </div>
             <div id="barometre-container" class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-md border border-slate-700 text-white flex flex-col justify-center relative overflow-hidden min-h-[300px]">
@@ -100,53 +82,108 @@
 
         <!-- OYUNLAŞTIRMA (ROZETLER) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2">
-                <span>🏅</span> Kazanılan Başarı Rozetleri
-            </h3>
+            <h3 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2"><span>🏅</span> Kazanılan Başarı Rozetleri</h3>
             <p class="text-xs text-slate-500 mb-4">Öğrencinin son sınav performansına ve gelişimine göre sistem tarafından otomatik verilen başarı rozetleri.</p>
             <div id="rozet-container" class="flex flex-wrap gap-3"><div class="text-sm text-slate-400">Rozetler hesaplanıyor...</div></div>
         </div>
 
         <!-- MİHMANDAR SEYİR DEFTERİ VE GÖREV TAKİBİ -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Görev Takibi -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
-                        <span>📋</span> Haftalık Görev Takibi
-                    </h3>
-                </div>
-                
+                <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-slate-700 flex items-center gap-2"><span>📋</span> Haftalık Görev Takibi</h3></div>
                 <div id="gorev-ekle-alani" class="hidden mb-4 flex gap-2">
                     <input type="text" id="yeni-gorev-input" placeholder="Yeni görev ekle (Örn: 50 Paragraf, 2 Deneme)" class="border border-slate-300 rounded-lg px-3 py-2 text-sm flex-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     <button onclick="yeniGorevEkle()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer">Ekle</button>
                 </div>
-
                 <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 flex-grow overflow-y-auto max-h-64 custom-scrollbar">
-                    <ul id="gorev-listesi" class="space-y-2">
-                        <li class="text-center text-slate-400 text-xs py-4">Görevler yükleniyor...</li>
-                    </ul>
+                    <ul id="gorev-listesi" class="space-y-2"><li class="text-center text-slate-400 text-xs py-4">Görevler yükleniyor...</li></ul>
                 </div>
             </div>
 
-            <!-- Seyir Defteri -->
             <div id="seyir-defteri-panel" class="hidden bg-amber-50 p-6 rounded-2xl shadow-sm border border-amber-200 flex flex-col h-full">
                 <div class="flex justify-between items-center mb-4 border-b border-amber-100 pb-2">
-                    <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
-                        <span>📒</span> Mihmandar Seyir Defteri <span class="bg-amber-200 text-amber-800 text-[10px] px-2 py-0.5 rounded-full ml-2">Özel</span>
-                    </h3>
+                    <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2"><span>📒</span> Mihmandar Seyir Defteri <span class="bg-amber-200 text-amber-800 text-[10px] px-2 py-0.5 rounded-full ml-2">Özel</span></h3>
                 </div>
-                
                 <div class="mb-4">
                     <textarea id="yeni-not-input" placeholder="Görüşme detaylarını, öğrencinin psikolojik durumunu veya alınan kararları buraya not edin..." class="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none h-20 resize-none"></textarea>
-                    <div class="flex justify-end mt-2">
-                        <button onclick="yeniNotEkle()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer">Notu Kaydet</button>
-                    </div>
+                    <div class="flex justify-end mt-2"><button onclick="yeniNotEkle()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer">Notu Kaydet</button></div>
                 </div>
-
                 <div class="flex-grow overflow-y-auto max-h-48 custom-scrollbar space-y-3 pr-2" id="not-listesi">
                     <div class="text-center text-amber-700/50 text-xs py-4">Kayıtlı not yükleniyor...</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- YENİ EKLENTİ: HAFTALIK SORU ÇÖZÜM KUMBARASI -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2"><span>🧠</span> Soru Çözüm Kumbarası</h3>
+                    <p class="text-xs text-slate-500">Günlük çözdüğünüz soru sayılarını ders bazlı girerek kumbaranızı doldurun ve istikrarınızı koruyun!</p>
+                </div>
+                <div id="soru-giris-formu-tetik" class="w-full sm:w-auto">
+                    <!-- Dinamik Giriş Formu Buraya Gelecek -->
+                </div>
+            </div>
+
+            <!-- Soru Giriş Kartı (Öğrenci veya Admin Görebilir) -->
+            <div id="soru-ekleme-alani" class="hidden bg-indigo-50/60 border border-indigo-100 p-4 rounded-xl mb-6">
+                <h4 class="text-sm font-bold text-indigo-900 mb-3">📅 Yeni Soru Girişi</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Türkçe</label>
+                        <input type="number" id="soru-turkce" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm bg-white text-center font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Matematik</label>
+                        <input type="number" id="soru-matematik" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm bg-white text-center font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Fen Bilimleri</label>
+                        <input type="number" id="soru-fen" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm bg-white text-center font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">İnkılap Tarihi</label>
+                        <input type="number" id="soru-inkilap" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm bg-white text-center font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Din Kültürü</label>
+                        <input type="number" id="soru-din" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm bg-white text-center font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">İngilizce</label>
+                        <input type="number" id="soru-ingilizce" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm bg-white text-center font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-medium text-slate-600">Tarih:</label>
+                        <input type="date" id="soru-tarih" class="border border-slate-300 rounded-lg px-3 py-1 text-xs bg-white">
+                    </div>
+                    <button onclick="soruKaydet()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">Kumbaraya At 🚀</button>
+                </div>
+            </div>
+
+            <!-- Geçmiş Soru Kayıtları Tablosu -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 uppercase tracking-wider text-[11px] border-b border-slate-200">
+                            <th class="p-2.5">Tarih</th>
+                            <th class="p-2.5 text-center">Türkçe</th>
+                            <th class="p-2.5 text-center">Matematik</th>
+                            <th class="p-2.5 text-center">Fen</th>
+                            <th class="p-2.5 text-center">İnkılap</th>
+                            <th class="p-2.5 text-center">Din</th>
+                            <th class="p-2.5 text-center">İngilizce</th>
+                            <th class="p-2.5 text-center text-indigo-700">Toplam Soru</th>
+                            <th class="p-2.5 text-center w-16">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="soru-kumbarasi-govde" class="divide-y divide-slate-100">
+                        <tr><td colspan="9" class="p-4 text-center text-slate-400">Soru verileri yükleniyor...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -180,9 +217,7 @@
 
         <!-- EKSİK KAZANIMLAR -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                <span>🎯</span> Eksik Kazanım Analizi (Yanlış / Boş Bırakılan Konular)
-            </h3>
+            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2"><span>🎯</span> Eksik Kazanım Analizi (Yanlış / Boş Bırakılan Konular)</h3>
             <p class="text-xs text-slate-500 mb-4">Aşağıdaki liste, optik form taraması sonucunda öğrencinin hata yaptığı veya boş bıraktığı soruların konularını göstermektedir.</p>
             <div id="kazanim-analiz-govde" class="space-y-4"><div class="text-center text-slate-400 py-6 text-sm">Analiz verileri yükleniyor...</div></div>
         </div>
@@ -218,22 +253,21 @@
             if (oturum && oturum.rol === 'ogrenci') {
                 let navMenu = document.getElementById('ogrenci-nav-menu');
                 if (navMenu) navMenu.style.display = 'none';
-
                 let cikisContainer = document.getElementById('ogrenci-cikis-container');
                 if (cikisContainer) cikisContainer.classList.remove('hidden');
-
                 let geriDonBtn = document.getElementById('btn-geri-don');
                 if (geriDonBtn) geriDonBtn.style.display = 'none';
-                
                 let wpBtn = document.getElementById('btn-whatsapp');
                 if (wpBtn) wpBtn.style.display = 'none';
             } else if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
-                
                 let kazanimMenu = document.getElementById('menu-kazanim');
                 if (kazanimMenu) kazanimMenu.style.display = 'none';
             }
+
+            // Bugünün tarihini inputa varsayılan olarak atayalım
+            document.getElementById('soru-tarih').value = new Date().toISOString().split('T')[0];
 
             await verileriGetir();
         };
@@ -262,10 +296,7 @@
                 if(isimSpan) isimSpan.innerText = gorunurIsim + " (Mihmandar)";
                 if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Mihmandar)";
             } else if (oturum.rol === 'ogrenci') {
-                // Öğrenci ise doğrudan veritabanından çekilen öğrenci adını göster
-                if (globalOgrenci && globalOgrenci.ad_soyad) {
-                    gorunurIsim = globalOgrenci.ad_soyad;
-                }
+                if (globalOgrenci && globalOgrenci.ad_soyad) gorunurIsim = globalOgrenci.ad_soyad;
                 if(isimSpan) isimSpan.innerText = gorunurIsim + " (Öğrenci)";
                 if(isimSpanOgr) isimSpanOgr.innerText = gorunurIsim + " (Öğrenci)";
             }
@@ -291,7 +322,6 @@
             if(!ogrData) { alert("Öğrenci kaydı bulunamadı!"); window.location.href = "giris.html"; return; }
             globalOgrenci = ogrData;
 
-            // Öğrenci verisi geldikten hemen sonra sağ üstteki kullanıcı adını güncelleyelim
             await aktifKullaniciAdiGoster(oturum);
 
             let mihmandarAdi = "-";
@@ -315,6 +345,14 @@
                 document.getElementById('seyir-defteri-panel').parentElement.classList.replace('lg:grid-cols-2', 'lg:grid-cols-1');
             }
 
+            // Soru Kumbarası Yetkisi: Öğrencinin kendisi veya Admin soru ekleyebilir
+            if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
+                document.getElementById('soru-ekleme-alani').classList.remove('hidden');
+                document.getElementById('soru-giris-formu-tetik').innerHTML = `<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1.5 rounded-lg">✍️ Soru Girişi Açık</span>`;
+            } else {
+                document.getElementById('soru-giris-formu-tetik').innerHTML = `<span class="bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-lg">👁️ Gözlem Modu (Salt Okunur)</span>`;
+            }
+
             let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: true });
             globalDenemeler = denemeler || [];
             let { data: sonuclar } = await _supabase.from('deneme_sonuclari').select('*').eq('ogrenci_id', ogrenciId);
@@ -335,6 +373,102 @@
             rozetleriHesapla();
             await gorevleriGetir();
             if(yetkiliOgretmen) await notlariGetir();
+            await soruKumbarasiniGetir();
+        }
+
+        // ==========================================
+        // SORU ÇÖZÜM KUMBARASI FONKSİYONLARI
+        // ==========================================
+        async function soruKumbarasiniGetir() {
+            let tbody = document.getElementById('soru-kumbarasi-govde');
+            try {
+                let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
+                if (error || !data) throw error;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 text-xs">Henüz soru kumbarasına kayıt eklenmemiş. İlk sorularınızı ekleyin!</td></tr>`;
+                    return;
+                }
+
+                let html = '';
+                let toplamGenel = 0;
+
+                data.forEach(s => {
+                    let trTarih = s.tarih ? s.tarih.split('-').reverse().join('.') : '-';
+                    toplamGenel += (s.toplam_soru || 0);
+                    let silBtn = (oturum.rol === 'ogrenci' || oturum.rol === 'admin') ? 
+                        `<button onclick="soruSil(${s.id})" class="text-red-500 hover:text-red-700 font-semibold text-xs px-2 py-1">Sil</button>` : '-';
+
+                    html += `
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="p-2.5 font-medium text-slate-700">${trTarih}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.turkce || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.matematik || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.fen || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.inkilap || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.din || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.ingilizce || 0}</td>
+                            <td class="p-2.5 text-center font-bold text-indigo-700 bg-indigo-50/50">${s.toplam_soru || 0}</td>
+                            <td class="p-2.5 text-center">${silBtn}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-rose-500 text-xs">Soru kumbarası tablosu yüklenemedi.</td></tr>`;
+            }
+        }
+
+        async function soruKaydet() {
+            let turkce = parseInt(document.getElementById('soru-turkce').value) || 0;
+            let matematik = parseInt(document.getElementById('soru-matematik').value) || 0;
+            let fen = parseInt(document.getElementById('soru-fen').value) || 0;
+            let inkilap = parseInt(document.getElementById('soru-inkilap').value) || 0;
+            let din = parseInt(document.getElementById('soru-din').value) || 0;
+            let ingilizce = parseInt(document.getElementById('soru-ingilizce').value) || 0;
+            let tarih = document.getElementById('soru-tarih').value;
+
+            let toplamSoru = turkce + matematik + fen + inkilap + din + ingilizce;
+            if (toplamSoru <= 0) {
+                alert("Lütfen en az bir derse ait soru sayısı giriniz.");
+                return;
+            }
+            if (!tarih) {
+                alert("Lütfen bir tarih seçiniz.");
+                return;
+            }
+
+            let { error } = await _supabase.from('cadep_soru_kumbarasi').insert([{
+                ogrenci_id: ogrenciId,
+                turkce: turkce,
+                matematik: matematik,
+                fen: fen,
+                inkilap: inkilap,
+                din: din,
+                ingilizce: ingilizce,
+                toplam_soru: toplamSoru,
+                tarih: tarih
+            }]);
+
+            if (error) {
+                alert("Kayıt sırasında hata oluştu: " + error.message);
+            } else {
+                // Formu sıfırla
+                document.getElementById('soru-turkce').value = 0;
+                document.getElementById('soru-matematik').value = 0;
+                document.getElementById('soru-fen').value = 0;
+                document.getElementById('soru-inkilap').value = 0;
+                document.getElementById('soru-din').value = 0;
+                document.getElementById('soru-ingilizce').value = 0;
+                await soruKumbarasiniGetir();
+            }
+        }
+
+        async function soruSil(id) {
+            if(confirm("Bu soru kaydını silmek istediğinize emin misiniz?")) {
+                let { error } = await _supabase.from('cadep_soru_kumbarasi').delete().eq('id', id);
+                if (!error) await soruKumbarasiniGetir();
+            }
         }
 
         // ==========================================
