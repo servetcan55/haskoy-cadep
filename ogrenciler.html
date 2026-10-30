@@ -65,17 +65,31 @@
     </header>
 
     <!-- Ana İçerik -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        
+        <!-- ÜST KONTROL VE BAŞLIK PANELI -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-slate-700">CADEP Öğrenci Listesi</h2>
                 <p class="text-sm text-slate-500">8. sınıf LGS öğrenci kayıtları ve mihmandar öğretmen takibi. (Karne için öğrenci adına tıklayın)</p>
             </div>
-            <!-- Rapor ve Yönetim Butonları -->
-            <div id="yonetim-butonlari-container" class="flex flex-wrap gap-2">
-                <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📄 PDF Raporu</button>
-                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer">📊 Excel Raporu</button>
-                <button id="btn-yeni-ogrenci" onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium cursor-pointer hidden">+ Yeni Öğrenci Ekle</button>
+            
+            <!-- Sıralama Seçeneği ve Rapor Butonları -->
+            <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end">
+                <div class="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 shadow-sm">
+                    <label for="ogrenci-siralama-sec" class="font-semibold text-xs text-slate-600 whitespace-nowrap">Sıralama:</label>
+                    <select id="ogrenci-siralama-sec" onchange="ogrenciSiralamaDegisti()" class="border border-slate-300 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white cursor-pointer font-medium text-slate-700">
+                        <option value="sinif_no">Sınıf & Okul No (Varsayılan)</option>
+                        <option value="ad_soyad">Öğrenci Adı (A-Z)</option>
+                        <option value="hedef_lisesi">Hedef Lisesi (+ No)</option>
+                        <option value="dyk_dershane">DYK / Dershane (+ No)</option>
+                        <option value="okul_no">Okul Numarası (Artan)</option>
+                    </select>
+                </div>
+
+                <button onclick="pdfRaporAl()" class="bg-red-600 hover:bg-red-700 text-white px-3.5 py-2 rounded-xl shadow-sm text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition">📄 PDF Raporu</button>
+                <button onclick="excelRaporAl()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl shadow-sm text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition">📊 Excel Raporu</button>
+                <button id="btn-yeni-ogrenci" onclick="formuAc()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl shadow-sm text-xs font-semibold cursor-pointer hidden transition">+ Yeni Öğrenci Ekle</button>
             </div>
         </div>
 
@@ -166,8 +180,13 @@
 
             await aktifKullaniciAdiGoster(oturum);
 
+            let kaydedilenSiralama = localStorage.getItem('cadep_ogrenci_siralama');
+            if(kaydedilenSiralama) {
+                document.getElementById('ogrenci-siralama-sec').value = kaydedilenSiralama;
+            }
+
             await mihmandarlariGetir();
-            ogrencileriYukle();
+            await ogrencileriYukle();
         };
 
         async function aktifKullaniciAdiGoster(oturum) {
@@ -237,25 +256,66 @@
         }
 
         async function ogrencileriYukle() {
-            const { data, error } = await _supabase
-                .from('cadep_ogrenciler')
-                .select('*')
-                .order('sinif', { ascending: true })
-                .order('ogrenci_no', { ascending: true });
+            const { data, error } = await _supabase.from('cadep_ogrenciler').select('*');
+            if(data) {
+                ogrenciCache = data;
+                tabloyuGuncelle();
+            } else {
+                ogrenciCache = [];
+                tabloyuGuncelle();
+            }
+        }
 
+        function ogrenciSiralamaDegisti() {
+            let tercih = document.getElementById('ogrenci-siralama-sec').value;
+            localStorage.setItem('cadep_ogrenci_siralama', tercih);
+            tabloyuGuncelle();
+        }
+
+        function tabloyuGuncelle() {
             let tbody = document.getElementById('ogrenci-tablo-govde');
-            
             let colSpanSayisi = isAdmin ? 9 : 8;
 
-            if(!data || data.length === 0) {
+            if(!ogrenciCache || ogrenciCache.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${colSpanSayisi}" class="p-4 text-center text-slate-400">Henüz öğrenci eklenmemiş.</td></tr>`;
-                ogrenciCache = [];
                 return;
             }
 
-            ogrenciCache = data;
+            let kriter = document.getElementById('ogrenci-siralama-sec').value;
+            let siralanmisListe = [...ogrenciCache];
+
+            siralanmisListe.sort((a, b) => {
+                let noA = parseInt(a.ogrenci_no || a.okul_no) || 0;
+                let noB = parseInt(b.ogrenci_no || b.okul_no) || 0;
+
+                if (kriter === 'ad_soyad') {
+                    return (a.ad_soyad || '').localeCompare(b.ad_soyad || '', 'tr');
+                } else if (kriter === 'hedef_lisesi') {
+                    let hedefA = a.hedef_lisesi || 'ZZZ';
+                    let hedefB = b.hedef_lisesi || 'ZZZ';
+                    let cmp = hedefA.localeCompare(hedefB, 'tr');
+                    // İkincil kriter: Aynı hedef lise ise okul numarasına göre artan sırala
+                    if (cmp !== 0) return cmp;
+                    return noA - noB;
+                } else if (kriter === 'dyk_dershane') {
+                    let dykA = a.dyk_dershane || 'ZZZ';
+                    let dykB = b.dyk_dershane || 'ZZZ';
+                    let cmp = dykA.localeCompare(dykB, 'tr');
+                    // İkincil kriter: Aynı DYK/Dershane durumu ise okul numarasına göre artan sırala
+                    if (cmp !== 0) return cmp;
+                    return noA - noB;
+                } else if (kriter === 'okul_no') {
+                    return noA - noB;
+                } else {
+                    // Varsayılan: Sınıf & Okul No
+                    let sinifCmp = (a.sinif || '').localeCompare(b.sinif || '', 'tr');
+                    if(sinifCmp !== 0) return sinifCmp;
+                    return noA - noB;
+                }
+            });
+
             let html = '';
-            data.forEach((ogrenci, index) => {
+            siralanmisListe.forEach((ogrenci, index) => {
                 let mihmandar = mihmandarListesiCache.find(m => m.id === ogrenci.mihmandar_ogretmen_id);
                 let mihmandarAd = mihmandar ? mihmandar.ad_soyad : '-';
                 
@@ -263,13 +323,13 @@
 
                 html += `<tr>
                     <td class="p-3 text-center font-bold text-slate-500">${index + 1}</td>
-                    <td class="p-3 font-semibold text-slate-600">${ogrenci.ogrenci_no || '-'}</td>
+                    <td class="p-3 font-semibold text-slate-600">${ogrenci.ogrenci_no || ogrenci.okul_no || '-'}</td>
                     <td class="p-3 font-medium">
                         <a href="ogrenci_detay.html?id=${ogrenci.id}" class="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
                             ${ogrenci.ad_soyad} <span class="text-xs text-slate-400">↗ (Karne)</span>
                         </a>
                     </td>
-                    <td class="p-3">${ogrenci.sinif}</td>
+                    <td class="p-3">${ogrenci.sinif || '-'}</td>
                     <td class="p-3 text-indigo-700 font-medium">${mihmandarAd}</td>
                     <td class="p-3">
                         <span class="block">${ogrenci.veli_adi_soyad || '-'}</span>
@@ -280,7 +340,7 @@
 
                 if (isAdmin) {
                     html += `<td class="p-3 text-right">
-                        <button onclick="formuAc('${ogrenci.id}', '${ogrenci.ogrenci_no || ''}', '${ogrenci.ad_soyad || ''}', '${ogrenci.sinif || '8/'}', '${ogrenci.mihmandar_ogretmen_id || ''}', '${ogrenci.veli_adi_soyad || ''}', '${ogrenci.veli_telefonu || ''}', '${ogrenci.hedef_lisesi || ''}', '${ogrenci.dyk_dershane || ''}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium mr-2 cursor-pointer">Düzenle</button>
+                        <button onclick="formuAc('${ogrenci.id}', '${ogrenci.ogrenci_no || ogrenci.okul_no || ''}', '${ogrenci.ad_soyad || ''}', '${ogrenci.sinif || '8/'}', '${ogrenci.mihmandar_ogretmen_id || ''}', '${ogrenci.veli_adi_soyad || ''}', '${ogrenci.veli_telefonu || ''}', '${ogrenci.hedef_lisesi || ''}', '${ogrenci.dyk_dershane || ''}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium mr-2 cursor-pointer">Düzenle</button>
                         <button onclick="ogrenciSil('${ogrenci.id}')" class="text-red-600 hover:text-red-800 text-xs font-medium cursor-pointer">Sil</button>
                     </td>`;
                 }
@@ -372,7 +432,7 @@
                 let mihmandar = mihmandarListesiCache.find(m => m.id === ogrenci.mihmandar_ogretmen_id);
                 return {
                     "Sıra": index + 1,
-                    "Okul No": ogrenci.ogrenci_no || "",
+                    "Okul No": ogrenci.ogrenci_no || ogrenci.okul_no || "",
                     "Ad Soyad": ogrenci.ad_soyad,
                     "Sınıf": ogrenci.sinif,
                     "Mihmandar Öğretmen": mihmandar ? mihmandar.ad_soyad : "",
@@ -434,7 +494,7 @@
                 let mihmandar = mihmandarListesiCache.find(m => m.id === ogrenci.mihmandar_ogretmen_id);
                 return [
                     index + 1,
-                    ogrenci.ogrenci_no || "-",
+                    ogrenci.ogrenci_no || ogrenci.okul_no || "-",
                     trKarakter(ogrenci.ad_soyad),
                     ogrenci.sinif,
                     trKarakter(mihmandar ? mihmandar.ad_soyad : "-"),
