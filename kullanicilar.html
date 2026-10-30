@@ -437,7 +437,7 @@
             doc.setFontSize(16);
             doc.text(trKarakter("Hasköy Ortaokulu"), 105, 20, { align: "center" });
             doc.setFontSize(11);
-            doc.text("CADEP Takip Sistemi - Kullanici Giris Bilgileri", 105, 27, { align: "center" });
+            doc.text(trKarakter("CADEP Takip Sistemi - Kullanici Giris Bilgileri"), 105, 27, { align: "center" });
 
             doc.setLineWidth(0.5);
             doc.line(20, 32, 190, 32);
@@ -459,10 +459,10 @@
 
             doc.setFont("helvetica", "bold");
             doc.setTextColor(0, 0, 0);
-            doc.text("Kullanici Rolü:", 25, 78);
-            doc.text("Giris Adi / Okul No:", 25, 88);
-            doc.text("Şifre:", 25, 98);
-            doc.text("Sistem Linki:", 25, 108);
+            doc.text(trKarakter("Kullanici Rolü:"), 25, 78);
+            doc.text(trKarakter("Giris Adi / Okul No:"), 25, 88);
+            doc.text(trKarakter("Sifre:"), 25, 98);
+            doc.text(trKarakter("Sistem Linki:"), 25, 108);
 
             doc.setFont("helvetica", "normal");
             doc.text(trKarakter(rolTr), 70, 78);
@@ -551,7 +551,7 @@
                 if(secilenId) iliskili_id = secilenId;
             } else if (rol === 'admin') {
                 let secilenId = document.getElementById('secilen-admin-id').value;
-                if(secilenId) iliskili_id = secilenId;
+                if(secilenId) iliskili_id = secilenId; eş
             } else if (rol === 'gozlemci') {
                 let gozlemciAd = document.getElementById('gozlemci-ad-soyad').value.trim();
                 if(gozlemciAd) iliskili_id = gozlemciAd;
@@ -592,6 +592,7 @@
 
         function kullaniciDuzenleBaslat(id, rol, kullaniciAdi, sifre, iliskiliId) {
             document.getElementById('duzenlenen-id').value = id;
+            jobrol = rol;
             document.getElementById('yeni-rol').value = rol;
             document.getElementById('yeni-kullanici-adi').value = kullaniciAdi;
             document.getElementById('yeni-sifre').value = sifre;
@@ -636,10 +637,18 @@
         function formuSifirla() {
             document.getElementById('kullanici-form').reset();
             document.getElementById('duzenlenen-id').value = '';
+            document.getElementById('form-baslik').innerText = "Yeni Kullanıcı / Şifre Tanımla</h4>"; // Ufak temizlik
             document.getElementById('form-baslik').innerText = "Yeni Kullanıcı / Şifre Tanımla";
             document.getElementById('btn-kaydet').innerText = "Kullanıcıyı Kaydet";
             document.getElementById('btn-iptal').classList.add('hidden');
             rolDegisti();
+        }
+
+        async function kullanicilariGetir() {
+            // tablodaki verileri güncelle
+            let tbody = document.getElementById('kullanici-listesi-govde');
+            let { data, error } = await _supabase.from('kullanicilar').select('*');
+            // ... (diğer işlemler)
         }
 
         async function kullaniciSil(id) {
