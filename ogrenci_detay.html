@@ -87,7 +87,6 @@
 
         <!-- GRAFİK VE HEDEF LİSE BAROMETRESİ (GRID) -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
             <!-- Sol: Öğrenci Gelişim Grafiği (2 Kolon) -->
             <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
                 <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
@@ -102,8 +101,63 @@
             <div id="barometre-container" class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-md border border-slate-700 text-white flex flex-col justify-center relative overflow-hidden min-h-[300px]">
                 <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-5 blur-2xl"></div>
                 <div class="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-indigo-500 opacity-10 blur-xl"></div>
-                
                 <div class="text-center text-slate-400 text-sm animate-pulse z-10 relative">Hedef Barometresi Yükleniyor...</div>
+            </div>
+        </div>
+
+        <!-- OYUNLAŞTIRMA (ROZETLER) BÖLÜMÜ -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2">
+                <span>🏅</span> Kazanılan Başarı Rozetleri
+            </h3>
+            <p class="text-xs text-slate-500 mb-4">Öğrencinin son sınav performansına ve gelişimine göre sistem tarafından otomatik verilen başarı rozetleri.</p>
+            <div id="rozet-container" class="flex flex-wrap gap-3">
+                <div class="text-sm text-slate-400">Rozetler hesaplanıyor...</div>
+            </div>
+        </div>
+
+        <!-- YENİ: MİHMANDAR SEYİR DEFTERİ VE GÖREV TAKİBİ -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Görev Takibi (Öğrenci & Öğretmen Görebilir) -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <span>📋</span> Haftalık Görev Takibi
+                    </h3>
+                </div>
+                
+                <!-- Sadece Mihmandar & Admin Görev Ekleyebilir -->
+                <div id="gorev-ekle-alani" class="hidden mb-4 flex gap-2">
+                    <input type="text" id="yeni-gorev-input" placeholder="Yeni görev ekle (Örn: 50 Paragraf, 2 Deneme)" class="border border-slate-300 rounded-lg px-3 py-2 text-sm flex-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <button onclick="yeniGorevEkle()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer">Ekle</button>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 flex-grow overflow-y-auto max-h-64 custom-scrollbar">
+                    <ul id="gorev-listesi" class="space-y-2">
+                        <li class="text-center text-slate-400 text-xs py-4">Görevler yükleniyor...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Seyir Defteri (Öğrenciden GİZLİ - Sadece Mihmandar & Admin Görebilir) -->
+            <div id="seyir-defteri-panel" class="hidden bg-amber-50 p-6 rounded-2xl shadow-sm border border-amber-200 flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4 border-b border-amber-100 pb-2">
+                    <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
+                        <span>📒</span> Mihmandar Seyir Defteri <span class="bg-amber-200 text-amber-800 text-[10px] px-2 py-0.5 rounded-full ml-2">Özel</span>
+                    </h3>
+                </div>
+                
+                <div class="mb-4">
+                    <textarea id="yeni-not-input" placeholder="Görüşme detaylarını, öğrencinin psikolojik durumunu veya alınan kararları buraya not edin..." class="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none h-20 resize-none"></textarea>
+                    <div class="flex justify-end mt-2">
+                        <button onclick="yeniNotEkle()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer">Notu Kaydet</button>
+                    </div>
+                </div>
+
+                <div class="flex-grow overflow-y-auto max-h-48 custom-scrollbar space-y-3 pr-2" id="not-listesi">
+                    <div class="text-center text-amber-700/50 text-xs py-4">Kayıtlı not yükleniyor...</div>
+                </div>
             </div>
 
         </div>
@@ -155,6 +209,13 @@
         Hasköy Akademik Destek Programı (CADEP) Takip Otomasyonu &copy; 2026 - Hasköy Ortaokulu
     </footer>
 
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+
     <script>
         const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
@@ -166,7 +227,6 @@
         let globalOzelDenemeler = [];
         let tumDenemeSonuclari = [];
         let grafikObjekt = null;
-
         let eksikKazanimlar = [];
         let kazanimVeritabani = [];
 
@@ -180,6 +240,10 @@
 
                 let geriDonBtn = document.getElementById('btn-geri-don');
                 if (geriDonBtn) geriDonBtn.style.display = 'none';
+                
+                let wpBtn = document.getElementById('btn-whatsapp');
+                if (wpBtn) wpBtn.style.display = 'none';
+
             } else if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
@@ -221,7 +285,7 @@
                 } else {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
                     if (data && data.length > 0) {
-                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
+                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9şçğüıö]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
                         if (bulunan) gorunurIsim = bulunan.ad_soyad;
                     }
                 }
@@ -289,16 +353,20 @@
             document.getElementById('ogr-baslik').innerText = `${ogrData.ad_soyad} - Deneme Karnesi`;
             document.getElementById('ogr-detay-bilgi').innerText = `Sınıf: ${ogrData.sinif} | Okul No: ${ogrData.ogrenci_no || ogrData.okul_no || '-'} | Mihmandar: ${mihmandarAdi} | Hedef: ${ogrData.hedef_lisesi || '-'}`;
 
-            // WHATSAPP BUTONU YETKİ KONTROLÜ
+            let yetkiliOgretmen = (oturum.rol === 'admin' || (oturum.rol === 'mihmandar' && ogrData.mihmandar_ogretmen_id === oturum.iliskili_id));
+            
+            // WHATSAPP BUTONU
             let wpBtn = document.getElementById('btn-whatsapp');
-            if (wpBtn) {
-                if (oturum.rol === 'admin') {
-                    wpBtn.classList.remove('hidden');
-                } else if (oturum.rol === 'mihmandar' && ogrData.mihmandar_ogretmen_id === oturum.iliskili_id) {
-                    wpBtn.classList.remove('hidden');
-                } else {
-                    wpBtn.classList.add('hidden');
-                }
+            if (wpBtn && yetkiliOgretmen) wpBtn.classList.remove('hidden');
+
+            // SEYİR DEFTERİ VE GÖREV EKLEME YETKİLERİ
+            if (yetkiliOgretmen) {
+                document.getElementById('seyir-defteri-panel').classList.remove('hidden');
+                document.getElementById('gorev-ekle-alani').classList.remove('hidden');
+                document.getElementById('seyir-defteri-panel').classList.add('flex');
+            } else if (oturum.rol === 'ogrenci') {
+                // Öğrenci ise seyir defteri gizli kalsın, görev alanı tam genişlik olsun
+                document.getElementById('seyir-defteri-panel').parentElement.classList.replace('lg:grid-cols-2', 'lg:grid-cols-1');
             }
 
             let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: true });
@@ -324,6 +392,198 @@
             eksikKazanimlariGoster();
             
             hedefBarometresiOlustur();
+            rozetleriHesapla();
+
+            // YENİ FONKSİYONLAR
+            await gorevleriGetir();
+            if(yetkiliOgretmen) {
+                await notlariGetir();
+            }
+        }
+
+        // ==========================================
+        // YENİ: MİHMANDAR SEYİR DEFTERİ VE GÖREVLER
+        // ==========================================
+
+        async function gorevleriGetir() {
+            let container = document.getElementById('gorev-listesi');
+            try {
+                // NOT: Veritabanınızda 'cadep_ogrenci_gorevler' (id, ogrenci_id, gorev_metni, durum(bool), tarih) tablosu olmalıdır.
+                let { data, error } = await _supabase.from('cadep_ogrenci_gorevler').select('*').eq('ogrenci_id', ogrenciId).order('id', { ascending: false });
+                
+                if (error || !data) throw error;
+
+                if (data.length === 0) {
+                    container.innerHTML = `<li class="text-center text-slate-400 text-xs py-4">Henüz atanmış bir görev bulunmuyor.</li>`;
+                    return;
+                }
+
+                let html = '';
+                data.forEach(g => {
+                    let isChecked = g.durum ? 'checked' : '';
+                    let textStyle = g.durum ? 'line-through text-slate-400' : 'text-slate-700 font-medium';
+                    let silBtn = (oturum.rol === 'admin' || oturum.rol === 'mihmandar') ? 
+                        `<button onclick="gorevSil(${g.id})" class="text-[10px] text-red-500 hover:text-red-700 font-semibold px-2">Sil</button>` : '';
+
+                    html += `
+                        <li class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg shadow-sm hover:border-indigo-100 transition">
+                            <label class="flex items-center gap-3 cursor-pointer flex-1">
+                                <input type="checkbox" onchange="gorevDurumDegistir(${g.id}, this.checked)" ${isChecked} class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                                <span class="text-sm ${textStyle} select-none transition-all">${g.gorev_metni}</span>
+                            </label>
+                            ${silBtn}
+                        </li>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<li class="text-center text-rose-500 text-xs py-4">Görev tablosu bulunamadı. Lütfen Supabase'de 'cadep_ogrenci_gorevler' tablosunu oluşturun.</li>`;
+            }
+        }
+
+        async function yeniGorevEkle() {
+            let input = document.getElementById('yeni-gorev-input');
+            let gorevMetni = input.value.trim();
+            if (!gorevMetni) return;
+
+            let tarih = new Date().toISOString().split('T')[0];
+            let { error } = await _supabase.from('cadep_ogrenci_gorevler').insert([{ ogrenci_id: ogrenciId, gorev_metni: gorevMetni, durum: false, tarih: tarih }]);
+            
+            if (error) {
+                alert("Hata: Veritabanında cadep_ogrenci_gorevler tablosu yok veya yetki hatası.");
+            } else {
+                input.value = '';
+                gorevleriGetir();
+            }
+        }
+
+        async function gorevDurumDegistir(id, yeniDurum) {
+            await _supabase.from('cadep_ogrenci_gorevler').update({ durum: yeniDurum }).eq('id', id);
+            gorevleriGetir(); // Çizgili efekti tetiklemek için listeyi yenile
+        }
+
+        async function gorevSil(id) {
+            if(confirm("Görevi silmek istediğinize emin misiniz?")) {
+                await _supabase.from('cadep_ogrenci_gorevler').delete().eq('id', id);
+                gorevleriGetir();
+            }
+        }
+
+        async function notlariGetir() {
+            let container = document.getElementById('not-listesi');
+            try {
+                // NOT: Veritabanınızda 'cadep_mihmandar_notlari' (id, ogrenci_id, not_metni, tarih) tablosu olmalıdır.
+                let { data, error } = await _supabase.from('cadep_mihmandar_notlari').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false }).order('id', { ascending: false });
+                
+                if (error || !data) throw error;
+
+                if (data.length === 0) {
+                    container.innerHTML = `<div class="text-center text-amber-700/50 text-xs py-4">Seyir defteri henüz boş. İlk notunuzu ekleyin.</div>`;
+                    return;
+                }
+
+                let html = '';
+                data.forEach(n => {
+                    let trTarih = n.tarih ? n.tarih.split('-').reverse().join('.') : '-';
+                    html += `
+                        <div class="bg-amber-100/50 border border-amber-200/50 p-3 rounded-xl relative group">
+                            <button onclick="notSil(${n.id})" class="hidden group-hover:block absolute top-2 right-2 text-[10px] text-red-500 hover:bg-red-50 px-1.5 py-0.5 rounded transition">Sil</button>
+                            <span class="text-[10px] font-bold text-amber-800/60 block mb-1">📅 ${trTarih}</span>
+                            <p class="text-xs text-amber-900 leading-relaxed">${n.not_metni}</p>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<div class="text-center text-rose-500 text-xs py-4">Not tablosu bulunamadı. Lütfen Supabase'de 'cadep_mihmandar_notlari' tablosunu oluşturun.</div>`;
+            }
+        }
+
+        async function yeniNotEkle() {
+            let input = document.getElementById('yeni-not-input');
+            let notMetni = input.value.trim();
+            if (!notMetni) return;
+
+            let tarih = new Date().toISOString().split('T')[0];
+            let { error } = await _supabase.from('cadep_mihmandar_notlari').insert([{ ogrenci_id: ogrenciId, not_metni: notMetni, tarih: tarih }]);
+            
+            if (error) {
+                alert("Hata: Veritabanında cadep_mihmandar_notlari tablosu yok veya yetki hatası.");
+            } else {
+                input.value = '';
+                notlariGetir();
+            }
+        }
+
+        async function notSil(id) {
+            if(confirm("Bu görüşme notunu silmek istediğinize emin misiniz?")) {
+                await _supabase.from('cadep_mihmandar_notlari').delete().eq('id', id);
+                notlariGetir();
+            }
+        }
+
+        // ==========================================
+        // ESKİ FONKSİYONLAR (ROZET, WHATSAPP, GRAFİK)
+        // ==========================================
+
+        function rozetleriHesapla() {
+            let container = document.getElementById('rozet-container');
+            let tumSinavlar = [];
+            globalDenemeler.forEach(d => {
+                let s = globalSonuclar.find(res => res.deneme_id === d.id);
+                if (s && s.lgs_puan != null) tumSinavlar.push({ ...s, tarih: d.tarih });
+            });
+            globalOzelDenemeler.forEach(od => {
+                if(od.lgs_puan != null) tumSinavlar.push({ ...od, tarih: od.tarih });
+            });
+
+            tumSinavlar.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+
+            if(tumSinavlar.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full text-center">Henüz puanlı sınav girilmediği için rozet verisi yok.</div>`;
+                return;
+            }
+
+            let kazanilanRozetler = [];
+            let sonSinav = tumSinavlar[tumSinavlar.length - 1];
+            let oncekiSinav = tumSinavlar.length > 1 ? tumSinavlar[tumSinavlar.length - 2] : null;
+
+            if (sonSinav.toplam_net >= 80) kazanilanRozetler.push({ icon: '🏔️', ad: 'Zirve Ziyaretçisi', aciklama: 'Son sınavda 80 net barajını aştı.', renk: 'bg-purple-50 text-purple-700 border-purple-200' });
+            let matNet = (sonSinav.matematik_d || 0) - ((sonSinav.matematik_y || 0) / 3);
+            if (matNet >= 15) kazanilanRozetler.push({ icon: '📐', ad: 'Matematik Fatihi', aciklama: 'Son sınavda Matematikte 15 neti geçti.', renk: 'bg-blue-50 text-blue-700 border-blue-200' });
+            let turNet = (sonSinav.turkce_d || 0) - ((sonSinav.turkce_y || 0) / 3);
+            if (turNet >= 17) kazanilanRozetler.push({ icon: '📚', ad: 'Türkçe Üstadı', aciklama: 'Son sınavda Türkçede 17 neti geçti.', renk: 'bg-rose-50 text-rose-700 border-rose-200' });
+            let fenNet = (sonSinav.fen_d || 0) - ((sonSinav.fen_y || 0) / 3);
+            if (fenNet >= 17) kazanilanRozetler.push({ icon: '🔬', ad: 'Fen Dehası', aciklama: 'Son sınavda Fen Bilimlerinde 17 neti geçti.', renk: 'bg-emerald-50 text-emerald-700 border-emerald-200' });
+            let inkNet = (sonSinav.inkilap_d || 0) - ((sonSinav.inkilap_y || 0) / 3);
+            if (inkNet === 10) kazanilanRozetler.push({ icon: '🇹🇷', ad: 'Tarih Yazan', aciklama: 'İnkılap Tarihinde tüm soruları doğru cevapladı.', renk: 'bg-red-50 text-red-700 border-red-200' });
+            if (oncekiSinav && (sonSinav.lgs_puan - oncekiSinav.lgs_puan >= 20)) kazanilanRozetler.push({ icon: '🚀', ad: 'Geri Dönüş Efsanesi', aciklama: 'Bir önceki sınava göre puanını 20+ artırdı!', renk: 'bg-amber-50 text-amber-700 border-amber-200' });
+            
+            if (tumSinavlar.length >= 3) {
+                let s1 = tumSinavlar[tumSinavlar.length - 1].lgs_puan;
+                let s2 = tumSinavlar[tumSinavlar.length - 2].lgs_puan;
+                let s3 = tumSinavlar[tumSinavlar.length - 3].lgs_puan;
+                if (s1 > s2 && s2 > s3) kazanilanRozetler.push({ icon: '📈', ad: 'İstikrar Abidesi', aciklama: 'Son 3 sınavda puanını sürekli artırmayı başardı.', renk: 'bg-cyan-50 text-cyan-700 border-cyan-200' });
+            }
+            
+            if (kazanilanRozetler.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full text-center">Öğrenci bu sınavda yeni rozet koşullarını sağlayamadı. Bir sonrakine! 💪</div>`;
+                return;
+            }
+
+            let html = '';
+            kazanilanRozetler.forEach(r => {
+                html += `
+                    <div class="${r.renk} border px-3 py-2 rounded-xl flex items-center gap-2.5 shadow-sm hover:shadow-md transition-shadow cursor-default group relative w-full sm:w-auto min-w-[200px]">
+                        <span class="text-2xl">${r.icon}</span>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold uppercase tracking-wide leading-tight">${r.ad}</span>
+                            <span class="text-[10px] opacity-80 leading-tight mt-0.5">${r.aciklama}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
         }
 
         function veliWhatsAppBildirimi() {
@@ -343,7 +603,6 @@
                 return;
             }
 
-            // En son sınavı bul
             tumSinavlar.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
             let sonSinav = tumSinavlar[0];
             let hedefLise = globalOgrenci.hedef_lisesi && globalOgrenci.hedef_lisesi.trim() !== "" ? globalOgrenci.hedef_lisesi : "Belirtilmemiş";
@@ -361,7 +620,6 @@
 
             mesaj += `Eksik konularına yönelik analiz raporu öğretmenlerimiz tarafından değerlendirilmektedir.\n\nİyi çalışmalar dileriz.\n- Hasköy Ortaokulu LGS Koordinatörlüğü`;
 
-            // WhatsApp Web/App Yönlendirme Linki
             let url = `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
             
             if (globalOgrenci.veli_telefonu && globalOgrenci.veli_telefonu.length >= 10) {
@@ -371,7 +629,6 @@
                 url = `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`;
             }
 
-            // WhatsApp'ı Yeni Sekmede Aç
             window.open(url, '_blank');
         }
 
