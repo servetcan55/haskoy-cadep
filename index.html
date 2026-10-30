@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hasköy CADEP Takip Sistemi - Ana Sayfa</title>
     <script>
-    // Oturum Kontrolü: Giriş yapılmamışsa doğrudan giriş sayfasına yönlendirir
     let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
     if (!oturum) {
         window.location.href = 'giris.html';
@@ -53,7 +52,7 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
                 <h2 class="text-2xl font-bold text-slate-700">Genel Durum Paneli</h2>
-                <p class="text-sm text-slate-500">Sisteme ait genel özet istatistikler ve son sınav analizleri.</p>
+                <p class="text-sm text-slate-500">Sisteme ait genel özet istatistikler ve soru rekabet tablosu.</p>
             </div>
         </div>
 
@@ -97,12 +96,41 @@
             </div>
         </div>
 
+        <!-- YENİ WIDGET: BU HAFTA EN ÇOK SORU ÇÖZENLER TOP 5 -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
+                    <span class="bg-amber-100 text-amber-600 p-1.5 rounded-lg text-sm">🔥</span> 
+                    Bu Hafta En Çok Soru Çözenler (Top 5)
+                </h3>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-slate-500 font-medium">Şube Filtrele:</label>
+                    <select id="top5-sinif-filtre" onchange="top5LiderlikTablosunuYukle()" class="border border-slate-300 rounded-lg px-3 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-slate-700">
+                        <option value="TUM">Tüm Okul (Genel)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs sm:text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 uppercase tracking-wider border-b border-slate-100 text-[11px]">
+                            <th class="p-2.5 w-16 text-center">Sıra</th>
+                            <th class="p-2.5">Öğrenci Adı</th>
+                            <th class="p-2.5 text-center">Şube</th>
+                            <th class="p-2.5 text-center text-indigo-700 font-bold">Bu Hafta Çözülen Soru</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top5-soru-govde" class="divide-y divide-slate-100">
+                        <tr><td colspan="4" class="p-4 text-center text-slate-400">Liderlik tablosu yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="flex flex-col lg:flex-row gap-6">
-            
             <div class="flex flex-col w-full lg:w-2/3 gap-6">
                 <!-- SON DENEME SINAVI ÖZET KARTI VE BAŞARILI ÖĞRENCİLER -->
                 <div id="son-deneme-ozet-container" class="grid grid-cols-1 sm:grid-cols-2 gap-6 hidden">
-                    <!-- Sol: Son Deneme Genel Bilgileri -->
                     <div class="bg-gradient-to-br from-indigo-800 to-indigo-900 text-white p-6 rounded-2xl shadow-md flex flex-col justify-between h-full">
                         <div>
                             <span class="bg-indigo-700 text-indigo-200 text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">Son Sınav Analizi</span>
@@ -124,7 +152,6 @@
                         </a>
                     </div>
 
-                    <!-- Sağ: Son Sınavda Dereceye Giren İlk 5 Öğrenci -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
@@ -150,7 +177,7 @@
                     </div>
                 </div>
 
-                <!-- DİNAMİK DUYURU VE BİLGİLENDİRME PANOSU (ESNEME ÖZELLİĞİ EKLENDİ) -->
+                <!-- DİNAMİK DUYURU VE BİLGİLENDİRME PANOSU -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-grow">
                     <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                         <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
@@ -193,28 +220,21 @@
                     </a>
                 </div>
             </div>
-
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <!-- SINIF BAZLI BAŞARI VE DAĞILIM ÖZETİ -->
             <div id="sinif-dagilim-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex-col">
                 <h3 class="text-base font-bold text-slate-700 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
                     <span class="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg text-sm">📊</span> 8. Sınıf Şubeleri Başarı Özeti
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="sinif-kartlari-grid">
-                    <!-- JS ile dinamik doldurulacak -->
-                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="sinif-kartlari-grid"></div>
             </div>
 
-            <!-- HEDEF LİSE DAĞILIM ÖZETİ (KAYDIRMA ÇUBUĞU KALDIRILDI) -->
             <div id="hedef-lise-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex-col">
                 <h3 class="text-base font-bold text-slate-700 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
                     <span class="bg-amber-100 text-amber-600 p-1.5 rounded-lg text-sm">🎯</span> Öğrenci Hedef Lise Dağılımı
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="hedef-lise-grid">
-                    <!-- JS ile dinamik doldurulacak -->
-                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="hedef-lise-grid"></div>
             </div>
         </div>
 
@@ -259,6 +279,8 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let isAdmin = (oturum && oturum.rol === 'admin');
+        let globalOgrenciler = [];
+        let globalSoruKayitlari = [];
 
         window.onload = async function() {
             try {
@@ -282,29 +304,92 @@
             } catch(e) { console.error("Arayüz hatası:", e); }
 
             try { await aktifKullaniciAdiGoster(oturum); } catch(e) { console.error(e); }
-
-            let ogrenciListesi = [];
             
             try {
                 const { data: ogr } = await _supabase.from('cadep_ogrenciler').select('*');
                 const { data: ekp } = await _supabase.from('cadep_ekip').select('*');
                 const { data: mih } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*');
                 const { data: den } = await _supabase.from('denemeler').select('*');
+                const { data: sorular } = await _supabase.from('cadep_soru_kumbarasi').select('*');
 
                 if(ogr) document.getElementById('stat-ogr-sayi').innerText = ogr.length;
                 if(den) document.getElementById('stat-deneme-sayi').innerText = den.length;
                 if(mih) document.getElementById('stat-mihmandar-sayi').innerText = mih.length;
                 if(ekp) document.getElementById('stat-ekip-sayi').innerText = ekp.length;
 
-                ogrenciListesi = ogr || [];
-            } catch(e) { console.error("İstatistik hatası:", e); }
+                globalOgrenciler = ogr || [];
+                globalSoruKayitlari = sorular || [];
 
-            try { await sonDenemeOzetiniYukle(ogrenciListesi); } catch(e) { console.error("Özet hatası:", e); }
-            try { await sonDenemeZayifKazanimlariGetir(); } catch(e) { console.error("Kazanım hatası:", e); }
-            try { await sinifDagilimlariniYukle(ogrenciListesi); } catch(e) { console.error("Sınıf dağılım hatası:", e); }
-            try { await hedefLiseDagiliminiYukle(ogrenciListesi); } catch(e) { console.error("Hedef lise hatası:", e); }
-            try { await duyurulariYukle(); } catch(e) { console.error("Duyuru hatası:", e); }
+                sinifFiltresiniDoldur(globalOgrenciler);
+                top5LiderlikTablosunuYukle();
+
+                await sonDenemeOzetiniYukle(globalOgrenciler);
+                await sonDenemeZayifKazanimlariGetir();
+                await sinifDagilimlariniYukle(globalOgrenciler);
+                await hedefLiseDagiliminiYukle(globalOgrenciler);
+                await duyurulariYukle();
+            } catch(e) { console.error("Veri yükleme hatası:", e); }
         };
+
+        function sinifFiltresiniDoldur(ogrenciler) {
+            let select = document.getElementById('top5-sinif-filtre');
+            if(!select) return;
+            let siniflar = [...new Set(ogrenciler.map(o => o.sinif ? o.sinif.trim() : 'Diğer'))].sort();
+            let html = '<option value="TUM">Tüm Okul (Genel)</option>';
+            siniflar.forEach(s => {
+                html += `<option value="${s}">${s} Şubesi</option>`;
+            });
+            select.innerHTML = html;
+        }
+
+        function top5LiderlikTablosunuYukle() {
+            let tbody = document.getElementById('top5-soru-govde');
+            let secilenSinif = document.getElementById('top5-sinif-filtre').value;
+            if(!tbody) return;
+
+            // Bu haftanın veya son 7 günün sorularını filtreleyelim
+            let simdi = new Date();
+            let birHaftaOnce = new Date();
+            birHaftaOnce.setDate(simdi.getDate() - 7);
+
+            let ogrenciSoruMap = {};
+            globalOgrenciler.forEach(o => {
+                // Şube filtresi kontrolü
+                if(secilenSinif !== 'TUM' && (!o.sinif || o.sinif.trim() !== secilenSinif)) return;
+                ogrenciSoruMap[o.id] = { ad: o.ad_soyad, sinif: o.sinif || '-', toplam: 0 };
+            });
+
+            globalSoruKayitlari.forEach(sq => {
+                if(!sq.tarih) return;
+                let soruTarihi = new Date(sq.tarih);
+                if(soruTarihi >= birHaftaOnce && ogrenciSoruMap[sq.ogrenci_id]) {
+                    ogrenciSoruMap[sq.ogrenci_id].toplam += (sq.toplam_soru || 0);
+                }
+            });
+
+            let liste = Object.values(ogrenciSoruMap).sort((a, b) => b.toplam - a.toplam).slice(0, 5);
+
+            if (liste.length === 0 || liste.every(item => item.toplam === 0)) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 text-xs">Bu hafta henüz soru girişi yapılan öğrenci bulunmuyor.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            liste.forEach((item, idx) => {
+                let madalya = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}.`));
+                let bgClass = idx === 0 ? 'bg-amber-50/60 font-semibold' : '';
+
+                html += `
+                    <tr class="${bgClass} hover:bg-slate-50 transition">
+                        <td class="p-2.5 text-center font-bold text-slate-600">${madalya}</td>
+                        <td class="p-2.5 text-slate-800 font-medium">${item.ad}</td>
+                        <td class="p-2.5 text-center text-slate-500 text-xs">${item.sinif}</td>
+                        <td class="p-2.5 text-center font-black text-indigo-700 text-sm">${item.toplam.toLocaleString('tr-TR')} Soru</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
 
         async function aktifKullaniciAdiGoster(oturum) {
             let isimSpan = document.getElementById('aktif-kullanici-adi');
@@ -315,49 +400,19 @@
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
                     if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else {
-                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
-                    if (data && data.ad_soyad) {
-                        gorunurIsim = data.ad_soyad;
-                    } else {
-                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
-                        if (allEkip && allEkip.length > 0) {
-                            let kAdi = (oturum.kullanici_adi || "").toLowerCase();
-                            let bulunan = allEkip.find(e => 
-                                (e.kullanici_adi && e.kullanici_adi.toLowerCase() === kAdi) || 
-                                (e.ad_soyad && e.ad_soyad.toLowerCase().includes(kAdi))
-                            );
-                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
-                            else gorunurIsim = allEkip[0].ad_soyad;
-                        }
-                    }
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
-            } 
-            else if (oturum.rol === 'gozlemci') {
+            } else if (oturum.rol === 'gozlemci') {
                 isimSpan.innerText = gorunurIsim + " (Gözlemci)";
-            }
-            else if (oturum.rol === 'mihmandar') {
+            } else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
                     if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else {
-                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
-                    if (data && data.length > 0) {
-                        let kAdi = (oturum.kullanici_adi || "").toLowerCase();
-                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9şçğüıö]/g, '').includes(kAdi));
-                        if (bulunan) gorunurIsim = bulunan.ad_soyad;
-                        else gorunurIsim = data[0].ad_soyad;
-                    }
                 }
                 isimSpan.innerText = gorunurIsim + " (Mihmandar)";
-            } 
-            else if (oturum.rol === 'ogrenci') {
+            } else if (oturum.rol === 'ogrenci') {
                 if (oturum.id) {
                     let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else if (oturum.kullanici_adi) {
-                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
                     if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
                 }
                 isimSpan.innerText = gorunurIsim + " (Öğrenci)";
@@ -526,7 +581,6 @@
         async function sinifDagilimlariniYukle(ogrencilerListesi) {
             let containerGrid = document.getElementById('sinif-kartlari-grid');
             let parentContainer = document.getElementById('sinif-dagilim-container');
-
             if (!ogrencilerListesi || ogrencilerListesi.length === 0) return;
 
             let sinifMap = {};
@@ -587,14 +641,12 @@
                     </div>
                 `;
             });
-
-            if(containerGrid) containerGrid.innerHTML = html || `<p class="col-span-2 text-center text-slate-400 text-xs">Şube verisi bulunamadı.</p>`;
+            if(containerGrid) containerGrid.innerHTML = html;
         }
 
         async function hedefLiseDagiliminiYukle(ogrencilerListesi) {
             let containerGrid = document.getElementById('hedef-lise-grid');
             let parentContainer = document.getElementById('hedef-lise-container');
-
             if (!ogrencilerListesi || ogrencilerListesi.length === 0) return;
 
             let hedefMap = {};
@@ -627,8 +679,7 @@
                     </div>
                 `;
             });
-
-            if(containerGrid) containerGrid.innerHTML = html || `<p class="col-span-2 text-center text-slate-400 text-xs">Hedef lise verisi bulunamadı.</p>`;
+            if(containerGrid) containerGrid.innerHTML = html;
         }
 
         async function duyurulariYukle() {
@@ -636,7 +687,6 @@
             if(!container) return;
             
             let { data, error } = await _supabase.from('cadep_duyurular').select('*').order('tarih', { ascending: false });
-
             if (error || !data || data.length === 0) {
                 container.innerHTML = `<p class="text-slate-400 text-xs text-center py-4 bg-slate-50 rounded-lg border border-slate-100">Henüz yayınlanmış duyuru bulunmuyor.</p>`;
                 return;
@@ -670,22 +720,14 @@
             let tarih = new Date().toISOString().split('T')[0];
 
             let { error } = await _supabase.from('cadep_duyurular').insert([{ baslik, icerik, tarih }]);
-            if (error) {
-                alert("Duyuru eklenirken hata oluştu: " + error.message);
-            } else {
-                duyurulariYukle();
-            }
+            if (!error) duyurulariYukle();
         }
 
         async function duyuruSil(id) {
             if (!isAdmin) return;
             if (confirm("Bu duyuruyu silmek istediğinize emin misiniz?")) {
                 let { error } = await _supabase.from('cadep_duyurular').delete().eq('id', id);
-                if (error) {
-                    alert("Silme başarısız: " + error.message);
-                } else {
-                    duyurulariYukle();
-                }
+                if (!error) duyurulariYukle();
             }
         }
 
