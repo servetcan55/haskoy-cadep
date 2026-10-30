@@ -52,6 +52,50 @@
 
     <!-- Ana İçerik -->
     <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+        
+        <!-- LGS CANLI GERİ SAYIM & TARİH SEÇİCİ PANELİ -->
+        <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-4 sm:p-6 shadow-md border border-indigo-700 text-white flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-white/10 rounded-xl text-3xl hidden sm:block">⏳</div>
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-base sm:text-lg font-bold">LGS Büyük Buluşmaya Kalan Zaman</h3>
+                        <!-- Sadece Admin Tarih Değiştirebilsin -->
+                        <div id="lgs-ayar-container" class="hidden items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg border border-white/20">
+                            <span class="text-[10px] text-indigo-200">Sınav Tarihi:</span>
+                            <input type="date" id="lgs-tarih-input" onchange="lgsTarihGuncelle(this.value)" class="bg-transparent text-white text-xs font-bold focus:outline-none cursor-pointer">
+                        </div>
+                        <!-- Mihmandar, Gözlemci ve Öğrenciler İçin Salt Okunur Tarih Gösterimi -->
+                        <div id="lgs-bilgi-container" class="hidden items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg border border-white/20">
+                            <span class="text-[10px] text-indigo-200">Sınav Tarihi:</span>
+                            <span id="lgs-tarih-yazi" class="text-xs font-bold text-white">--.--.----</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-indigo-200 mt-0.5">Her saniye değerlidir, hedefine bir adım daha yaklaş!</p>
+                </div>
+            </div>
+
+            <!-- Sayacın Kutuları -->
+            <div class="grid grid-cols-4 gap-2 sm:gap-4 text-center">
+                <div class="bg-white/10 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="sayac-gun" class="text-xl sm:text-2xl font-black text-white">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-indigo-200 block">Gün</span>
+                </div>
+                <div class="bg-white/10 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="sayac-saat" class="text-xl sm:text-2xl font-black text-white">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-indigo-200 block">Saat</span>
+                </div>
+                <div class="bg-white/10 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="sayac-dakika" class="text-xl sm:text-2xl font-black text-white">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-indigo-200 block">Dakika</span>
+                </div>
+                <div class="bg-indigo-600/60 border border-indigo-400/30 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="sayac-saniye" class="text-xl sm:text-2xl font-black text-amber-300">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-indigo-100 block">Saniye</span>
+                </div>
+            </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <a href="ogrenciler.html" id="btn-geri-don" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center gap-1 mb-2">← Öğrenci Listesine Dön</a>
@@ -89,7 +133,6 @@
 
         <!-- MİHMANDAR SEYİR DEFTERİ VE GÖREV TAKİBİ -->
         <div id="koocluk-grid-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Görev Takibi -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
                 <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-slate-700 flex items-center gap-2"><span>📋</span> Haftalık Görev Takibi</h3></div>
                 <div id="gorev-ekle-alani" class="hidden mb-4 flex gap-2">
@@ -101,7 +144,6 @@
                 </div>
             </div>
 
-            <!-- Seyir Defteri -->
             <div id="seyir-defteri-panel" class="hidden bg-amber-50 p-6 rounded-2xl shadow-sm border border-amber-200 flex flex-col h-full">
                 <div class="flex justify-between items-center mb-4 border-b border-amber-100 pb-2">
                     <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2"><span>📒</span> Mihmandar Seyir Defteri <span class="bg-amber-200 text-amber-800 text-[10px] px-2 py-0.5 rounded-full ml-2">Özel</span></h3>
@@ -247,6 +289,8 @@
         let eksikKazanimlar = [];
         let kazanimVeritabani = [];
 
+        let lgsHedefTarih = '2027-06-06T10:00:00';
+
         window.onload = async function() {
             if (oturum && oturum.rol === 'ogrenci') {
                 let navMenu = document.getElementById('ogrenci-nav-menu');
@@ -264,9 +308,82 @@
                 if (kazanimMenu) kazanimMenu.style.display = 'none';
             }
 
+            // Supabase'den ortak LGS tarihini çekelim
+            await lgsTarihiniGetir();
+
+            // Sadece Admin ise tarih değiştirici inputu göster, Mihmandar/Gözlemci/Öğrenci ise salt okunur yazı göster
+            if (oturum && oturum.rol === 'admin') {
+                let ayarContainer = document.getElementById('lgs-ayar-container');
+                if (ayarContainer) {
+                    ayarContainer.classList.remove('hidden');
+                    ayarContainer.classList.add('flex');
+                    document.getElementById('lgs-tarih-input').value = lgsHedefTarih.split('T')[0];
+                }
+            } else {
+                let bilgiContainer = document.getElementById('lgs-bilgi-container');
+                if (bilgiContainer) {
+                    bilgiContainer.classList.remove('hidden');
+                    bilgiContainer.classList.add('flex');
+                    let parcalar = lgsHedefTarih.split('T')[0].split('-');
+                    document.getElementById('lgs-tarih-yazi').innerText = `${parcalar[2]}.${parcalar[1]}.${parcalar[0]}`;
+                }
+            }
+
             document.getElementById('soru-tarih').value = new Date().toISOString().split('T')[0];
+            
+            lgsGeriSayimBaslat();
+            setInterval(lgsGeriSayimBaslat, 1000);
+
             await verileriGetir();
         };
+
+        async function lgsTarihiniGetir() {
+            try {
+                let { data, error } = await _supabase.from('cadep_genel_ayarlar').select('deger').eq('anahtar', 'lgs_tarih').single();
+                if (data && data.deger) {
+                    lgsHedefTarih = data.deger;
+                }
+            } catch (e) {
+                console.log("LGS tarihi veritabanından alınamadı, varsayılan kullanılıyor.");
+            }
+        }
+
+        async function lgsTarihGuncelle(yeniTarih) {
+            if (!yeniTarih || oturum.rol !== 'admin') return;
+            lgsHedefTarih = yeniTarih + 'T10:00:00';
+
+            // Veritabanına kaydedelim ki tüm kullanıcılarda ortak olsun
+            let { error } = await _supabase.from('cadep_genel_ayarlar').upsert({ anahtar: 'lgs_tarih', deger: lgsHedefTarih }, { onConflict: 'anahtar' });
+            if (error) {
+                alert("Tarih güncellenirken hata oluştu: " + error.message);
+            } else {
+                alert("LGS sınav tarihi tüm kullanıcılar için güncellendi!");
+            }
+        }
+
+        function lgsGeriSayimBaslat() {
+            let hedef = new Date(lgsHedefTarih).getTime();
+            let simdi = new Date().getTime();
+            let fark = hedef - simdi;
+
+            if (fark < 0) {
+                document.getElementById('sayac-gun').innerText = "0";
+                document.getElementById('sayac-saat').innerText = "0";
+                document.getElementById('sayac-dakika').innerText = "0";
+                document.getElementById('sayac-saniye').innerText = "0";
+                return;
+            }
+
+            let gun = Math.floor(fark / (1000 * 60 * 60 * 24));
+            let saat = Math.floor((fark % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            let dakika = Math.floor((fark % (1000 * 60 * 60)) / (1000 * 60));
+            let saniye = Math.floor((fark % (1000 * 60)) / 1000);
+
+            document.getElementById('sayac-gun').innerText = gun;
+            document.getElementById('sayac-saat').innerText = String(saat).padStart(2, '0');
+            document.getElementById('sayac-dakika').innerText = String(dakika).padStart(2, '0');
+            document.getElementById('sayac-saniye').innerText = String(saniye).padStart(2, '0');
+        }
 
         async function aktifKullaniciAdiGoster(oturum) {
             let isimSpan = document.getElementById('aktif-kullanici-adi');
@@ -340,11 +457,7 @@
                 document.getElementById('gorev-ekle-alani').classList.remove('hidden');
                 document.getElementById('seyir-defteri-panel').classList.add('flex');
                 if(gridContainer) gridContainer.classList.replace('grid-cols-1', 'lg:grid-cols-2');
-            } else if (oturum.rol === 'ogrenci') {
-                document.getElementById('seyir-defteri-panel').classList.add('hidden');
-                if(gridContainer) gridContainer.classList.replace('lg:grid-cols-2', 'grid-cols-1');
             } else {
-                // Gözlemci veya başka bir mihmandarın öğrencisi ise seyir defterini gizle, görev takibini tam ekran yap
                 document.getElementById('seyir-defteri-panel').classList.add('hidden');
                 if(gridContainer) gridContainer.classList.replace('lg:grid-cols-2', 'grid-cols-1');
             }
