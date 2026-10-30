@@ -29,8 +29,8 @@
         }
     </script>
 
-    <!-- Ortak Navbar -->
-    <header class="bg-indigo-800 text-white shadow-md">
+    <!-- Ortak Navbar (Sticky Yapıldı) -->
+    <header class="bg-indigo-800 text-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold flex items-center gap-2">Hasköy CADEP Takip Sistemi</h1>
@@ -44,7 +44,7 @@
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Kullanıcılar</a>
                 
-                <!-- YENİ EKLENEN KAZANIM YÖNETİMİ BUTONU -->
+                <!-- KAZANIM YÖNETİMİ BUTONU -->
                 <a href="kazanim_yonetimi.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
                 
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
@@ -291,7 +291,6 @@
             }
         }
 
-        // Açılır kutulardan seçim yapıldığında değerleri otomatik doldur
         document.getElementById('secilen-ogrenci-id').addEventListener('change', function() {
             let secilenId = this.value;
             if(secilenId) {
@@ -341,7 +340,6 @@
                 return;
             }
 
-            // Kullanıcıların her birine üye adını ekleyelim ve sıralama için hazırlayalım
             let islenmisListe = data.map(k => {
                 let adSoyadGosterge = "-";
                 if(k.rol === 'ogrenci') {
@@ -367,37 +365,26 @@
                         adSoyadGosterge = bulunanAdm ? (bulunanAdm.ad_soyad || bulunanAdm.uye_adi) : ("Sistem Yöneticisi (" + k.kullanici_adi + ")");
                     }
                 } else if(k.rol === 'gozlemci') {
-                    // Eğer iliskili_id alanında ad soyad tutuluyorsa veya kullanici_adi gözlemleniyorsa
                     adSoyadGosterge = k.iliskili_id && isNaN(k.iliskili_id) ? k.iliskili_id : ("Gözlemci (" + k.kullanici_adi + ")");
                 } else {
                     adSoyadGosterge = k.kullanici_adi;
                 }
 
-                return {
-                    ...k,
-                    adSoyadGosterge
-                };
+                return { ...k, adSoyadGosterge };
             });
 
-            // Sıralama Mantığı:
-            // 1. Rol Önceliği: Admin (1) -> Gözlemci (2) -> Mihmandar (3) -> Öğrenci (4)
-            // 2. Rolleri aynı olanlar kendi içinde Üye Adı Soyadı'na göre alfabetik (A-Z)
             islenmisListe.sort((a, b) => {
                 let rolSkoru = (rol) => {
                     if (rol === 'admin') return 1;
                     if (rol === 'gozlemci') return 2;
                     if (rol === 'mihmandar') return 3;
-                    return 4; // ogrenci
+                    return 4;
                 };
 
                 let skorA = rolSkoru(a.rol);
                 let skorB = rolSkoru(b.rol);
 
-                if (skorA !== skorB) {
-                    return skorA - skorB;
-                }
-
-                // Rolleri aynıysa üye adına göre alfabetik sırala
+                if (skorA !== skorB) return skorA - skorB;
                 return a.adSoyadGosterge.localeCompare(b.adSoyadGosterge, 'tr');
             });
 
@@ -440,7 +427,7 @@
                 if(secilenId) iliskili_id = secilenId;
             } else if (rol === 'gozlemci') {
                 let gozlemciAd = document.getElementById('gozlemci-ad-soyad').value.trim();
-                if(gozlemciAd) iliskili_id = gozlemciAd; // Gözlemci adını iliskili_id alanında saklıyoruz
+                if(gozlemciAd) iliskili_id = gozlemciAd;
             }
 
             if(id) {
@@ -487,9 +474,7 @@
 
             if(rol === 'ogrenci') {
                 let selectOgr = document.getElementById('secilen-ogrenci-id');
-                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {
-                    selectOgr.value = iliskiliId;
-                }
+                if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') selectOgr.value = iliskiliId;
             } else if(rol === 'mihmandar') {
                 let selectMih = document.getElementById('secilen-mihmandar-id');
                 if(iliskiliId && iliskiliId !== 'null' && iliskiliId !== '') {

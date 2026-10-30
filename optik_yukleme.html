@@ -16,8 +16,8 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Ortak Navbar -->
-    <header class="bg-indigo-800 text-white shadow-md">
+    <!-- Ortak Navbar (Sticky Yapıldı) -->
+    <header class="bg-indigo-800 text-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold flex items-center gap-2">
@@ -294,7 +294,6 @@
                                 "Din Kültürü": row[keys[7]] ? row[keys[7]].toString() : "",
                                 "İngilizce": row[keys[8]] ? row[keys[8]].toString() : ""
                             },
-                            // Sütun 10 (index 9) Puan, Sütun 11 (index 10) Yüzde olacak
                             hazirPuan: row[keys[9]] ? parseFloat(row[keys[9]]) : null,
                             hazirYuzde: row[keys[10]] ? parseFloat(row[keys[10]]) : null
                         });

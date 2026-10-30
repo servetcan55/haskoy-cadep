@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hasköy CADEP - Deneme & Net Analizi</title>
+    <title>Hasköy CADEP Takip Sistemi - Deneme & Net Analizi</title>
     <script>
         // Oturum ve Yetki Kontrolü: Giriş yapılmamışsa giriş sayfasına, öğrenci ise kendi detay sayfasına yönlendirir
         let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
@@ -25,8 +25,8 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Ortak Navbar -->
-    <header class="bg-indigo-800 text-white shadow-md">
+    <!-- Ortak Navbar (Sticky Yapıldı) -->
+    <header class="bg-indigo-800 text-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold flex items-center gap-2">
@@ -130,9 +130,9 @@
                             <th class="p-2.5 min-w-[160px]">Öğrenci Adı Soyadı</th>
                             <th class="p-2.5 text-center">T. D/Y/B</th>
                             <th class="p-2.5 text-center">Mat. D/Y/B</th>
-                            <th class="p-2.5 text-center">Fen D/Y/B</th>
+                            <th class="p-2.5 text-center">Fen. D/Y/B</th>
                             <th class="p-2.5 text-center">İnk. D/Y/B</th>
-                            <th class="p-2.5 text-center">Din D/Y/B</th>
+                            <th class="p-2.5 text-center">Din. D/Y/B</th>
                             <th class="p-2.5 text-center">İng. D/Y/B</th>
                             <th class="p-2.5 text-center">Net</th>
                             <th class="p-2.5 text-center">Puan</th>
