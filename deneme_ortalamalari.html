@@ -3,33 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hasköy CADEP - Deneme Genel Ortalamaları</title>
-    <script>
-        // Oturum ve Yetki Kontrolü: Giriş yapılmamışsa giriş sayfasına, öğrenci ise kendi detay sayfasına yönlendirir
-        let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-        if (!oturum) {
-            window.location.href = 'giris.html';
-        } else if (oturum.rol === 'ogrenci') {
-            window.location.href = 'ogrenci_detay.html';
-        }
-    </script>
+    <title>Hasköy CADEP - Genel Ortalamalar ve Şube Analizi</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS Client v2 -->
+    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js (Grafikler İçin) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (Excel Çıktısı İçin) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF ve AutoTable (PDF Çıktısı İçin) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Ortak Navbar (Sticky Yapıldı) -->
+    <!-- Güvenlik Kontrolü -->
+    <script>
+        let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
+        if (!oturum) {
+            window.location.href = 'giris.html';
+        }
+        if (oturum.rol === 'ogrenci') {
+            alert("Bu sayfaya erişim yetkiniz bulunmamaktadır!");
+            window.location.href = `ogrenci_detay.html?id=${oturum.id}`;
+        }
+    </script>
+
+    <!-- Ortak Navbar (Sticky) -->
     <header class="bg-indigo-800 text-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    Hasköy CADEP Takip Sistemi
-                </h1>
-                <p class="text-indigo-200 text-sm">8. Sınıf LGS Öğrenci ve Deneme Analiz Platformu - Hasköy Ortaokulu</p>
+                <h1 class="text-2xl font-bold flex items-center gap-2">Hasköy CADEP Takip Sistemi</h1>
+                <p class="text-indigo-200 text-sm">Okul Geneli ve Şube Bazlı Performans Analizi</p>
             </div>
             <nav class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
                 <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Ana Sayfa</a>
@@ -38,438 +44,586 @@
                 <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
                 <a href="deneme_ortalamalari.html" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Genel Ortalamalar</a>
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
-                
-                <!-- KAZANIM YÖNETİMİ BUTONU -->
-                <a href="kazanim_yonetimi.html" id="menu-kazanim" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
-                
+                <a href="kazanim_yonetimi.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
-                <!-- Aktif Kullanıcı İsim Alanı -->
                 <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
                 </div>
-
-                <!-- Çıkış Yap Butonu -->
                 <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
             </nav>
         </div>
     </header>
 
     <!-- Ana İçerik -->
-    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-8">
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4">
             <div>
-                <h2 class="text-2xl font-bold text-slate-700">Tüm Denemelerin Genel Ortalamaları</h2>
-                <p class="text-sm text-slate-500">Okul genelinde yapılan tüm deneme sınavlarının ortalama başarı ve net analizleri.</p>
+                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2"><span>📊</span> Şube Karşılaştırmalı Gelişim Modülü</h2>
+                <p class="text-sm text-slate-500 mt-1">Okul geneli ve tüm şubelerin deneme sınavı net ortalamalarının karşılaştırmalı trend analizi.</p>
             </div>
-            <div>
-                <button type="button" onclick="excelRaporuIndir()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1 cursor-pointer z-10 relative">📊 Excel Raporu İndir</button>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="genelRaporPdfAl()" id="btn-genel-pdf" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1.5 cursor-pointer transition">
+                    📄 PDF Raporu İndir
+                </button>
+                <button onclick="sinifOrtalamalariExcel()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-2 cursor-pointer transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.641L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/></svg>
+                    Şube Matrisini İndir
+                </button>
             </div>
         </div>
 
-        <!-- Genel Ortalamalar Tablosu -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table id="ortalamalar-tablosu" class="w-full text-left border-collapse text-xs sm:text-sm">
-                    <thead>
-                        <tr class="bg-slate-100 text-slate-600 uppercase tracking-wider text-[11px]">
-                            <th class="p-3 w-16 text-center">Sıra</th>
-                            <th class="p-3">Deneme Adı</th>
-                            <th class="p-3 w-28">Tarih</th>
-                            <th class="p-3 text-center">Katılan Öğr.</th>
-                            <th class="p-3 text-center">Türkçe (D/Y/B)</th>
-                            <th class="p-3 text-center">Mat (D/Y/B)</th>
-                            <th class="p-3 text-center">Fen (D/Y/B)</th>
-                            <th class="p-3 text-center">İnk (D/Y/B)</th>
-                            <th class="p-3 text-center">Din (D/Y/B)</th>
-                            <th class="p-3 text-center">İng (D/Y/B)</th>
-                            <th class="p-3 text-center">Net Ort.</th>
-                            <th class="p-3 text-center">Puan Ort.</th>
-                            <th class="p-3 text-center">Yüzde Ort.</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ortalamalar-govde" class="divide-y divide-slate-200">
-                        <tr><td colspan="13" class="p-6 text-center text-slate-400">Veriler yükleniyor...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+        <div id="loading-indicator" class="flex justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+            <span class="ml-3 text-indigo-600 font-medium">Analiz Verileri İşleniyor...</span>
         </div>
+
+        <div id="content-container" class="hidden space-y-6">
+            
+            <!-- 1. ŞUBE KARŞILAŞTIRMA GRAFİĞİ -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="relative w-full h-96 bg-white" id="grafik-kutusu">
+                    <canvas id="subeKarsilastirmaGrafik"></canvas>
+                </div>
+            </div>
+
+            <!-- 2. ŞUBE NET ORTALAMALARI MATRİSİ -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2"><span>📑</span> Şube Net Ortalamaları Matrisi</h3>
+                    <p class="text-xs text-slate-500 mt-1">Her bir denemeye ait şube bazlı detaylı net ortalamaları tablosu.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="ortalamalar-tablosu" class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead class="bg-slate-100 text-slate-600 uppercase tracking-wider text-[11px]" id="tablo-head">
+                            <!-- JS ile Doldurulacak -->
+                        </thead>
+                        <tbody class="divide-y divide-slate-100" id="tablo-body">
+                            <!-- JS ile Doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. TÜM DENEMELERİN GENEL ORTALAMALARI TABLOSU -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col mt-8">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-2 border-b gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-700">Tüm Denemelerin Genel Ortalamaları</h2>
+                        <p class="text-sm text-slate-500 mt-1">Okul genelinde yapılan tüm deneme sınavlarının ortalama başarı ve net analizleri.</p>
+                    </div>
+                    <button onclick="excelRaporuIndir()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1.5 cursor-pointer transition">
+                        📊 Excel Raporu İndir
+                    </button>
+                </div>
+                <div class="overflow-x-auto flex-grow custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-[11px] sm:text-xs">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 uppercase tracking-wider text-[10px] leading-tight">
+                                <th class="px-1.5 py-2.5 w-8 text-center">Sıra</th>
+                                <th class="px-1.5 py-2.5 min-w-[100px]">Deneme Adı</th>
+                                <th class="px-1.5 py-2.5 w-20">Tarih</th>
+                                <th class="px-1.5 py-2.5 text-center">Katılım</th>
+                                <th class="px-1.5 py-2.5 text-center">Türkçe<br><span class="text-[8px] tracking-normal text-slate-400 font-bold">(D/Y/B)</span></th>
+                                <th class="px-1.5 py-2.5 text-center">Mat<br><span class="text-[8px] tracking-normal text-slate-400 font-bold">(D/Y/B)</span></th>
+                                <th class="px-1.5 py-2.5 text-center">Fen<br><span class="text-[8px] tracking-normal text-slate-400 font-bold">(D/Y/B)</span></th>
+                                <th class="px-1.5 py-2.5 text-center">İnk<br><span class="text-[8px] tracking-normal text-slate-400 font-bold">(D/Y/B)</span></th>
+                                <th class="px-1.5 py-2.5 text-center">Din<br><span class="text-[8px] tracking-normal text-slate-400 font-bold">(D/Y/B)</span></th>
+                                <th class="px-1.5 py-2.5 text-center">İng<br><span class="text-[8px] tracking-normal text-slate-400 font-bold">(D/Y/B)</span></th>
+                                <th class="px-1.5 py-2.5 text-center">Net<br>Ort.</th>
+                                <th class="px-1.5 py-2.5 text-center">Puan<br>Ort.</th>
+                                <th class="px-1.5 py-2.5 text-center">Yüzde<br>Ort.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ortalamalar-govde" class="divide-y divide-slate-200">
+                            <!-- ESKİ TABLO JS İLE DOLDURULACAK -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto">
         Hasköy Akademik Destek Programı (CADEP) Takip Otomasyonu &copy; 2026 - Hasköy Ortaokulu
     </footer>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
 
     <script>
         const SUPABASE_URL = 'https://dsiiujfqcrqochyutnsz.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        let cachedDenemeler = [];
-        let cachedSonuclar = [];
+        let chartInstance = null;
+        let globalExcelVerisi = [];
+        let globalSubeMatrisiData = null; // PDF için veriyi globalde tutalım
 
-        window.onload = async function() {
-            let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
-            if (oturum && oturum.rol !== 'admin') {
-                let kulMenu = document.getElementById('menu-kullanicilar');
-                if (kulMenu) kulMenu.style.display = 'none';
-                
-                let kazanimMenu = document.getElementById('menu-kazanim');
-                if (kazanimMenu) kazanimMenu.style.display = 'none';
+        // Özel Chart eklentisi: Grafiğin arkasını şeffaf yerine beyaz yapar
+        const customCanvasBackgroundColor = {
+            id: 'customCanvasBackgroundColor',
+            beforeDraw: (chart, args, options) => {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = options.color || '#ffffff';
+                ctx.fillRect(0, 0, chart.width, chart.height);
+                ctx.restore();
             }
-
-            await aktifKullaniciAdiGoster(oturum);
-            await verileriGetir();
         };
 
-        async function aktifKullaniciAdiGoster(oturum) {
+        window.onload = async function() {
+            aktifKullaniciAdiGoster();
+            
+            if (oturum.rol !== 'admin') {
+                let kulMenu = document.getElementById('menu-kullanicilar');
+                if(kulMenu) kulMenu.style.display = 'none';
+            }
+
+            await analizVerileriniHesaplaVeCiz();
+        };
+
+        async function aktifKullaniciAdiGoster() {
             let isimSpan = document.getElementById('aktif-kullanici-adi');
             if (!oturum) return;
-
             let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
 
             if (oturum.rol === 'admin') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
                     if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else {
-                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
-                    if (data && data.ad_soyad) {
-                        gorunurIsim = data.ad_soyad;
-                    } else {
-                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
-                        if (allEkip && allEkip.length > 0) {
-                            let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
-                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
-                            else gorunurIsim = allEkip[0].ad_soyad;
-                        }
-                    }
                 }
                 isimSpan.innerText = gorunurIsim + " (Yönetici)";
-            } 
-            else if (oturum.rol === 'gozlemci') {
+            } else if (oturum.rol === 'gozlemci') {
                 isimSpan.innerText = gorunurIsim + " (Gözlemci)";
-            }
-            else if (oturum.rol === 'mihmandar') {
+            } else if (oturum.rol === 'mihmandar') {
                 if (oturum.iliskili_id) {
                     let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
                     if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else {
-                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
-                    if (data && data.length > 0) {
-                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
-                        if (bulunan) gorunurIsim = bulunan.ad_soyad;
-                        else gorunurIsim = data[0].ad_soyad;
-                    }
                 }
                 isimSpan.innerText = gorunurIsim + " (Mihmandar)";
-            } 
-            else if (oturum.rol === 'ogrenci') {
-                if (oturum.id) {
-                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else if (oturum.kullanici_adi) {
-                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                }
-                isimSpan.innerText = gorunurIsim + " (Öğrenci)";
             }
         }
 
-        async function verileriGetir() {
-            let tbody = document.getElementById('ortalamalar-govde');
+        async function analizVerileriniHesaplaVeCiz() {
             try {
-                let { data: denemeler, error: err1 } = await _supabase.from('denemeler').select('*');
-                if(err1) {
-                    tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-red-500">Denemeler yüklenemedi: ${err1.message}</td></tr>`;
+                let [ogrRes, denRes, sonRes] = await Promise.all([
+                    _supabase.from('cadep_ogrenciler').select('id, sinif'),
+                    _supabase.from('denemeler').select('*').order('tarih', { ascending: true }),
+                    _supabase.from('deneme_sonuclari').select('*')
+                ]);
+
+                if (denRes.error) throw denRes.error;
+                
+                let ogrenciler = ogrRes.data || [];
+                let denemeler = denRes.data || [];
+                let sonuclar = sonRes.data || [];
+
+                document.getElementById('loading-indicator').classList.add('hidden');
+                document.getElementById('content-container').classList.remove('hidden');
+
+                if (denemeler.length === 0) {
+                    document.getElementById('content-container').innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-500 border border-slate-200">Kayıtlı deneme sınavı bulunmamaktadır.</div>`;
                     return;
                 }
 
-                let { data: sonuclar, error: err2 } = await _supabase.from('deneme_sonuclari').select('*');
-                if(err2) {
-                    tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-red-500">Sonuçlar yüklenemedi: ${err2.message}</td></tr>`;
-                    return;
-                }
+                // ==========================================
+                // 1. ŞUBE KARŞILAŞTIRMA GRAFİĞİ VE MATRİSİ 
+                // ==========================================
+                let siniflar = [...new Set(ogrenciler.map(o => o.sinif ? o.sinif.trim().toUpperCase() : null))]
+                                .filter(Boolean)
+                                .sort();
+                
+                let etiketler = denemeler.map(d => d.deneme_adi);
+                let datasets = [];
+                let renkler = ['#4f46e5', '#10b981', '#f43f5e', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6', '#84cc16'];
 
-                cachedDenemeler = denemeler || [];
-                cachedDenemeler.sort((a, b) => new Date(a.tarih || 0) - new Date(b.tarih || 0));
-                cachedSonuclar = sonuclar || [];
-
-                tabloyuOlustur(cachedDenemeler, cachedSonuclar);
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-red-500">Bağlantı hatası: ${err.message}</td></tr>`;
-            }
-        }
-
-        function tabloyuOlustur(denemeler, sonuclar) {
-            let tbody = document.getElementById('ortalamalar-govde');
-
-            if(denemeler.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`;
-                return;
-            }
-
-            let html = '';
-            let genelToplam = {
-                t_d: 0, t_y: 0, t_b: 0,
-                m_d: 0, m_y: 0, m_b: 0,
-                f_d: 0, f_y: 0, f_b: 0,
-                ind: 0, iny: 0, inb: 0,
-                d_d: 0, d_y: 0, d_b: 0,
-                ingd: 0, ingy: 0, ingb: 0,
-                net: 0, puan: 0, yuzde: 0,
-                ogrenciSayisiToplam: 0,
-                sinifSayisi: 0
-            };
-
-            denemeler.forEach((deneme, index) => {
-                let sinifSonuclari = sonuclar.filter(s => s.deneme_id === deneme.id);
-                let katilan = sinifSonuclari.length;
-
-                let t_d = 0, t_y = 0, t_b = 0;
-                let m_d = 0, m_y = 0, m_b = 0;
-                let f_d = 0, f_y = 0, f_b = 0;
-                let ind = 0, iny = 0, inb = 0;
-                let d_d = 0, d_y = 0, db = 0;
-                let ingd = 0, ingy = 0, ingb = 0;
-                let toplamNet = 0, toplamPuan = 0, toplamYuzde = 0;
-
-                sinifSonuclari.forEach(s => {
-                    let td = s.turkce_d ?? 0, ty = s.turkce_y ?? 0, tb = s.turkce_b ?? (20 - td - ty);
-                    let md = s.matematik_d ?? 0, my = s.matematik_y ?? 0, mb = s.matematik_b ?? (20 - md - my);
-                    let fd = s.fen_d ?? 0, fy = s.fen_y ?? 0, fb = s.fen_b ?? (20 - fd - fy);
-                    let id = s.inkilap_d ?? 0, iy = s.inkilap_y ?? 0, ib = s.inkilap_b ?? (10 - id - iy);
-                    let dd = s.din_d ?? 0, dy = s.din_y ?? 0, din_b = s.din_b ?? (10 - dd - dy);
-                    let igd = s.ingilizce_d ?? 0, igy = s.ingilizce_y ?? 0, igb = s.ingilizce_b ?? (10 - igd - igy);
-
-                    t_d += td; t_y += ty; t_b += tb;
-                    m_d += md; m_y += my; m_b += mb;
-                    f_d += fd; f_y += fy; f_b += fb;
-                    ind += id; iny += iy; inb += ib;
-                    d_d += dd; d_y += dy; db += din_b;
-                    ingd += igd; ingy += igy; ingb += igb;
-
-                    toplamNet += (s.toplam_net ?? 0);
-                    toplamPuan += (s.lgs_puan ?? 0);
-                    toplamYuzde += (s.yuzdelik_dilim ?? 0);
+                let okulData = [];
+                denemeler.forEach(deneme => {
+                    let okulSonuclari = sonuclar.filter(s => s.deneme_id === deneme.id && s.toplam_net != null);
+                    if (okulSonuclari.length > 0) {
+                        let ort = okulSonuclari.reduce((sum, s) => sum + Number(s.toplam_net), 0) / okulSonuclari.length;
+                        okulData.push(Number(ort.toFixed(2)));
+                    } else {
+                        okulData.push(null);
+                    }
                 });
 
-                if(katilan > 0) {
-                    genelToplam.t_d += t_d; genelToplam.t_y += t_y; genelToplam.t_b += t_b;
-                    genelToplam.m_d += m_d; genelToplam.m_y += m_y; genelToplam.m_b += m_b;
-                    genelToplam.f_d += f_d; genelToplam.f_y += f_y; genelToplam.f_b += f_b;
-                    genelToplam.ind += ind; genelToplam.iny += iny; genelToplam.inb += inb;
-                    genelToplam.d_d += d_d; genelToplam.d_y += d_y; genelToplam.d_b += db;
-                    genelToplam.ingd += ingd; genelToplam.ingy += ingy; genelToplam.ingb += ingb;
-                    genelToplam.net += toplamNet;
-                    genelToplam.puan += toplamPuan;
-                    genelToplam.yuzde += toplamYuzde;
-                    genelToplam.ogrenciSayisiToplam += katilan;
-                    genelToplam.sinifSayisi++;
+                datasets.push({
+                    label: 'Okul Geneli Ortalama',
+                    data: okulData,
+                    borderColor: '#1e293b',
+                    backgroundColor: '#1e293b',
+                    borderWidth: 4,
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    spanGaps: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 8
+                });
 
-                    let o = (val) => { let num = val / katilan; return Number.isInteger(num) ? num.toString() : num.toFixed(2); };
-                    let oPuan = (val) => { let num = val / katilan; return Number.isInteger(num) ? num.toString() : num.toFixed(3); };
+                siniflar.forEach((sinif, index) => {
+                    let sinifOgrenciIdleri = ogrenciler.filter(o => o.sinif && o.sinif.trim().toUpperCase() === sinif).map(o => o.id);
+                    let data = [];
 
-                    html += `<tr>
-                        <td class="p-3 text-center font-bold text-slate-500">${index + 1}</td>
-                        <td class="p-3 font-semibold text-slate-800">${deneme.deneme_adi}</td>
-                        <td class="p-3 text-slate-500 text-xs">${deneme.tarih || ''}</td>
-                        <td class="p-3 text-center font-semibold text-indigo-600">${katilan} Öğrenci</td>
-                        <td class="p-3 text-center">${o(t_d)}/${o(t_y)}/${o(t_b)}</td>
-                        <td class="p-3 text-center">${o(m_d)}/${o(m_y)}/${o(m_b)}</td>
-                        <td class="p-3 text-center">${o(f_d)}/${o(f_y)}/${o(f_b)}</td>
-                        <td class="p-3 text-center">${o(ind)}/${o(iny)}/${o(inb)}</td>
-                        <td class="p-3 text-center">${o(d_d)}/${o(d_y)}/${o(db)}</td>
-                        <td class="p-3 text-center">${o(ingd)}/${o(ingy)}/${o(ingb)}</td>
-                        <td class="p-3 text-center font-bold text-indigo-700">${o(toplamNet)}</td>
-                        <td class="p-3 text-center font-semibold text-emerald-700">${oPuan(toplamPuan)}</td>
-                        <td class="p-3 text-center font-semibold text-sky-700">${o(toplamYuzde)}</td>
+                    denemeler.forEach(deneme => {
+                        let sinifSonuclari = sonuclar.filter(s => s.deneme_id === deneme.id && sinifOgrenciIdleri.includes(s.ogrenci_id) && s.toplam_net != null);
+                        if (sinifSonuclari.length > 0) {
+                            let ort = sinifSonuclari.reduce((sum, s) => sum + Number(s.toplam_net), 0) / sinifSonuclari.length;
+                            data.push(Number(ort.toFixed(2)));
+                        } else {
+                            data.push(null);
+                        }
+                    });
+
+                    if (data.some(val => val !== null)) {
+                        let renk = renkler[index % renkler.length];
+                        datasets.push({
+                            label: sinif + ' Şubesi',
+                            data: data,
+                            borderColor: renk,
+                            backgroundColor: renk,
+                            borderWidth: 2,
+                            tension: 0.3,
+                            spanGaps: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        });
+                    }
+                });
+
+                globalSubeMatrisiData = { etiketler, datasets }; // PDF için sakla
+
+                let ctx = document.getElementById('subeKarsilastirmaGrafik').getContext('2d');
+                if (chartInstance) chartInstance.destroy();
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: etiketler, datasets: datasets },
+                    plugins: [customCanvasBackgroundColor],
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            customCanvasBackgroundColor: { color: 'white' }, 
+                            legend: { position: 'top', labels: { usePointStyle: true, padding: 20, font: { family: "'Inter', sans-serif", size: 12, weight: 'bold' } } },
+                            tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleFont: { size: 13, family: "'Inter', sans-serif" }, bodyFont: { size: 12, family: "'Inter', sans-serif" }, padding: 12, cornerRadius: 8, displayColors: true }
+                        },
+                        scales: {
+                            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net Ortalaması', font: { weight: 'bold', size: 13 } }, grid: { color: '#f1f5f9' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+
+                tabloyuOlustur(etiketler, datasets);
+
+                // ==========================================
+                // 2. ESKİ TÜM DENEMELERİN GENEL ORTALAMALARI TABLOSU (Kompaktlaştırıldı)
+                // ==========================================
+                let tbodyGenel = document.getElementById('ortalamalar-govde');
+                let htmlGenel = '';
+                let siraNo = 1;
+                
+                let toplamOkul = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
+                let yapilanDenemeSayisi = 0;
+
+                globalExcelVerisi = [
+                    ["Hasköy Ortaokulu LGS Koordinatörlüğü"],
+                    ["Tüm Denemelerin Okul Geneli Soru ve Net Ortalamaları Raporu"],
+                    [""],
+                    ["Sıra", "Deneme Adı", "Tarih", "Katılım", "Türkçe (D/Y/B)", "Matematik (D/Y/B)", "Fen Bilimleri (D/Y/B)", "İnkılap Tarihi (D/Y/B)", "Din Kültürü (D/Y/B)", "İngilizce (D/Y/B)", "Net Ortalaması", "Puan Ortalaması", "Yüzdelik Ortalaması"]
+                ];
+
+                denemeler.forEach(deneme => {
+                    let dSonuclar = sonuclar.filter(s => s.deneme_id === deneme.id);
+                    let katilim = dSonuclar.length;
+
+                    if(katilim > 0) {
+                        yapilanDenemeSayisi++;
+                        let sum = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
+
+                        dSonuclar.forEach(s => {
+                            sum.t_d += s.turkce_d || 0; sum.t_y += s.turkce_y || 0; sum.t_b += s.turkce_b || (20 - (s.turkce_d || 0) - (s.turkce_y || 0));
+                            sum.m_d += s.matematik_d || 0; sum.m_y += s.matematik_y || 0; sum.m_b += s.matematik_b || (20 - (s.matematik_d || 0) - (s.matematik_y || 0));
+                            sum.f_d += s.fen_d || 0; sum.f_y += s.fen_y || 0; sum.f_b += s.fen_b || (20 - (s.fen_d || 0) - (s.fen_y || 0));
+                            sum.ind += s.inkilap_d || 0; sum.iny += s.inkilap_y || 0; sum.inb += s.inkilap_b || (10 - (s.inkilap_d || 0) - (s.inkilap_y || 0));
+                            sum.d_d += s.din_d || 0; sum.d_y += s.din_y || 0; sum.d_b += s.din_b || (10 - (s.din_d || 0) - (s.din_y || 0));
+                            sum.ingd += s.ingilizce_d || 0; sum.ingy += s.ingilizce_y || 0; sum.ingb += s.ingilizce_b || (10 - (s.ingilizce_d || 0) - (s.ingilizce_y || 0));
+                            sum.net += s.toplam_net || 0; sum.puan += s.lgs_puan || 0; sum.yuzde += s.yuzdelik_dilim || 0;
+                        });
+
+                        let fmt = (val, d = 2) => { let n = val / katilim; return Number.isInteger(n) ? n.toString() : n.toFixed(d); };
+                        
+                        toplamOkul.t_d += (sum.t_d / katilim); toplamOkul.t_y += (sum.t_y / katilim); toplamOkul.t_b += (sum.t_b / katilim);
+                        toplamOkul.m_d += (sum.m_d / katilim); toplamOkul.m_y += (sum.m_y / katilim); toplamOkul.m_b += (sum.m_b / katilim);
+                        toplamOkul.f_d += (sum.f_d / katilim); toplamOkul.f_y += (sum.f_y / katilim); toplamOkul.f_b += (sum.f_b / katilim);
+                        toplamOkul.ind += (sum.ind / katilim); toplamOkul.iny += (sum.iny / katilim); toplamOkul.inb += (sum.inb / katilim);
+                        toplamOkul.d_d += (sum.d_d / katilim); toplamOkul.d_y += (sum.d_y / katilim); toplamOkul.d_b += (sum.d_b / katilim);
+                        toplamOkul.ingd += (sum.ingd / katilim); toplamOkul.ingy += (sum.ingy / katilim); toplamOkul.ingb += (sum.ingb / katilim);
+                        toplamOkul.net += (sum.net / katilim); toplamOkul.puan += (sum.puan / katilim); toplamOkul.yuzde += (sum.yuzde / katilim);
+
+                        htmlGenel += `<tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                            <td class="px-1.5 py-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
+                            <td class="px-1.5 py-2.5 font-semibold text-slate-800">${deneme.deneme_adi}</td>
+                            <td class="px-1.5 py-2.5 text-slate-500 text-[11px] whitespace-nowrap">${deneme.tarih || '-'}</td>
+                            <td class="px-1.5 py-2.5 text-center">
+                                <a href="denemeler.html?deneme_id=${deneme.id}" class="text-indigo-600 hover:text-indigo-800 font-bold flex flex-col items-center leading-tight hover:underline cursor-pointer">
+                                    <span class="text-sm">${katilim}</span>
+                                    <span class="text-[9px] font-normal mt-0.5 text-slate-500">Öğrenci</span>
+                                </a>
+                            </td>
+                            <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmt(sum.t_d)}/${fmt(sum.t_y)}/${fmt(sum.t_b)}</td>
+                            <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmt(sum.m_d)}/${fmt(sum.m_y)}/${fmt(sum.m_b)}</td>
+                            <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmt(sum.f_d)}/${fmt(sum.f_y)}/${fmt(sum.f_b)}</td>
+                            <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmt(sum.ind)}/${fmt(sum.iny)}/${fmt(sum.inb)}</td>
+                            <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmt(sum.d_d)}/${fmt(sum.d_y)}/${fmt(sum.d_b)}</td>
+                            <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmt(sum.ingd)}/${fmt(sum.ingy)}/${fmt(sum.ingb)}</td>
+                            <td class="px-1.5 py-2.5 text-center font-bold text-indigo-700">${fmt(sum.net)}</td>
+                            <td class="px-1.5 py-2.5 text-center font-bold text-emerald-700">${fmt(sum.puan, 3)}</td>
+                            <td class="px-1.5 py-2.5 text-center font-bold text-sky-700">${fmt(sum.yuzde)}</td>
+                        </tr>`;
+
+                        globalExcelVerisi.push([
+                            (siraNo - 1), deneme.deneme_adi, deneme.tarih || "-", katilim,
+                            `${fmt(sum.t_d)}/${fmt(sum.t_y)}/${fmt(sum.t_b)}`, `${fmt(sum.m_d)}/${fmt(sum.m_y)}/${fmt(sum.m_b)}`,
+                            `${fmt(sum.f_d)}/${fmt(sum.f_y)}/${fmt(sum.f_b)}`, `${fmt(sum.ind)}/${fmt(sum.iny)}/${fmt(sum.inb)}`,
+                            `${fmt(sum.d_d)}/${fmt(sum.d_y)}/${fmt(sum.d_b)}`, `${fmt(sum.ingd)}/${fmt(sum.ingy)}/${fmt(sum.ingb)}`,
+                            Number(fmt(sum.net)), Number(fmt(sum.puan, 3)), Number(fmt(sum.yuzde))
+                        ]);
+                    } else {
+                        htmlGenel += `<tr class="bg-slate-50 border-b border-slate-100">
+                            <td class="px-1.5 py-2.5 text-center font-bold text-slate-400">${siraNo++}</td>
+                            <td class="px-1.5 py-2.5 font-semibold text-slate-600">${deneme.deneme_adi}</td>
+                            <td class="px-1.5 py-2.5 text-slate-400 text-[11px] whitespace-nowrap">${deneme.tarih || '-'}</td>
+                            <td class="px-1.5 py-2.5 text-center text-slate-400 text-xs" colspan="10">Bu sınava ait sonuç girilmemiş.</td>
+                        </tr>`;
+                    }
+                });
+
+                if(yapilanDenemeSayisi > 0) {
+                    let fmtGenel = (val, d = 2) => { let n = val / yapilanDenemeSayisi; return Number.isInteger(n) ? n.toString() : n.toFixed(d); };
+                    
+                    htmlGenel += `<tr class="bg-indigo-50 font-bold text-indigo-900 border-t-2 border-indigo-200">
+                        <td class="px-1.5 py-2.5 text-center" colspan="4">TÜM DENEMELER GENEL ORTALAMASI</td>
+                        <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmtGenel(toplamOkul.t_d)}/${fmtGenel(toplamOkul.t_y)}/${fmtGenel(toplamOkul.t_b)}</td>
+                        <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmtGenel(toplamOkul.m_d)}/${fmtGenel(toplamOkul.m_y)}/${fmtGenel(toplamOkul.m_b)}</td>
+                        <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmtGenel(toplamOkul.f_d)}/${fmtGenel(toplamOkul.f_y)}/${fmtGenel(toplamOkul.f_b)}</td>
+                        <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmtGenel(toplamOkul.ind)}/${fmtGenel(toplamOkul.iny)}/${fmtGenel(toplamOkul.inb)}</td>
+                        <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmtGenel(toplamOkul.d_d)}/${fmtGenel(toplamOkul.d_y)}/${fmtGenel(toplamOkul.d_b)}</td>
+                        <td class="px-1.5 py-2.5 text-center whitespace-nowrap">${fmtGenel(toplamOkul.ingd)}/${fmtGenel(toplamOkul.ingy)}/${fmtGenel(toplamOkul.ingb)}</td>
+                        <td class="px-1.5 py-2.5 text-center text-indigo-700">${fmtGenel(toplamOkul.net)}</td>
+                        <td class="px-1.5 py-2.5 text-center text-emerald-700">${fmtGenel(toplamOkul.puan, 3)}</td>
+                        <td class="px-1.5 py-2.5 text-center text-sky-700">${fmtGenel(toplamOkul.yuzde)}</td>
                     </tr>`;
-                } else {
-                    html += `<tr>
-                        <td class="p-3 text-center font-bold text-slate-500">${index + 1}</td>
-                        <td class="p-3 font-semibold text-slate-800">${deneme.deneme_adi}</td>
-                        <td class="p-3 text-slate-500 text-xs">${deneme.tarih || ''}</td>
-                        <td class="p-3 text-center text-slate-400">Veri Yok</td>
-                        <td colspan="9" class="p-3 text-center text-slate-400">-</td>
-                    </tr>`;
+
+                    globalExcelVerisi.push([
+                        "GENEL ORTALAMA", "", "", "",
+                        `${fmtGenel(toplamOkul.t_d)}/${fmtGenel(toplamOkul.t_y)}/${fmtGenel(toplamOkul.t_b)}`, `${fmtGenel(toplamOkul.m_d)}/${fmtGenel(toplamOkul.m_y)}/${fmtGenel(toplamOkul.m_b)}`,
+                        `${fmtGenel(toplamOkul.f_d)}/${fmtGenel(toplamOkul.f_y)}/${fmtGenel(toplamOkul.f_b)}`, `${fmtGenel(toplamOkul.ind)}/${fmtGenel(toplamOkul.iny)}/${fmtGenel(toplamOkul.inb)}`,
+                        `${fmtGenel(toplamOkul.d_d)}/${fmtGenel(toplamOkul.d_y)}/${fmtGenel(toplamOkul.d_b)}`, `${fmtGenel(toplamOkul.ingd)}/${fmtGenel(toplamOkul.ingy)}/${fmtGenel(toplamOkul.ingb)}`,
+                        Number(fmtGenel(toplamOkul.net)), Number(fmtGenel(toplamOkul.puan, 3)), Number(fmtGenel(toplamOkul.yuzde))
+                    ]);
                 }
-            });
 
-            if(genelToplam.ogrenciSayisiToplam > 0 && genelToplam.sinifSayisi > 0) {
-                let n = genelToplam.ogrenciSayisiToplam;
-                let fmt = (val) => { let num = val / n; return Number.isInteger(num) ? num.toString() : num.toFixed(2); };
-                let fmtP = (val) => { let num = val / n; return Number.isInteger(num) ? num.toString() : num.toFixed(3); };
+                tbodyGenel.innerHTML = htmlGenel;
 
-                html += `<tr class="bg-indigo-50 font-bold text-slate-800 border-t-2 border-indigo-200">
-                    <td class="p-3 text-center text-indigo-700" colspan="4">TÜM DENEMELER GENEL ORTALAMASI</td>
-                    <td class="p-3 text-center">${fmt(genelToplam.t_d)}/${fmt(genelToplam.t_y)}/${fmt(genelToplam.t_b)}</td>
-                    <td class="p-3 text-center">${fmt(genelToplam.m_d)}/${fmt(genelToplam.m_y)}/${fmt(genelToplam.m_b)}</td>
-                    <td class="p-3 text-center">${fmt(genelToplam.f_d)}/${fmt(genelToplam.f_y)}/${fmt(genelToplam.f_b)}</td>
-                    <td class="p-3 text-center">${fmt(genelToplam.ind)}/${fmt(genelToplam.iny)}/${fmt(genelToplam.inb)}</td>
-                    <td class="p-3 text-center">${fmt(genelToplam.d_d)}/${fmt(genelToplam.d_y)}/${fmt(genelToplam.d_b)}</td>
-                    <td class="p-3 text-center">${fmt(genelToplam.ingd)}/${fmt(genelToplam.ingy)}/${fmt(genelToplam.ingb)}</td>
-                    <td class="p-3 text-center text-indigo-900">${fmt(genelToplam.net)}</td>
-                    <td class="p-3 text-center text-emerald-800">${fmtP(genelToplam.puan)}</td>
-                    <td class="p-3 text-center text-sky-800">${fmt(genelToplam.yuzde)}</td>
-                </tr>`;
+            } catch (error) {
+                document.getElementById('loading-indicator').innerHTML = `<span class="text-red-500 font-bold">Hata: ${error.message}</span>`;
             }
+        }
 
-            tbody.innerHTML = html;
+        // ==========================================
+        // SAYFAYI A4 PDF OLARAK ALMA (GRAFİK YÜKSEKLİĞİ İYİLEŞTİRİLDİ)
+        // ==========================================
+        async function genelRaporPdfAl() {
+            let btn = document.getElementById('btn-genel-pdf');
+            let originalHtml = btn.innerHTML;
+            btn.innerHTML = "⏳ PDF Hazırlanıyor...";
+            btn.disabled = true;
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('landscape'); // Geniş tablolar için yatay format
+
+                // TR Karakter Desteği İçin Roboto Fontlarını Yükle
+                const fontReqReg = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf");
+                const blobReg = await fontReqReg.blob();
+                const b64Reg = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobReg); });
+                doc.addFileToVFS("Roboto-Regular.ttf", b64Reg);
+                doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+
+                const fontReqBold = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf");
+                const blobBold = await fontReqBold.blob();
+                const b64Bold = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobBold); });
+                doc.addFileToVFS("Roboto-Medium.ttf", b64Bold);
+                doc.addFont("Roboto-Medium.ttf", "Roboto", "bold");
+
+                // --- 1. SAYFA BAŞLIĞI ---
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(16);
+                doc.text("Hasköy Ortaokulu LGS Koordinatörlüğü", 148.5, 12, { align: "center" });
+                doc.setFontSize(11);
+                doc.setTextColor(79, 70, 229);
+                doc.text("Okul Geneli ve Şube Bazlı Performans Analiz Raporu", 148.5, 18, { align: "center" });
+                
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.5);
+                doc.line(15, 22, 282, 22); // Yatay çizgi
+
+                let currentY = 28;
+
+                // --- 2. ŞUBE KARŞILAŞTIRMA GRAFİĞİ (Resim Olarak) ---
+                if (chartInstance) {
+                    doc.setFont("Roboto", "bold");
+                    doc.setFontSize(11);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text("1. Şube Karşılaştırmalı Gelişim Grafiği", 15, currentY);
+                    currentY += 4;
+                    
+                    // Grafiğin yüksekliğini PDF'te 70'ten 60'a düşürdük
+                    let chartImg = document.getElementById('subeKarsilastirmaGrafik').toDataURL("image/png", 1.0);
+                    doc.addImage(chartImg, 'PNG', 15, currentY, 267, 60); 
+                    currentY += 66; // Alt tablonun başlangıcı
+                }
+
+                // --- 3. ŞUBE NET ORTALAMALARI MATRİSİ ---
+                if (globalSubeMatrisiData) {
+                    doc.setFont("Roboto", "bold");
+                    doc.setFontSize(11);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text("2. Şube Net Ortalamaları Matrisi", 15, currentY);
+                    currentY += 4;
+
+                    let matrixHead = [['Şube / Liste', ...globalSubeMatrisiData.etiketler]];
+                    let matrixBody = globalSubeMatrisiData.datasets.map(ds => {
+                        let label = ds.label.replace('🏆 ', ''); // Emojileri temizle
+                        return [label, ...ds.data.map(val => val !== null ? val.toFixed(2) : '-')];
+                    });
+
+                    doc.autoTable({
+                        startY: currentY,
+                        head: matrixHead,
+                        body: matrixBody,
+                        theme: 'grid',
+                        headStyles: { fillColor: [79, 70, 229], font: "Roboto", fontStyle: "bold" },
+                        // padding değerini 1.5 yaparak satır yüksekliğini daralttık
+                        styles: { font: "Roboto", fontSize: 8, halign: 'center', cellPadding: 1.5 },
+                        columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+                        margin: { bottom: 10 },
+                        pageBreak: 'auto'
+                    });
+                    currentY = doc.lastAutoTable.finalY + 10;
+                }
+
+                // Genel Ortalamalar tablosu her halükarda 2. sayfaya geçsin ki bütünlüğü bozulmasın
+                doc.addPage(); 
+                currentY = 20;
+
+                // --- 4. TÜM DENEMELERİN GENEL ORTALAMALARI TABLOSU ---
+                if (globalExcelVerisi && globalExcelVerisi.length > 4) {
+                    doc.setFont("Roboto", "bold");
+                    doc.setFontSize(11);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text("3. Tüm Denemelerin Okul Geneli Soru ve Net Ortalamaları", 15, currentY);
+                    currentY += 5;
+
+                    let tableHead = [globalExcelVerisi[3]]; 
+                    let tableBody = globalExcelVerisi.slice(4);
+
+                    doc.autoTable({
+                        startY: currentY,
+                        head: tableHead,
+                        body: tableBody,
+                        theme: 'grid',
+                        headStyles: { fillColor: [16, 185, 129], font: "Roboto", fontStyle: "bold" }, 
+                        styles: { font: "Roboto", fontSize: 7, halign: 'center', cellPadding: 1.5 },
+                        columnStyles: { 1: { halign: 'left' } },
+                        margin: { bottom: 15 }
+                    });
+                }
+
+                // --- 5. ALT BİLGİ (TÜM SAYFALARA) ---
+                const pageCount = doc.internal.getNumberOfPages();
+                for(let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFont("Roboto", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text("Hasköy Ortaokulu CADEP Takip Sistemi - Otomatik Üretilmiştir", 148.5, 200, { align: "center" });
+                }
+
+                // PDF'i Kaydet
+                doc.save("CADEP_Genel_Okul_Raporu.pdf");
+
+            } catch (error) {
+                alert("PDF oluşturulurken bir hata oluştu: " + error.message);
+                console.error(error);
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+
+        function tabloyuOlustur(etiketler, datasets) {
+            let thead = document.getElementById('tablo-head');
+            let tbody = document.getElementById('tablo-body');
+
+            let headHtml = `<tr><th class="p-3 w-40 bg-slate-100 sticky left-0 z-10 shadow-[1px_0_0_0_#e2e8f0]">Şube / Liste</th>`;
+            etiketler.forEach(e => { headHtml += `<th class="p-3 text-center min-w-[100px] border-l border-slate-200">${e}</th>`; });
+            headHtml += `</tr>`;
+            thead.innerHTML = headHtml;
+
+            let bodyHtml = '';
+            datasets.forEach(ds => {
+                let isOkul = ds.label.includes('Okul Geneli');
+                let rowClass = isOkul ? 'bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-200' : 'hover:bg-slate-50 border-b border-slate-100 transition';
+                let labelClass = isOkul ? 'bg-indigo-100 sticky left-0 z-10 shadow-[1px_0_0_0_#c7d2fe]' : 'bg-white sticky left-0 z-10 font-semibold text-slate-700 shadow-[1px_0_0_0_#e2e8f0]';
+
+                bodyHtml += `<tr class="${rowClass}">
+                    <td class="p-3 ${labelClass}">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full shadow-sm" style="background-color: ${ds.borderColor}"></span>
+                            <span class="whitespace-nowrap">${ds.label}</span>
+                        </div>
+                    </td>`;
+                
+                ds.data.forEach(val => {
+                    let valStr = val !== null ? val.toFixed(2) : '<span class="text-slate-300">-</span>';
+                    let tdClass = isOkul ? 'text-indigo-700' : 'text-slate-600';
+                    bodyHtml += `<td class="p-3 text-center border-l border-slate-100 ${tdClass}">${valStr}</td>`;
+                });
+                bodyHtml += `</tr>`;
+            });
+            tbody.innerHTML = bodyHtml;
+        }
+
+        function sinifOrtalamalariExcel() {
+            let table = document.getElementById('ortalamalar-tablosu');
+            if (!table) return;
+            let workbook = XLSX.utils.table_to_book(table, { sheet: "Şube Ortalamaları" });
+            XLSX.writeFile(workbook, 'CADEP_Sube_Karsilastirma_Raporu.xlsx');
         }
 
         function excelRaporuIndir() {
-            if(cachedDenemeler.length === 0) {
-                alert("İndirilecek veri bulunmuyor!");
-                return;
-            }
-
-            let excelVerisi = [
-                ["Hasköy Ortaokulu"],
-                ["2026 - 2027 Eğitim Öğretim Yılı"],
-                ["Tüm Denemeler Genel Ortalamaları Raporu"],
-                [""],
-                [
-                    "Sıra", "Deneme Adı", "Tarih", "Katılan Öğrenci",
-                    "Türkçe", "", "",
-                    "Mat", "", "",
-                    "Fen", "", "",
-                    "İnk", "", "",
-                    "Din", "", "",
-                    "İng", "", "",
-                    "Net Ort.", "Puan Ort.", "Yüzde Ort."
-                ],
-                [
-                    "", "", "", "",
-                    "D", "Y", "B",
-                    "D", "Y", "B",
-                    "D", "Y", "B",
-                    "D", "Y", "B",
-                    "D", "Y", "B",
-                    "D", "Y", "B",
-                    "", "", ""
-                ]
-            ];
-
-            let genelToplam = {
-                t_d: 0, t_y: 0, t_b: 0,
-                m_d: 0, m_y: 0, m_b: 0,
-                f_d: 0, f_y: 0, f_b: 0,
-                ind: 0, iny: 0, inb: 0,
-                d_d: 0, d_y: 0, d_b: 0,
-                ingd: 0, ingy: 0, ingb: 0,
-                net: 0, puan: 0, yuzde: 0,
-                ogrenciSayisiToplam: 0,
-                sinifSayisi: 0
-            };
-
-            cachedDenemeler.forEach((deneme, index) => {
-                let sinifSonuclari = cachedSonuclar.filter(s => s.deneme_id === deneme.id);
-                let katilan = sinifSonuclari.length;
-
-                let t_d = 0, t_y = 0, t_b = 0;
-                let m_d = 0, m_y = 0, m_b = 0;
-                let f_d = 0, f_y = 0, f_b = 0;
-                let ind = 0, iny = 0, inb = 0;
-                let d_d = 0, d_y = 0, db = 0;
-                let ingd = 0, ingy = 0, ingb = 0;
-                let toplamNet = 0, toplamPuan = 0, toplamYuzde = 0;
-
-                sinifSonuclari.forEach(s => {
-                    let td = s.turkce_d ?? 0, ty = s.turkce_y ?? 0, tb = s.turkce_b ?? (20 - td - ty);
-                    let md = s.matematik_d ?? 0, my = s.matematik_y ?? 0, mb = s.matematik_b ?? (20 - md - my);
-                    let fd = s.fen_d ?? 0, fy = s.fen_y ?? 0, fb = s.fen_b ?? (20 - fd - fy);
-                    let id = s.inkilap_d ?? 0, iy = s.inkilap_y ?? 0, ib = s.inkilap_b ?? (10 - id - iy);
-                    let dd = s.din_d ?? 0, dy = s.din_y ?? 0, din_b = s.din_b ?? (10 - dd - dy);
-                    let igd = s.ingilizce_d ?? 0, igy = s.ingilizce_y ?? 0, igb = s.ingilizce_b ?? (10 - igd - igy);
-
-                    t_d += td; t_y += ty; t_b += tb;
-                    m_d += md; m_y += my; m_b += mb;
-                    f_d += fd; f_y += fy; f_b += fb;
-                    ind += id; iny += iy; inb += ib;
-                    d_d += dd; d_y += dy; db += din_b;
-                    ingd += igd; ingy += igy; ingb += igb;
-
-                    toplamNet += (s.toplam_net ?? 0);
-                    toplamPuan += (s.lgs_puan ?? 0);
-                    toplamYuzde += (s.yuzdelik_dilim ?? 0);
-                });
-
-                if(katilan > 0) {
-                    genelToplam.t_d += t_d; genelToplam.t_y += t_y; genelToplam.t_b += t_b;
-                    genelToplam.m_d += m_d; genelToplam.m_y += m_y; genelToplam.m_b += m_b;
-                    genelToplam.f_d += f_d; genelToplam.f_y += f_y; genelToplam.f_b += f_b;
-                    genelToplam.ind += ind; genelToplam.iny += iny; genelToplam.inb += inb;
-                    genelToplam.d_d += d_d; genelToplam.d_y += d_y; genelToplam.d_b += db;
-                    genelToplam.ingd += ingd; genelToplam.ingy += ingy; genelToplam.ingb += ingb;
-                    genelToplam.net += toplamNet;
-                    genelToplam.puan += toplamPuan;
-                    genelToplam.yuzde += toplamYuzde;
-                    genelToplam.ogrenciSayisiToplam += katilan;
-                    genelToplam.sinifSayisi++;
-
-                    let o = (val) => Number((val / katilan).toFixed(2));
-                    let oPuan = (val) => Number((val / katilan).toFixed(3));
-
-                    excelVerisi.push([
-                        index + 1,
-                        deneme.deneme_adi,
-                        deneme.tarih || "",
-                        katilan,
-                        o(t_d), o(t_y), o(t_b),
-                        o(m_d), o(m_y), o(m_b),
-                        o(f_d), o(f_y), o(f_b),
-                        o(ind), o(iny), o(inb),
-                        o(d_d), o(d_y), o(db),
-                        o(ingd), o(ingy), o(ingb),
-                        o(toplamNet),
-                        oPuan(toplamPuan),
-                        o(toplamYuzde)
-                    ]);
-                }
-            });
-
-            if(genelToplam.ogrenciSayisiToplam > 0) {
-                let n = genelToplam.ogrenciSayisiToplam;
-                let fmt = (val) => Number((val / n).toFixed(2));
-                let fmtP = (val) => Number((val / n).toFixed(3));
-
-                excelVerisi.push([
-                    "TÜM DENEMELER GENEL ORTALAMASI", "", "",
-                    genelToplam.ogrenciSayisiToplam,
-                    fmt(genelToplam.t_d), fmt(genelToplam.t_y), fmt(genelToplam.t_b),
-                    fmt(genelToplam.m_d), fmt(genelToplam.m_y), fmt(genelToplam.m_b),
-                    fmt(genelToplam.f_d), fmt(genelToplam.f_y), fmt(genelToplam.f_b),
-                    fmt(genelToplam.ind), fmt(genelToplam.iny), fmt(genelToplam.inb),
-                    fmt(genelToplam.d_d), fmt(genelToplam.d_y), fmt(genelToplam.d_b),
-                    fmt(genelToplam.ingd), fmt(genelToplam.ingy), fmt(genelToplam.ingb),
-                    fmt(genelToplam.net),
-                    fmtP(genelToplam.puan),
-                    fmt(genelToplam.yuzde)
-                ]);
-            }
-
-            let worksheet = XLSX.utils.aoa_to_sheet(excelVerisi);
-
-            worksheet['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 24 } },
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 24 } },
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 24 } },
-                { s: { r: 4, c: 4 }, e: { r: 4, c: 6 } },
-                { s: { r: 4, c: 7 }, e: { r: 4, c: 9 } },
-                { s: { r: 4, c: 10 }, e: { r: 4, c: 12 } },
-                { s: { r: 4, c: 13 }, e: { r: 4, c: 15 } },
-                { s: { r: 4, c: 16 }, e: { r: 4, c: 18 } },
-                { s: { r: 4, c: 19 }, e: { r: 4, c: 21 } }
-            ];
-
+            if (globalExcelVerisi.length <= 4) { alert("İndirilecek veri bulunamadı."); return; }
+            let worksheet = XLSX.utils.aoa_to_sheet(globalExcelVerisi);
             let workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Genel Ortalamalar");
-            XLSX.writeFile(workbook, "Haskoy_Ortaokulu_CADEP_Genel_Ortalamalar.xlsx");
+            XLSX.writeFile(workbook, "CADEP_Okul_Geneli_Soru_Analizi.xlsx");
         }
 
         function mihmandarLinkYonlendir(e) {

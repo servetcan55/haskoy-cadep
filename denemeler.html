@@ -288,7 +288,10 @@
             await denemeleriYukle();
             await ogrencileriYukle();
 
-            let urlParamDenemeId = new URLSearchParams(window.location.search).get('id');
+            // YENİ EKLENEN KISIM: URL'den hem 'id' hem de 'deneme_id' parametresini oku
+            let searchParams = new URLSearchParams(window.location.search);
+            let urlParamDenemeId = searchParams.get('deneme_id') || searchParams.get('id');
+            
             if (urlParamDenemeId) {
                 let select = document.getElementById('aktif-deneme-sec');
                 select.value = urlParamDenemeId;
