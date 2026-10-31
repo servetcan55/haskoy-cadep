@@ -14,6 +14,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PDF ve AutoTable Kütüphaneleri -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
@@ -100,6 +103,10 @@
                 <p id="ogr-detay-bilgi" class="text-sm text-slate-500">Öğrencinin tüm deneme sınavlarındaki başarı ve net analizleri.</p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <!-- VELİ ANALİZ RAPORU BUTONU -->
+                <button onclick="veliAnalizRaporuPdfAl()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1.5 cursor-pointer transition">
+                    📄 Veli Raporu (PDF)
+                </button>
                 <button onclick="veliWhatsAppBildirimi()" id="btn-whatsapp" class="hidden bg-[#25D366] hover:bg-[#128C7E] text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-2 cursor-pointer transition">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>
                     Veliye Gönder
@@ -487,7 +494,216 @@
         }
 
         // ==========================================
-        // SORU ÇÖZÜM KUMBARASI & SERİ HESAPLAMA
+        // VELİ ANALİZ RAPORU PDF İNDİRME (TR KARAKTER DESTEKLİ)
+        // ==========================================
+        async function veliAnalizRaporuPdfAl() {
+            if (!globalOgrenci) return;
+            
+            let btn = document.querySelector('button[onclick="veliAnalizRaporuPdfAl()"]');
+            let btnOrijinalHtml = btn.innerHTML;
+            btn.innerHTML = "⏳ Rapor Hazırlanıyor...";
+            btn.disabled = true;
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                const fontReqReg = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf");
+                const blobReg = await fontReqReg.blob();
+                const b64Reg = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobReg); });
+                doc.addFileToVFS("Roboto-Regular.ttf", b64Reg);
+                doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+
+                const fontReqBold = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf");
+                const blobBold = await fontReqBold.blob();
+                const b64Bold = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobBold); });
+                doc.addFileToVFS("Roboto-Medium.ttf", b64Bold);
+                doc.addFont("Roboto-Medium.ttf", "Roboto", "bold");
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(16);
+                doc.text("Hasköy Ortaokulu LGS Koordinatörlüğü", 105, 20, { align: "center" });
+                doc.setFontSize(12);
+                doc.setTextColor(79, 70, 229);
+                doc.text("CADEP Veli Analiz ve Gelişim Raporu", 105, 27, { align: "center" });
+
+                doc.setLineWidth(0.5);
+                doc.setDrawColor(200, 200, 200);
+                doc.line(15, 32, 195, 32);
+
+                doc.setTextColor(0, 0, 0);
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(11);
+                doc.text("Öğrenci: ", 15, 42);
+                doc.setFont("Roboto", "normal");
+                doc.text(globalOgrenci.ad_soyad, 35, 42);
+
+                doc.setFont("Roboto", "bold");
+                doc.text("Sınıf / No: ", 15, 49);
+                doc.setFont("Roboto", "normal");
+                doc.text(globalOgrenci.sinif + " / " + (globalOgrenci.ogrenci_no || globalOgrenci.okul_no || "-"), 38, 49);
+                
+                doc.setFont("Roboto", "bold");
+                doc.text("Hedef Lisesi: ", 110, 42);
+                doc.setFont("Roboto", "normal");
+                doc.text(globalOgrenci.hedef_lisesi || "-", 135, 42);
+                
+                let detayMetni = document.getElementById('ogr-detay-bilgi').innerText;
+                let mihmandarIsmi = detayMetni.includes("Mihmandar:") ? detayMetni.split("Mihmandar:")[1].split("|")[0].trim() : "-";
+                doc.setFont("Roboto", "bold");
+                doc.text("Danışman: ", 110, 49);
+                doc.setFont("Roboto", "normal");
+                doc.text(mihmandarIsmi, 132, 49);
+
+                doc.line(15, 54, 195, 54);
+
+                let currentY = 62;
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(79, 70, 229);
+                doc.text("1. Deneme Sınavı Performansı", 15, currentY);
+                currentY += 5;
+
+                let tableData = [];
+                let denemeSira = 1;
+                
+                globalDenemeler.forEach((deneme) => {
+                    let s = globalSonuclar.find(res => res.deneme_id === deneme.id);
+                    if(s) {
+                        tableData.push([
+                            denemeSira++,
+                            deneme.deneme_adi,
+                            deneme.tarih || "-",
+                            s.toplam_net != null ? s.toplam_net.toString() : "-",
+                            s.lgs_puan != null ? s.lgs_puan.toString() : "-",
+                            s.yuzdelik_dilim != null ? s.yuzdelik_dilim.toString() : "-"
+                        ]);
+                    }
+                });
+                globalOzelDenemeler.forEach((od) => {
+                    tableData.push([
+                        denemeSira++,
+                        od.deneme_adi + " (Özel)",
+                        od.tarih || "-",
+                        od.toplam_net != null ? od.toplam_net.toString() : "-",
+                        od.lgs_puan != null ? od.lgs_puan.toString() : "-",
+                        od.yuzdelik_dilim != null ? od.yuzdelik_dilim.toString() : "-"
+                    ]);
+                });
+
+                if (tableData.length === 0) {
+                    tableData.push(["-", "Kayıtlı sınav bulunamadı.", "-", "-", "-", "-"]);
+                }
+
+                doc.autoTable({
+                    startY: currentY,
+                    head: [['Sıra', 'Deneme Adı', 'Tarih', 'Net', 'Puan', 'Yüzde']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [79, 70, 229], font: "Roboto", fontStyle: "bold" },
+                    styles: { fontSize: 9, font: "Roboto" }
+                });
+
+                currentY = doc.lastAutoTable.finalY + 15;
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(220, 38, 38);
+                doc.text("2. Öncelikli Gelişim Alanları (Eksik Kazanımlar)", 15, currentY);
+                currentY += 7;
+
+                doc.setFontSize(9);
+                doc.setTextColor(0, 0, 0);
+                if (eksikKazanimlar.length === 0) {
+                    doc.setFont("Roboto", "normal");
+                    doc.text("Kayıtlı eksik kazanım bulunmamaktadır. Harika!", 15, currentY);
+                    currentY += 10;
+                } else {
+                    let analiz = {};
+                    eksikKazanimlar.forEach(e => {
+                        let k = kazanimVeritabani.find(x => x.id === e.kazanim_id);
+                        if(k) {
+                            let metin = k.kazanim_adi || k.kazanim || k.kazanim_metni || k.metin || k.icerik || "";
+                            let ders = k.ders_adi || k.ders || k.brans || "Diğer";
+                            if(!analiz[ders]) analiz[ders] = {};
+                            if(!analiz[ders][metin]) analiz[ders][metin] = 0;
+                            analiz[ders][metin]++;
+                        }
+                    });
+
+                    let kazanimTablosu = [];
+                    for(let ders in analiz) {
+                        for(let k in analiz[ders]) {
+                            kazanimTablosu.push([ders, k, analiz[ders][k] + " Kez Hata"]);
+                        }
+                    }
+
+                    kazanimTablosu.sort((a,b) => parseInt(b[2]) - parseInt(a[2]));
+                    kazanimTablosu = kazanimTablosu.slice(0, 15); 
+
+                    doc.autoTable({
+                        startY: currentY,
+                        head: [['Ders', 'Kazanım / Konu (En Sık Hata Yapılanlar)', 'Hata']],
+                        body: kazanimTablosu,
+                        theme: 'grid',
+                        headStyles: { fillColor: [220, 38, 38], font: "Roboto", fontStyle: "bold" },
+                        styles: { fontSize: 8, font: "Roboto" }
+                    });
+                    currentY = doc.lastAutoTable.finalY + 15;
+                }
+
+                if (currentY > 240) {
+                    doc.addPage();
+                    currentY = 20;
+                }
+
+                let streakEl = document.getElementById('streak-count');
+                let streak = streakEl ? streakEl.innerText : "0";
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(79, 70, 229);
+                doc.text("3. Genel Değerlendirme & Koçluk Notu", 15, currentY);
+                currentY += 7;
+
+                doc.setFont("Roboto", "normal");
+                doc.setFontSize(10);
+                doc.setTextColor(60, 60, 60);
+                
+                let degerlendirme = "Öğrencimizin deneme sınavı sonuçları ve eksik kazanımları incelendiğinde, hedeflenen liseye ulaşması adına düzenli soru çözümü yapması kritik öneme sahiptir.";
+                if(parseInt(streak) > 0) {
+                    degerlendirme += ` Ayrıca öğrencimiz an itibariyle ${streak} günlük kesintisiz soru çözüm serisine ulaşmıştır. Bu motivasyonun devam etmesi başarıyı getirecektir.`;
+                }
+                
+                let splittedText = doc.splitTextToSize(degerlendirme, 180);
+                doc.text(splittedText, 15, currentY);
+
+                currentY += Math.max(25, splittedText.length * 6 + 10);
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                doc.text("Mihmandar / LGS Koçu", 40, currentY, { align: "center" });
+                doc.text("Veli İmzası", 170, currentY, { align: "center" });
+
+                doc.setFont("Roboto", "normal");
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                doc.text("Hasköy Ortaokulu CADEP Takip Sistemi - Otomatik Üretilmiştir", 105, 290, { align: "center" });
+
+                doc.save(`CADEP_Veli_Raporu_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ]/g, '_')}.pdf`);
+                
+            } catch(e) {
+                alert("Rapor oluşturulurken bir hata oluştu: " + e.message);
+            } finally {
+                btn.innerHTML = btnOrijinalHtml;
+                btn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // DİĞER VERİ VE LİSTELEME FONKSİYONLARI
         // ==========================================
         async function soruKumbarasiniGetir() {
             let tbody = document.getElementById('soru-kumbarasi-govde');
@@ -498,51 +714,33 @@
                 let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
                 if (error || !data) throw error;
 
-                // Seri Hesaplama Algoritması
                 if (data.length > 0) {
                     let formatTarih = (d) => { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-                    
                     let tarihler = [...new Set(data.map(s => s.tarih))];
-                    let bugun = new Date();
-                    let dun = new Date();
-                    dun.setDate(dun.getDate() - 1);
+                    let bugun = new Date(); let dun = new Date(); dun.setDate(dun.getDate() - 1);
+                    let bugunStr = formatTarih(bugun); let dunStr = formatTarih(dun);
                     
-                    let bugunStr = formatTarih(bugun);
-                    let dunStr = formatTarih(dun);
-                    
-                    let kontrolTarihi = null;
-                    let seri = 0;
-                    
-                    if (tarihler.includes(bugunStr)) {
-                        kontrolTarihi = bugun;
-                    } else if (tarihler.includes(dunStr)) {
-                        kontrolTarihi = dun;
-                    }
+                    let kontrolTarihi = null; let seri = 0;
+                    if (tarihler.includes(bugunStr)) { kontrolTarihi = bugun; } 
+                    else if (tarihler.includes(dunStr)) { kontrolTarihi = dun; }
                     
                     if (kontrolTarihi) {
                         let anlikTarih = new Date(kontrolTarihi);
                         while (true) {
                             let anlikStr = formatTarih(anlikTarih);
                             if (tarihler.includes(anlikStr)) {
-                                seri++;
-                                anlikTarih.setDate(anlikTarih.getDate() - 1);
-                            } else {
-                                break;
-                            }
+                                seri++; anlikTarih.setDate(anlikTarih.getDate() - 1);
+                            } else { break; }
                         }
                     }
-                    
                     if (seri > 0) {
                         streakCount.innerText = seri;
-                        streakBadge.classList.remove('hidden');
-                        streakBadge.classList.add('inline-flex');
+                        streakBadge.classList.remove('hidden'); streakBadge.classList.add('inline-flex');
                     } else {
-                        streakBadge.classList.add('hidden');
-                        streakBadge.classList.remove('inline-flex');
+                        streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
                     }
                 } else {
-                    streakBadge.classList.add('hidden');
-                    streakBadge.classList.remove('inline-flex');
+                    streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
                 }
 
                 if (data.length === 0) {
@@ -555,7 +753,6 @@
                     let trTarih = s.tarih ? s.tarih.split('-').reverse().join('.') : '-';
                     let silBtn = (oturum.rol === 'ogrenci' || oturum.rol === 'admin') ? 
                         `<button onclick="soruSil(${s.id})" class="text-red-500 hover:text-red-700 font-semibold text-xs px-2 py-1">Sil</button>` : '-';
-
                     html += `
                         <tr class="hover:bg-slate-50/80 transition">
                             <td class="p-2.5 font-medium text-slate-700">${trTarih}</td>
@@ -590,26 +787,14 @@
             if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
 
             let { error } = await _supabase.from('cadep_soru_kumbarasi').insert([{
-                ogrenci_id: ogrenciId,
-                turkce: turkce,
-                matematik: matematik,
-                fen: fen,
-                inkilap: inkilap,
-                din: din,
-                ingilizce: ingilizce,
-                toplam_soru: toplamSoru,
-                tarih: tarih
+                ogrenci_id: ogrenciId, turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih
             }]);
 
-            if (error) {
-                alert("Kayıt sırasında hata oluştu: " + error.message);
-            } else {
-                document.getElementById('soru-turkce').value = 0;
-                document.getElementById('soru-matematik').value = 0;
-                document.getElementById('soru-fen').value = 0;
-                document.getElementById('soru-inkilap').value = 0;
-                document.getElementById('soru-din').value = 0;
-                document.getElementById('soru-ingilizce').value = 0;
+            if (error) { alert("Kayıt sırasında hata oluştu: " + error.message); } 
+            else {
+                document.getElementById('soru-turkce').value = 0; document.getElementById('soru-matematik').value = 0;
+                document.getElementById('soru-fen').value = 0; document.getElementById('soru-inkilap').value = 0;
+                document.getElementById('soru-din').value = 0; document.getElementById('soru-ingilizce').value = 0;
                 await soruKumbarasiniGetir();
             }
         }
@@ -621,9 +806,6 @@
             }
         }
 
-        // ==========================================
-        // GÖREVLER
-        // ==========================================
         async function gorevleriGetir() {
             let container = document.getElementById('gorev-listesi');
             try {
@@ -706,9 +888,6 @@
             gorevleriGetir();
         }
 
-        // ==========================================
-        // NOTLAR
-        // ==========================================
         async function notlariGetir() {
             let container = document.getElementById('not-listesi');
             try {
@@ -779,9 +958,6 @@
             notlariGetir();
         }
 
-        // ==========================================
-        // ESKİ FONKSİYONLAR (ROZET, WHATSAPP, GRAFİK)
-        // ==========================================
         function rozetleriHesapla() {
             let container = document.getElementById('rozet-container');
             let tumSinavlar = [];
@@ -948,33 +1124,10 @@
             return `<span class="font-semibold text-slate-600">${sira}.</span>`;
         }
 
-        function ogrenciGelisimGrafiginiCiz() {
-            let etiketler = []; let netVerileri = []; let puanVerileri = []; let birlesikListe = [];
-            globalDenemeler.forEach(d => {
-                let sonuc = globalSonuclar.find(s => s.deneme_id === d.id);
-                if (sonuc) birlesikListe.push({ ad: d.deneme_adi, tarih: d.tarih || '1970-01-01', net: sonuc.toplam_net || 0, puan: sonuc.lgs_puan || 0 });
-            });
-            globalOzelDenemeler.forEach(od => {
-                birlesikListe.push({ ad: od.deneme_adi + " (Özel)", tarih: od.tarih || '1970-01-01', net: od.toplam_net || 0, puan: od.lgs_puan || 0 });
-            });
-            birlesikListe.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
-            birlesikListe.forEach(item => { etiketler.push(item.ad); netVerileri.push(item.net); puanVerileri.push(item.puan); });
-
-            let ctx = document.getElementById('gelisimGrafik').getContext('2d');
-            if (grafikObjekt) grafikObjekt.destroy();
-            grafikObjekt = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: etiketler,
-                    datasets: [
-                        { label: 'Toplam Net', data: netVerileri, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y', fill: true },
-                        { label: 'LGS Puanı', data: puanVerileri, borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y1', fill: true }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net' } }, y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Puan' } } } }
-            });
-        }
-
+        // ==========================================
+        // EKSİK BIRAKILAN FONKSİYONLAR BURAYA EKLENDİ
+        // ==========================================
+        
         function karneyiOlustur() {
             let tbody = document.getElementById('ogr-karne-govde');
             if(globalDenemeler.length === 0 && globalOzelDenemeler.length === 0) { tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`; return; }
@@ -1068,6 +1221,33 @@
                 </tr>`;
             }
             tbody.innerHTML = html;
+        }
+
+        function ogrenciGelisimGrafiginiCiz() {
+            let etiketler = []; let netVerileri = []; let puanVerileri = []; let birlesikListe = [];
+            globalDenemeler.forEach(d => {
+                let sonuc = globalSonuclar.find(s => s.deneme_id === d.id);
+                if (sonuc) birlesikListe.push({ ad: d.deneme_adi, tarih: d.tarih || '1970-01-01', net: sonuc.toplam_net || 0, puan: sonuc.lgs_puan || 0 });
+            });
+            globalOzelDenemeler.forEach(od => {
+                birlesikListe.push({ ad: od.deneme_adi + " (Özel)", tarih: od.tarih || '1970-01-01', net: od.toplam_net || 0, puan: od.lgs_puan || 0 });
+            });
+            birlesikListe.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+            birlesikListe.forEach(item => { etiketler.push(item.ad); netVerileri.push(item.net); puanVerileri.push(item.puan); });
+
+            let ctx = document.getElementById('gelisimGrafik').getContext('2d');
+            if (grafikObjekt) grafikObjekt.destroy();
+            grafikObjekt = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: etiketler,
+                    datasets: [
+                        { label: 'Toplam Net', data: netVerileri, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y', fill: true },
+                        { label: 'LGS Puanı', data: puanVerileri, borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y1', fill: true }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net' } }, y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Puan' } } } }
+            });
         }
 
         function eksikKazanimlariGoster() {
