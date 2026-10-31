@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- PDF ve AutoTable Kütüphaneleri -->
+    <!-- PDF ve AutoTable Kütüphaneleri Eklendi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -103,8 +103,8 @@
                 <p id="ogr-detay-bilgi" class="text-sm text-slate-500">Öğrencinin tüm deneme sınavlarındaki başarı ve net analizleri.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <!-- VELİ ANALİZ RAPORU BUTONU -->
-                <button onclick="veliAnalizRaporuPdfAl()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1.5 cursor-pointer transition">
+                <!-- Rapor ve WhatsApp butonları varsayılan olarak GİZLİ, yetkiye göre açılacak -->
+                <button onclick="veliAnalizRaporuPdfAl()" id="btn-veli-raporu" class="hidden bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1.5 cursor-pointer transition">
                     📄 Veli Raporu (PDF)
                 </button>
                 <button onclick="veliWhatsAppBildirimi()" id="btn-whatsapp" class="hidden bg-[#25D366] hover:bg-[#128C7E] text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-2 cursor-pointer transition">
@@ -309,8 +309,6 @@
                 if (cikisContainer) cikisContainer.classList.remove('hidden');
                 let geriDonBtn = document.getElementById('btn-geri-don');
                 if (geriDonBtn) geriDonBtn.style.display = 'none';
-                let wpBtn = document.getElementById('btn-whatsapp');
-                if (wpBtn) wpBtn.style.display = 'none';
             } else if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
@@ -447,9 +445,15 @@
             document.getElementById('ogr-baslik').innerText = `${ogrData.ad_soyad} - Deneme Karnesi`;
             document.getElementById('ogr-detay-bilgi').innerText = `Sınıf: ${ogrData.sinif} | Okul No: ${ogrData.ogrenci_no || ogrData.okul_no || '-'} | Mihmandar: ${mihmandarAdi} | Hedef: ${ogrData.hedef_lisesi || '-'}`;
 
+            // YETKİ KONTROLÜ - Rapor ve WhatsApp butonları için (Öğrenci görmeyecek)
             let yetkiliOgretmen = (oturum.rol === 'admin' || (oturum.rol === 'mihmandar' && ogrData.mihmandar_ogretmen_id === oturum.iliskili_id));
+            let raporBtn = document.getElementById('btn-veli-raporu');
             let wpBtn = document.getElementById('btn-whatsapp');
-            if (wpBtn && yetkiliOgretmen) wpBtn.classList.remove('hidden');
+            
+            if (oturum.rol === 'admin' || oturum.rol === 'gozlemci' || (oturum.rol === 'mihmandar' && ogrData.mihmandar_ogretmen_id === oturum.iliskili_id)) {
+                if (raporBtn) raporBtn.classList.remove('hidden');
+                if (wpBtn) wpBtn.classList.remove('hidden');
+            }
 
             let gridContainer = document.getElementById('koocluk-grid-container');
 
@@ -705,6 +709,177 @@
         // ==========================================
         // DİĞER VERİ VE LİSTELEME FONKSİYONLARI
         // ==========================================
+        
+        function karneyiOlustur() {
+            let tbody = document.getElementById('ogr-karne-govde');
+            if(globalDenemeler.length === 0 && globalOzelDenemeler.length === 0) { tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`; return; }
+
+            let html = ''; let siraNo = 1; let katildigiSinavSayisi = 0;
+            let toplam = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
+
+            globalDenemeler.forEach((deneme) => {
+                let sonuc = globalSonuclar.find(s => s.deneme_id === deneme.id);
+                let td = sonuc ? (sonuc.turkce_d ?? 0) : '-'; let ty = sonuc ? (sonuc.turkce_y ?? 0) : '-'; let tb = sonuc ? (sonuc.turkce_b ?? 0) : '-';
+                let md = sonuc ? (sonuc.matematik_d ?? 0) : '-'; let my = sonuc ? (sonuc.matematik_y ?? 0) : '-'; let mb = sonuc ? (sonuc.matematik_b ?? 0) : '-';
+                let fd = sonuc ? (sonuc.fen_d ?? 0) : '-'; let fy = sonuc ? (sonuc.fen_y ?? 0) : '-'; let fb = sonuc ? (sonuc.fen_b ?? 0) : '-';
+                let ind = sonuc ? (sonuc.inkilap_d ?? 0) : '-'; let iny = sonuc ? (sonuc.inkilap_y ?? 0) : '-'; let inb = sonuc ? (sonuc.inkilap_b ?? 0) : '-';
+                let dd = sonuc ? (sonuc.din_d ?? 0) : '-'; let dy = sonuc ? (sonuc.din_y ?? 0) : '-'; let db = sonuc ? (sonuc.din_b ?? 0) : '-';
+                let ingd = sonuc ? (sonuc.ingilizce_d ?? 0) : '-'; let ingy = sonuc ? (sonuc.ingilizce_y ?? 0) : '-'; let ingb = sonuc ? (sonuc.ingilizce_b ?? 0) : '-';
+                let net = sonuc && sonuc.toplam_net != null ? sonuc.toplam_net : '-';
+                let puan = sonuc && sonuc.lgs_puan != null ? sonuc.lgs_puan : '-';
+                let yuzde = sonuc && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : '-';
+                let dereceHtml = ogrenciDerecesiniBul(deneme.id, ogrenciId, sonuc ? sonuc.lgs_puan : null);
+
+                if(sonuc) {
+                    katildigiSinavSayisi++;
+                    toplam.t_d += (sonuc.turkce_d ?? 0); toplam.t_y += (sonuc.turkce_y ?? 0); toplam.t_b += (sonuc.turkce_b ?? (20 - (sonuc.turkce_d ?? 0) - (sonuc.turkce_y ?? 0)));
+                    toplam.m_d += (sonuc.matematik_d ?? 0); toplam.m_y += (sonuc.matematik_y ?? 0); toplam.m_b += (sonuc.matematik_b ?? (20 - (sonuc.matematik_d ?? 0) - (sonuc.matematik_y ?? 0)));
+                    toplam.f_d += (sonuc.fen_d ?? 0); toplam.f_y += (sonuc.fen_y ?? 0); toplam.f_b += (sonuc.fen_b ?? (20 - (sonuc.fen_d ?? 0) - (sonuc.fen_y ?? 0)));
+                    toplam.ind += (sonuc.inkilap_d ?? 0); toplam.iny += (sonuc.inkilap_y ?? 0); toplam.inb += (sonuc.inkilap_b ?? (10 - (sonuc.inkilap_d ?? 0) - (sonuc.inkilap_y ?? 0)));
+                    toplam.d_d += (sonuc.din_d ?? 0); toplam.d_y += (sonuc.din_y ?? 0); toplam.d_b += (sonuc.din_b ?? (10 - (sonuc.din_d ?? 0) - (sonuc.din_y ?? 0)));
+                    toplam.ingd += (sonuc.ingilizce_d ?? 0); toplam.ingy += (sonuc.ingilizce_y ?? 0); toplam.ingb += (sonuc.ingilizce_b ?? (10 - (sonuc.ingilizce_d ?? 0) - (sonuc.ingilizce_y ?? 0)));
+                    toplam.net += (sonuc.toplam_net ?? 0); toplam.puan += (sonuc.lgs_puan ?? 0); toplam.yuzde += (sonuc.yuzdelik_dilim ?? 0);
+                }
+
+                html += `<tr>
+                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
+                    <td class="p-2.5 font-semibold text-slate-800">${deneme.deneme_adi}</td>
+                    <td class="p-2.5 text-slate-500 text-xs">${deneme.tarih || ''}</td>
+                    <td class="p-2.5 text-center">${dereceHtml}</td>
+                    <td class="p-2.5 text-center">${td}/${ty}/${tb}</td>
+                    <td class="p-2.5 text-center">${md}/${my}/${mb}</td>
+                    <td class="p-2.5 text-center">${fd}/${fy}/${fb}</td>
+                    <td class="p-2.5 text-center">${ind}/${iny}/${inb}</td>
+                    <td class="p-2.5 text-center">${dd}/${dy}/${db}</td>
+                    <td class="p-2.5 text-center">${ingd}/${ingy}/${ingb}</td>
+                    <td class="p-2.5 text-center font-bold text-indigo-700">${net}</td>
+                    <td class="p-2.5 text-center font-semibold text-emerald-700">${puan}</td>
+                    <td class="p-2.5 text-center font-semibold text-sky-700">${yuzde}</td>
+                </tr>`;
+            });
+
+            globalOzelDenemeler.forEach((od) => {
+                katildigiSinavSayisi++;
+                toplam.t_d += (od.turkce_d ?? 0); toplam.t_y += (od.turkce_y ?? 0); toplam.t_b += (od.turkce_b ?? 0);
+                toplam.m_d += (od.matematik_d ?? 0); toplam.m_y += (od.matematik_y ?? 0); toplam.m_b += (od.matematik_b ?? 0);
+                toplam.f_d += (od.fen_d ?? 0); toplam.f_y += (od.fen_y ?? 0); toplam.f_b += (od.fen_b ?? 0);
+                toplam.ind += (od.inkilap_d ?? 0); toplam.iny += (od.inkilap_y ?? 0); toplam.inb += (od.inkilap_b ?? 0);
+                toplam.d_d += (od.din_d ?? 0); toplam.d_y += (od.din_y ?? 0); toplam.d_b += (od.din_b ?? 0);
+                toplam.ingd += (od.ingilizce_d ?? 0); toplam.ingy += (od.ingilizce_y ?? 0); toplam.ingb += (od.ingilizce_b ?? 0);
+                toplam.net += (od.toplam_net ?? 0); toplam.puan += (od.lgs_puan ?? 0); toplam.yuzde += (od.yuzdelik_dilim ?? 0);
+
+                html += `<tr class="bg-amber-50/50">
+                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
+                    <td class="p-2.5 font-semibold text-slate-800">${od.deneme_adi} <span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1">Özel</span></td>
+                    <td class="p-2.5 text-slate-500 text-xs">${od.tarih || ''}</td>
+                    <td class="p-2.5 text-center">-</td>
+                    <td class="p-2.5 text-center">${od.turkce_d ?? 0}/${od.turkce_y ?? 0}/${od.turkce_b ?? 0}</td>
+                    <td class="p-2.5 text-center">${od.matematik_d ?? 0}/${od.matematik_y ?? 0}/${od.matematik_b ?? 0}</td>
+                    <td class="p-2.5 text-center">${od.fen_d ?? 0}/${od.fen_y ?? 0}/${od.fen_b ?? 0}</td>
+                    <td class="p-2.5 text-center">${od.inkilap_d ?? 0}/${od.inkilap_y ?? 0}/${od.inkilap_b ?? 0}</td>
+                    <td class="p-2.5 text-center">${od.din_d ?? 0}/${od.din_y ?? 0}/${od.din_b ?? 0}</td>
+                    <td class="p-2.5 text-center">${od.ingilizce_d ?? 0}/${od.ingilizce_y ?? 0}/${od.ingilizce_b ?? 0}</td>
+                    <td class="p-2.5 text-center font-bold text-indigo-700">${od.toplam_net ?? '-'}</td>
+                    <td class="p-2.5 text-center font-semibold text-emerald-700">${od.lgs_puan ?? '-'}</td>
+                    <td class="p-2.5 text-center font-semibold text-sky-700">${od.yuzdelik_dilim ?? '-'}</td>
+                </tr>`;
+            });
+
+            if(katildigiSinavSayisi > 0) {
+                let fmt = (val, dec = 2) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n.toString() : n.toFixed(dec); };
+                let fmtPuan = (val) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n.toString() : n.toFixed(3); };
+
+                html += `<tr class="bg-indigo-50 font-bold text-slate-800 border-t-2 border-indigo-200">
+                    <td class="p-2.5 text-center text-indigo-700" colspan="4">GENEL ORTALAMA (${katildigiSinavSayisi} Sınav)</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.t_d)}/${fmt(toplam.t_y)}/${fmt(toplam.t_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.m_d)}/${fmt(toplam.m_y)}/${fmt(toplam.m_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.f_d)}/${fmt(toplam.f_y)}/${fmt(toplam.f_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.ind)}/${fmt(toplam.iny)}/${fmt(toplam.inb)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.d_d)}/${fmt(toplam.d_y)}/${fmt(toplam.d_b)}</td>
+                    <td class="p-2.5 text-center">${fmt(toplam.ingd)}/${fmt(toplam.ingy)}/${fmt(toplam.ingb)}</td>
+                    <td class="p-2.5 text-center text-indigo-900">${fmt(toplam.net)}</td>
+                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(toplam.puan)}</td>
+                    <td class="p-2.5 text-center text-sky-800">${fmt(toplam.yuzde)}</td>
+                </tr>`;
+            }
+            tbody.innerHTML = html;
+        }
+
+        function ogrenciGelisimGrafiginiCiz() {
+            let etiketler = []; let netVerileri = []; let puanVerileri = []; let birlesikListe = [];
+            globalDenemeler.forEach(d => {
+                let sonuc = globalSonuclar.find(s => s.deneme_id === d.id);
+                if (sonuc) birlesikListe.push({ ad: d.deneme_adi, tarih: d.tarih || '1970-01-01', net: sonuc.toplam_net || 0, puan: sonuc.lgs_puan || 0 });
+            });
+            globalOzelDenemeler.forEach(od => {
+                birlesikListe.push({ ad: od.deneme_adi + " (Özel)", tarih: od.tarih || '1970-01-01', net: od.toplam_net || 0, puan: od.lgs_puan || 0 });
+            });
+            birlesikListe.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+            birlesikListe.forEach(item => { etiketler.push(item.ad); netVerileri.push(item.net); puanVerileri.push(item.puan); });
+
+            let ctx = document.getElementById('gelisimGrafik').getContext('2d');
+            if (grafikObjekt) grafikObjekt.destroy();
+            grafikObjekt = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: etiketler,
+                    datasets: [
+                        { label: 'Toplam Net', data: netVerileri, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y', fill: true },
+                        { label: 'LGS Puanı', data: puanVerileri, borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y1', fill: true }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net' } }, y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Puan' } } } }
+            });
+        }
+
+        function eksikKazanimlariGoster() {
+            let container = document.getElementById('kazanim-analiz-govde');
+            if (eksikKazanimlar.length === 0) {
+                container.innerHTML = `<div class="text-center text-emerald-600 bg-emerald-50 p-4 rounded-xl font-medium border border-emerald-100">Öğrencinin kayıtlı herhangi bir eksik kazanımı (yanlışı/boşu) bulunmuyor. Harika iş! 🎉</div>`;
+                return;
+            }
+
+            let denemeyeGoreGruplar = {};
+            eksikKazanimlar.forEach(eksik => {
+                let deneme = globalDenemeler.find(d => d.id === eksik.deneme_id);
+                let denemeAdi = deneme ? deneme.deneme_adi : 'Bilinmeyen Deneme';
+                let kazanimDetay = kazanimVeritabani.find(k => k.id === eksik.kazanim_id);
+                
+                if (kazanimDetay) {
+                    if (!denemeyeGoreGruplar[denemeAdi]) denemeyeGoreGruplar[denemeAdi] = [];
+                    let gercekKazanimMetni = kazanimDetay.kazanim_adi || kazanimDetay.kazanim || kazanimDetay.kazanim_metni || kazanimDetay.metin || kazanimDetay.icerik || 'İsimsiz Kazanım';
+                    let gercekDersAdi = kazanimDetay.ders_adi || kazanimDetay.ders || kazanimDetay.brans || 'Ders Belirtilmemiş';
+
+                    let varOlan = denemeyeGoreGruplar[denemeAdi].find(k => k.id === kazanimDetay.id);
+                    if (varOlan) { varOlan.hataSayisi++; } else { denemeyeGoreGruplar[denemeAdi].push({ id: kazanimDetay.id, ders_adi: gercekDersAdi, kazanim_metni: gercekKazanimMetni, hataSayisi: 1 }); }
+                }
+            });
+
+            let html = ''; let isFirst = true; let tersSiraliDenemeler = Object.entries(denemeyeGoreGruplar).reverse();
+            for (const [denemeAdi, kazanimDizisi] of tersSiraliDenemeler) {
+                let dersGruplari = {};
+                kazanimDizisi.forEach(k => { if (!dersGruplari[k.ders_adi]) dersGruplari[k.ders_adi] = []; dersGruplari[k.ders_adi].push(k); });
+
+                html += `<details class="group border border-slate-200 rounded-xl mb-4 shadow-sm bg-white" ${isFirst ? 'open' : ''}>
+                            <summary class="bg-slate-50 px-4 py-3 font-bold text-slate-700 flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-slate-100 transition rounded-xl group-open:rounded-b-none border-b border-transparent group-open:border-slate-200">
+                                <div class="flex items-center gap-2"><span class="text-slate-400 group-open:rotate-90 transition-transform duration-200 text-xs">▶</span><span>📋 ${denemeAdi} Sonrası Analiz</span></div>
+                                <span class="text-xs bg-red-100 text-red-600 px-2.5 py-1 rounded-full">${kazanimDizisi.length} Farklı Konu</span>
+                            </summary>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">`;
+                for (const [dersAdi, konular] of Object.entries(dersGruplari)) {
+                    html += `<div class="bg-white border border-slate-100 rounded-lg p-3 shadow-sm"><h4 class="font-bold text-indigo-700 text-sm mb-2 border-b border-indigo-100 pb-1">${dersAdi}</h4><ul class="space-y-2">`;
+                    konular.forEach(k => {
+                        let hataBadge = k.hataSayisi > 1 ? `<span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">${k.hataSayisi} Hata</span>` : '';
+                        html += `<li class="text-xs text-slate-600 flex items-start gap-1.5 leading-relaxed"><span class="text-red-400 mt-0.5">✖</span><span>${k.kazanim_metni} ${hataBadge}</span></li>`;
+                    });
+                    html += `</ul></div>`;
+                }
+                html += `</div></details>`;
+                isFirst = false;
+            }
+            container.innerHTML = html === '' ? `<div class="text-center text-slate-500 text-sm">Kazanım detayları bulunamadı.</div>` : html;
+        }
+
         async function soruKumbarasiniGetir() {
             let tbody = document.getElementById('soru-kumbarasi-govde');
             let streakBadge = document.getElementById('streak-badge');
@@ -1124,180 +1299,6 @@
             return `<span class="font-semibold text-slate-600">${sira}.</span>`;
         }
 
-        // ==========================================
-        // EKSİK BIRAKILAN FONKSİYONLAR BURAYA EKLENDİ
-        // ==========================================
-        
-        function karneyiOlustur() {
-            let tbody = document.getElementById('ogr-karne-govde');
-            if(globalDenemeler.length === 0 && globalOzelDenemeler.length === 0) { tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`; return; }
-
-            let html = ''; let siraNo = 1; let katildigiSinavSayisi = 0;
-            let toplam = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
-
-            globalDenemeler.forEach((deneme) => {
-                let sonuc = globalSonuclar.find(s => s.deneme_id === deneme.id);
-                let td = sonuc ? (sonuc.turkce_d ?? 0) : '-'; let ty = sonuc ? (sonuc.turkce_y ?? 0) : '-'; let tb = sonuc ? (sonuc.turkce_b ?? 0) : '-';
-                let md = sonuc ? (sonuc.matematik_d ?? 0) : '-'; let my = sonuc ? (sonuc.matematik_y ?? 0) : '-'; let mb = sonuc ? (sonuc.matematik_b ?? 0) : '-';
-                let fd = sonuc ? (sonuc.fen_d ?? 0) : '-'; let fy = sonuc ? (sonuc.fen_y ?? 0) : '-'; let fb = sonuc ? (sonuc.fen_b ?? 0) : '-';
-                let ind = sonuc ? (sonuc.inkilap_d ?? 0) : '-'; let iny = sonuc ? (sonuc.inkilap_y ?? 0) : '-'; let inb = sonuc ? (sonuc.inkilap_b ?? 0) : '-';
-                let dd = sonuc ? (sonuc.din_d ?? 0) : '-'; let dy = sonuc ? (sonuc.din_y ?? 0) : '-'; let db = sonuc ? (sonuc.din_b ?? 0) : '-';
-                let ingd = sonuc ? (sonuc.ingilizce_d ?? 0) : '-'; let ingy = sonuc ? (sonuc.ingilizce_y ?? 0) : '-'; let ingb = sonuc ? (sonuc.ingilizce_b ?? 0) : '-';
-                let net = sonuc && sonuc.toplam_net != null ? sonuc.toplam_net : '-';
-                let puan = sonuc && sonuc.lgs_puan != null ? sonuc.lgs_puan : '-';
-                let yuzde = sonuc && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : '-';
-                let dereceHtml = ogrenciDerecesiniBul(deneme.id, ogrenciId, sonuc ? sonuc.lgs_puan : null);
-
-                if(sonuc) {
-                    katildigiSinavSayisi++;
-                    toplam.t_d += (sonuc.turkce_d ?? 0); toplam.t_y += (sonuc.turkce_y ?? 0); toplam.t_b += (sonuc.turkce_b ?? (20 - (sonuc.turkce_d ?? 0) - (sonuc.turkce_y ?? 0)));
-                    toplam.m_d += (sonuc.matematik_d ?? 0); toplam.m_y += (sonuc.matematik_y ?? 0); toplam.m_b += (sonuc.matematik_b ?? (20 - (sonuc.matematik_d ?? 0) - (sonuc.matematik_y ?? 0)));
-                    toplam.f_d += (sonuc.fen_d ?? 0); toplam.f_y += (sonuc.fen_y ?? 0); toplam.f_b += (sonuc.fen_b ?? (20 - (sonuc.fen_d ?? 0) - (sonuc.fen_y ?? 0)));
-                    toplam.ind += (sonuc.inkilap_d ?? 0); toplam.iny += (sonuc.inkilap_y ?? 0); toplam.inb += (sonuc.inkilap_b ?? (10 - (sonuc.inkilap_d ?? 0) - (sonuc.inkilap_y ?? 0)));
-                    toplam.d_d += (sonuc.din_d ?? 0); toplam.d_y += (sonuc.din_y ?? 0); toplam.d_b += (sonuc.din_b ?? (10 - (sonuc.din_d ?? 0) - (sonuc.din_y ?? 0)));
-                    toplam.ingd += (sonuc.ingilizce_d ?? 0); toplam.ingy += (sonuc.ingilizce_y ?? 0); toplam.ingb += (sonuc.ingilizce_b ?? (10 - (sonuc.ingilizce_d ?? 0) - (sonuc.ingilizce_y ?? 0)));
-                    toplam.net += (sonuc.toplam_net ?? 0); toplam.puan += (sonuc.lgs_puan ?? 0); toplam.yuzde += (sonuc.yuzdelik_dilim ?? 0);
-                }
-
-                html += `<tr>
-                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
-                    <td class="p-2.5 font-semibold text-slate-800">${deneme.deneme_adi}</td>
-                    <td class="p-2.5 text-slate-500 text-xs">${deneme.tarih || ''}</td>
-                    <td class="p-2.5 text-center">${dereceHtml}</td>
-                    <td class="p-2.5 text-center">${td}/${ty}/${tb}</td>
-                    <td class="p-2.5 text-center">${md}/${my}/${mb}</td>
-                    <td class="p-2.5 text-center">${fd}/${fy}/${fb}</td>
-                    <td class="p-2.5 text-center">${ind}/${iny}/${inb}</td>
-                    <td class="p-2.5 text-center">${dd}/${dy}/${db}</td>
-                    <td class="p-2.5 text-center">${ingd}/${ingy}/${ingb}</td>
-                    <td class="p-2.5 text-center font-bold text-indigo-700">${net}</td>
-                    <td class="p-2.5 text-center font-semibold text-emerald-700">${puan}</td>
-                    <td class="p-2.5 text-center font-semibold text-sky-700">${yuzde}</td>
-                </tr>`;
-            });
-
-            globalOzelDenemeler.forEach((od) => {
-                katildigiSinavSayisi++;
-                toplam.t_d += (od.turkce_d ?? 0); toplam.t_y += (od.turkce_y ?? 0); toplam.t_b += (od.turkce_b ?? 0);
-                toplam.m_d += (od.matematik_d ?? 0); toplam.m_y += (od.matematik_y ?? 0); toplam.m_b += (od.matematik_b ?? 0);
-                toplam.f_d += (od.fen_d ?? 0); toplam.f_y += (od.fen_y ?? 0); toplam.f_b += (od.fen_b ?? 0);
-                toplam.ind += (od.inkilap_d ?? 0); toplam.iny += (od.inkilap_y ?? 0); toplam.inb += (od.inkilap_b ?? 0);
-                toplam.d_d += (od.din_d ?? 0); toplam.d_y += (od.din_y ?? 0); toplam.d_b += (od.din_b ?? 0);
-                toplam.ingd += (od.ingilizce_d ?? 0); toplam.ingy += (od.ingilizce_y ?? 0); toplam.ingb += (od.ingilizce_b ?? 0);
-                toplam.net += (od.toplam_net ?? 0); toplam.puan += (od.lgs_puan ?? 0); toplam.yuzde += (od.yuzdelik_dilim ?? 0);
-
-                html += `<tr class="bg-amber-50/50">
-                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
-                    <td class="p-2.5 font-semibold text-slate-800">${od.deneme_adi} <span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1">Özel</span></td>
-                    <td class="p-2.5 text-slate-500 text-xs">${od.tarih || ''}</td>
-                    <td class="p-2.5 text-center">-</td>
-                    <td class="p-2.5 text-center">${od.turkce_d ?? 0}/${od.turkce_y ?? 0}/${od.turkce_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.matematik_d ?? 0}/${od.matematik_y ?? 0}/${od.matematik_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.fen_d ?? 0}/${od.fen_y ?? 0}/${od.fen_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.inkilap_d ?? 0}/${od.inkilap_y ?? 0}/${od.inkilap_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.din_d ?? 0}/${od.din_y ?? 0}/${od.din_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.ingilizce_d ?? 0}/${od.ingilizce_y ?? 0}/${od.ingilizce_b ?? 0}</td>
-                    <td class="p-2.5 text-center font-bold text-indigo-700">${od.toplam_net ?? '-'}</td>
-                    <td class="p-2.5 text-center font-semibold text-emerald-700">${od.lgs_puan ?? '-'}</td>
-                    <td class="p-2.5 text-center font-semibold text-sky-700">${od.yuzdelik_dilim ?? '-'}</td>
-                </tr>`;
-            });
-
-            if(katildigiSinavSayisi > 0) {
-                let fmt = (val, dec = 2) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n.toString() : n.toFixed(dec); };
-                let fmtPuan = (val) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n.toString() : n.toFixed(3); };
-
-                html += `<tr class="bg-indigo-50 font-bold text-slate-800 border-t-2 border-indigo-200">
-                    <td class="p-2.5 text-center text-indigo-700" colspan="4">GENEL ORTALAMA (${katildigiSinavSayisi} Sınav)</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.t_d)}/${fmt(toplam.t_y)}/${fmt(toplam.t_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.m_d)}/${fmt(toplam.m_y)}/${fmt(toplam.m_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.f_d)}/${fmt(toplam.f_y)}/${fmt(toplam.f_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.ind)}/${fmt(toplam.iny)}/${fmt(toplam.inb)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.d_d)}/${fmt(toplam.d_y)}/${fmt(toplam.d_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.ingd)}/${fmt(toplam.ingy)}/${fmt(toplam.ingb)}</td>
-                    <td class="p-2.5 text-center text-indigo-900">${fmt(toplam.net)}</td>
-                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(toplam.puan)}</td>
-                    <td class="p-2.5 text-center text-sky-800">${fmt(toplam.yuzde)}</td>
-                </tr>`;
-            }
-            tbody.innerHTML = html;
-        }
-
-        function ogrenciGelisimGrafiginiCiz() {
-            let etiketler = []; let netVerileri = []; let puanVerileri = []; let birlesikListe = [];
-            globalDenemeler.forEach(d => {
-                let sonuc = globalSonuclar.find(s => s.deneme_id === d.id);
-                if (sonuc) birlesikListe.push({ ad: d.deneme_adi, tarih: d.tarih || '1970-01-01', net: sonuc.toplam_net || 0, puan: sonuc.lgs_puan || 0 });
-            });
-            globalOzelDenemeler.forEach(od => {
-                birlesikListe.push({ ad: od.deneme_adi + " (Özel)", tarih: od.tarih || '1970-01-01', net: od.toplam_net || 0, puan: od.lgs_puan || 0 });
-            });
-            birlesikListe.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
-            birlesikListe.forEach(item => { etiketler.push(item.ad); netVerileri.push(item.net); puanVerileri.push(item.puan); });
-
-            let ctx = document.getElementById('gelisimGrafik').getContext('2d');
-            if (grafikObjekt) grafikObjekt.destroy();
-            grafikObjekt = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: etiketler,
-                    datasets: [
-                        { label: 'Toplam Net', data: netVerileri, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y', fill: true },
-                        { label: 'LGS Puanı', data: puanVerileri, borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y1', fill: true }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net' } }, y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Puan' } } } }
-            });
-        }
-
-        function eksikKazanimlariGoster() {
-            let container = document.getElementById('kazanim-analiz-govde');
-            if (eksikKazanimlar.length === 0) {
-                container.innerHTML = `<div class="text-center text-emerald-600 bg-emerald-50 p-4 rounded-xl font-medium border border-emerald-100">Öğrencinin kayıtlı herhangi bir eksik kazanımı (yanlışı/boşu) bulunmuyor. Harika iş! 🎉</div>`;
-                return;
-            }
-
-            let denemeyeGoreGruplar = {};
-            eksikKazanimlar.forEach(eksik => {
-                let deneme = globalDenemeler.find(d => d.id === eksik.deneme_id);
-                let denemeAdi = deneme ? deneme.deneme_adi : 'Bilinmeyen Deneme';
-                let kazanimDetay = kazanimVeritabani.find(k => k.id === eksik.kazanim_id);
-                
-                if (kazanimDetay) {
-                    if (!denemeyeGoreGruplar[denemeAdi]) denemeyeGoreGruplar[denemeAdi] = [];
-                    let gercekKazanimMetni = kazanimDetay.kazanim_adi || kazanimDetay.kazanim || kazanimDetay.kazanim_metni || kazanimDetay.metin || kazanimDetay.icerik || 'İsimsiz Kazanım';
-                    let gercekDersAdi = kazanimDetay.ders_adi || kazanimDetay.ders || kazanimDetay.brans || 'Ders Belirtilmemiş';
-
-                    let varOlan = denemeyeGoreGruplar[denemeAdi].find(k => k.id === kazanimDetay.id);
-                    if (varOlan) { varOlan.hataSayisi++; } else { denemeyeGoreGruplar[denemeAdi].push({ id: kazanimDetay.id, ders_adi: gercekDersAdi, kazanim_metni: gercekKazanimMetni, hataSayisi: 1 }); }
-                }
-            });
-
-            let html = ''; let isFirst = true; let tersSiraliDenemeler = Object.entries(denemeyeGoreGruplar).reverse();
-            for (const [denemeAdi, kazanimDizisi] of tersSiraliDenemeler) {
-                let dersGruplari = {};
-                kazanimDizisi.forEach(k => { if (!dersGruplari[k.ders_adi]) dersGruplari[k.ders_adi] = []; dersGruplari[k.ders_adi].push(k); });
-
-                html += `<details class="group border border-slate-200 rounded-xl mb-4 shadow-sm bg-white" ${isFirst ? 'open' : ''}>
-                            <summary class="bg-slate-50 px-4 py-3 font-bold text-slate-700 flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-slate-100 transition rounded-xl group-open:rounded-b-none border-b border-transparent group-open:border-slate-200">
-                                <div class="flex items-center gap-2"><span class="text-slate-400 group-open:rotate-90 transition-transform duration-200 text-xs">▶</span><span>📋 ${denemeAdi} Sonrası Analiz</span></div>
-                                <span class="text-xs bg-red-100 text-red-600 px-2.5 py-1 rounded-full">${kazanimDizisi.length} Farklı Konu</span>
-                            </summary>
-                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">`;
-                for (const [dersAdi, konular] of Object.entries(dersGruplari)) {
-                    html += `<div class="bg-white border border-slate-100 rounded-lg p-3 shadow-sm"><h4 class="font-bold text-indigo-700 text-sm mb-2 border-b border-indigo-100 pb-1">${dersAdi}</h4><ul class="space-y-2">`;
-                    konular.forEach(k => {
-                        let hataBadge = k.hataSayisi > 1 ? `<span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">${k.hataSayisi} Hata</span>` : '';
-                        html += `<li class="text-xs text-slate-600 flex items-start gap-1.5 leading-relaxed"><span class="text-red-400 mt-0.5">✖</span><span>${k.kazanim_metni} ${hataBadge}</span></li>`;
-                    });
-                    html += `</ul></div>`;
-                }
-                html += `</div></details>`;
-                isFirst = false;
-            }
-            container.innerHTML = html === '' ? `<div class="text-center text-slate-500 text-sm">Kazanım detayları bulunamadı.</div>` : html;
-        }
-
         function excelRaporAl() {
             if(!globalOgrenci) return;
             let excelVerisi = [
@@ -1375,7 +1376,6 @@
             XLSX.utils.book_append_sheet(workbook, worksheet, "Ogrenci Karnesi");
             XLSX.writeFile(workbook, `CADEP_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9]/g, '_')}_Karnesi.xlsx`);
         }
-
         function mihmandarLinkYonlendir(e) {
             e.preventDefault();
             let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
