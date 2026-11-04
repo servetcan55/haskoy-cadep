@@ -531,7 +531,6 @@
                 return;
             }
 
-            // GÜNCELLEME 1: Sonuç girilmiş en yeni denemeyi bul
             let { data: tumSonuclar } = await _supabase.from('deneme_sonuclari').select('deneme_id');
             let sonDeneme = null;
             if(tumSonuclar && tumSonuclar.length > 0) {
@@ -621,7 +620,6 @@
             let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
             if (!denemeler || denemeler.length === 0) return;
 
-            // GÜNCELLEME 2: Sonuç girilmiş en yeni denemeyi bul
             let { data: tumSonuclar } = await _supabase.from('deneme_sonuclari').select('*');
             if (!tumSonuclar) tumSonuclar = [];
 
@@ -710,6 +708,7 @@
             tbody.innerHTML = html;
         }
 
+        // --- GÜNCELLEME: ŞUBE BAŞARI ÖZETİ İÇİN ---
         async function sinifDagilimlariniYukle(ogrencilerListesi) {
             let containerGrid = document.getElementById('sinif-kartlari-grid');
             let parentContainer = document.getElementById('sinif-dagilim-container');
@@ -723,12 +722,22 @@
             });
 
             let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
-            let enSonDenemeId = denemeler && denemeler.length > 0 ? denemeler[0].id : null;
+            if (!denemeler || denemeler.length === 0) return;
+
+            // En son sonuç girilen denemeyi bul
+            let { data: tumSonuclar } = await _supabase.from('deneme_sonuclari').select('*');
+            if (!tumSonuclar) tumSonuclar = [];
 
             let sonuclar = [];
-            if (enSonDenemeId) {
-                let { data: res } = await _supabase.from('deneme_sonuclari').select('*').eq('deneme_id', enSonDenemeId);
-                sonuclar = res || [];
+            let enSonDenemeId = null;
+
+            for (let d of denemeler) {
+                let s = tumSonuclar.filter(res => res.deneme_id === d.id);
+                if (s && s.length > 0) {
+                    enSonDenemeId = d.id;
+                    sonuclar = s;
+                    break;
+                }
             }
 
             if(parentContainer) parentContainer.classList.remove('hidden');
