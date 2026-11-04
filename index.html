@@ -524,13 +524,26 @@
             const baslik = document.getElementById('widget-deneme-adi');
             if(!container || !baslik) return;
 
-            let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false }).limit(1);
+            let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
             if (!denemeler || denemeler.length === 0) {
                 container.innerHTML = '<div class="text-xs text-slate-500 text-center py-4 bg-slate-50 rounded-lg">Henüz deneme bulunmuyor.</div>';
                 baslik.innerText = "Veri Yok";
                 return;
             }
-            let sonDeneme = denemeler[0];
+
+            // GÜNCELLEME 1: Sonuç girilmiş en yeni denemeyi bul
+            let { data: tumSonuclar } = await _supabase.from('deneme_sonuclari').select('deneme_id');
+            let sonDeneme = null;
+            if(tumSonuclar && tumSonuclar.length > 0) {
+                for(let d of denemeler) {
+                    if(tumSonuclar.some(s => s.deneme_id === d.id)) {
+                        sonDeneme = d;
+                        break;
+                    }
+                }
+            }
+            if(!sonDeneme) sonDeneme = denemeler[0];
+
             baslik.innerText = sonDeneme.deneme_adi;
 
             let { data: sonuclar } = await _supabase.from('deneme_sonuclari').select('ogrenci_id').eq('deneme_id', sonDeneme.id);
@@ -608,7 +621,27 @@
             let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
             if (!denemeler || denemeler.length === 0) return;
 
-            let enSonDeneme = denemeler[0];
+            // GÜNCELLEME 2: Sonuç girilmiş en yeni denemeyi bul
+            let { data: tumSonuclar } = await _supabase.from('deneme_sonuclari').select('*');
+            if (!tumSonuclar) tumSonuclar = [];
+
+            let enSonDeneme = null;
+            let sonuclar = [];
+
+            for (let d of denemeler) {
+                let s = tumSonuclar.filter(res => res.deneme_id === d.id);
+                if (s && s.length > 0) {
+                    enSonDeneme = d;
+                    sonuclar = s;
+                    break;
+                }
+            }
+
+            if (!enSonDeneme) {
+                enSonDeneme = denemeler[0];
+                sonuclar = [];
+            }
+
             let container = document.getElementById('son-deneme-ozet-container');
             if(container) container.classList.remove('hidden');
 
@@ -618,7 +651,6 @@
             let btnIncele = document.getElementById('link-tum-sonuclar');
             if (btnIncele) btnIncele.href = `denemeler.html?id=${enSonDeneme.id}`;
 
-            let { data: sonuclar } = await _supabase.from('deneme_sonuclari').select('*').eq('deneme_id', enSonDeneme.id);
             if (!sonuclar || sonuclar.length === 0) {
                 document.getElementById('son-deneme-katilan').innerText = "Katılan: 0 Öğrenci";
                 document.getElementById('derece-ogrenci-govde').innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 text-xs">Bu denemeye ait henüz sonuç girilmemiş.</td></tr>`;
