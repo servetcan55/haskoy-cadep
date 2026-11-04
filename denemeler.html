@@ -107,7 +107,8 @@
                     </select>
                 </div>
 
-                <!-- Sadece Admin Denemeyi Silebilir -->
+                <!-- Admin Deneme Düzenleme ve Silme Butonları -->
+                <button id="btn-deneme-duzenle" onclick="denemeDuzenleModalAc()" class="text-xs text-blue-600 hover:text-blue-800 font-medium hidden cursor-pointer">Düzenle</button>
                 <button id="btn-deneme-sil" onclick="denemeSilSecili()" class="text-xs text-red-600 hover:text-red-800 font-medium hidden cursor-pointer">Denemeyi Sil</button>
             </div>
             
@@ -236,6 +237,27 @@
                 </div>
             </div>
         </div>
+
+        <!-- DENEME DÜZENLEME MODALI (YENİ EKLENDİ) -->
+        <div id="deneme-duzenle-modal" class="fixed inset-0 bg-slate-900/50 hidden flex items-center justify-center z-[100] backdrop-blur-sm">
+            <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm border border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">✏️ Deneme Düzenle</h3>
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Sınav Adı</label>
+                        <input type="text" id="duzenle-deneme-adi" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-600 mb-1">Sınav Tarihi</label>
+                        <input type="date" id="duzenle-deneme-tarihi" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button onclick="denemeDuzenleModalKapat()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition cursor-pointer">İptal</button>
+                    <button onclick="denemeGuncelleVeKaydet()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition cursor-pointer">Değişiklikleri Kaydet</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -250,6 +272,7 @@
 
         let ogrenciCache = [];
         let sonuclarCache = [];
+        let denemeCache = []; // Seçili denemenin detaylarına ulaşmak için
         let isAdmin = (oturum && oturum.rol === 'admin');
 
         window.onload = async function() {
@@ -273,6 +296,9 @@
 
                 let btnDenemeSil = document.getElementById('btn-deneme-sil');
                 if (btnDenemeSil) btnDenemeSil.classList.remove('hidden');
+                
+                let btnDenemeDuzenle = document.getElementById('btn-deneme-duzenle');
+                if (btnDenemeDuzenle) btnDenemeDuzenle.classList.remove('hidden');
 
                 let gorunumButonlari = document.getElementById('gorunum-butonlari');
                 if (gorunumButonlari) gorunumButonlari.classList.remove('hidden');
@@ -288,7 +314,6 @@
             await denemeleriYukle();
             await ogrencileriYukle();
 
-            // YENİ EKLENEN KISIM: URL'den hem 'id' hem de 'deneme_id' parametresini oku
             let searchParams = new URLSearchParams(window.location.search);
             let urlParamDenemeId = searchParams.get('deneme_id') || searchParams.get('id');
             
@@ -359,6 +384,7 @@
             let seciliDeger = select.value;
             select.innerHTML = '<option value="">Deneme Seçiniz...</option>';
             if(data) {
+                denemeCache = data; // Düzenleme işlemi için saklıyoruz
                 data.forEach(d => {
                     select.innerHTML += `<option value="${d.id}">${d.deneme_adi} (${d.tarih})</option>`;
                 });
@@ -387,11 +413,21 @@
                 siralamaContainer.classList.add('hidden');
                 document.getElementById('sonuc-liste-govde').innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Lütfen yukarıdan bir deneme sınavı seçin.</td></tr>`;
                 sonuclarCache = [];
+                
+                if (isAdmin) {
+                    document.getElementById('btn-deneme-duzenle').classList.add('hidden');
+                    document.getElementById('btn-deneme-sil').classList.add('hidden');
+                }
                 return;
             }
 
             siralamaContainer.classList.remove('hidden');
             siralamaContainer.classList.add('flex');
+            
+            if (isAdmin) {
+                document.getElementById('btn-deneme-duzenle').classList.remove('hidden');
+                document.getElementById('btn-deneme-sil').classList.remove('hidden');
+            }
 
             const { data } = await _supabase.from('deneme_sonuclari').select('*').eq('deneme_id', denemeId);
             sonuclarCache = data || [];
@@ -716,7 +752,15 @@
             if(!adi) return;
             let tarih = prompt("Tarih (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
             await _supabase.from('denemeler').insert([{ deneme_adi: adi, tarih: tarih }]);
-            denemeleriYukle();
+            
+            // Ekledikten sonra listeyi güncelle
+            await denemeleriYukle();
+            // Yeni eklenen denemeyi otomatik seç (En üstteki)
+            let select = document.getElementById('aktif-deneme-sec');
+            if (select.options.length > 1) {
+                select.selectedIndex = 1;
+                denemeDegisti();
+            }
         }
 
         async function denemeSilSecili() {
@@ -725,8 +769,54 @@
             if(!denemeId) return alert("Lütfen silinecek denemeyi seçin!");
             if(confirm("Bu denemeyi ve bu denemeye ait tüm öğrenci sonuçlarını silmek istediğinize emin misiniz?")) {
                 await _supabase.from('denemeler').delete().eq('id', denemeId);
-                denemeleriYukle();
+                await denemeleriYukle();
                 document.getElementById('sonuc-liste-govde').innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Lütfen yukarıdan bir deneme sınavı seçin.</td></tr>`;
+            }
+        }
+        
+        // --- YENİ EKLENEN FONKSİYONLAR: DENEME DÜZENLEME ---
+        function denemeDuzenleModalAc() {
+            let denemeId = document.getElementById('aktif-deneme-sec').value;
+            if (!denemeId) {
+                alert("Lütfen düzenlemek istediğiniz denemeyi seçin.");
+                return;
+            }
+            
+            let seciliDeneme = denemeCache.find(d => d.id == denemeId);
+            if (!seciliDeneme) return;
+
+            document.getElementById('duzenle-deneme-adi').value = seciliDeneme.deneme_adi;
+            document.getElementById('duzenle-deneme-tarihi').value = seciliDeneme.tarih || '';
+            
+            document.getElementById('deneme-duzenle-modal').classList.remove('hidden');
+        }
+
+        function denemeDuzenleModalKapat() {
+            document.getElementById('deneme-duzenle-modal').classList.add('hidden');
+        }
+
+        async function denemeGuncelleVeKaydet() {
+            let denemeId = document.getElementById('aktif-deneme-sec').value;
+            let yeniAd = document.getElementById('duzenle-deneme-adi').value.trim();
+            let yeniTarih = document.getElementById('duzenle-deneme-tarihi').value;
+
+            if (!yeniAd) {
+                alert("Deneme adı boş bırakılamaz!");
+                return;
+            }
+
+            let { error } = await _supabase.from('denemeler').update({ 
+                deneme_adi: yeniAd, 
+                tarih: yeniTarih 
+            }).eq('id', denemeId);
+
+            if (error) {
+                alert("Güncellenirken hata oluştu: " + error.message);
+            } else {
+                denemeDuzenleModalKapat();
+                await denemeleriYukle(); // Listeyi yenile
+                document.getElementById('aktif-deneme-sec').value = denemeId; // Seçimi koru
+                alert("Deneme bilgileri başarıyla güncellendi!");
             }
         }
 
