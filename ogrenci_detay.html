@@ -14,7 +14,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- PDF ve AutoTable Kütüphaneleri Eklendi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -103,8 +102,7 @@
                 <p id="ogr-detay-bilgi" class="text-sm text-slate-500">Öğrencinin tüm deneme sınavlarındaki başarı ve net analizleri.</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <!-- Rapor ve WhatsApp butonları varsayılan olarak GİZLİ, yetkiye göre açılacak -->
-                <button onclick="veliAnalizRaporuPdfAl()" id="btn-veli-raporu" class="hidden bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1.5 cursor-pointer transition">
+                <button onclick="veliAnalizRaporuPdfAl()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-1.5 cursor-pointer transition">
                     📄 Veli Raporu (PDF)
                 </button>
                 <button onclick="veliWhatsAppBildirimi()" id="btn-whatsapp" class="hidden bg-[#25D366] hover:bg-[#128C7E] text-white px-4 py-2 rounded-lg shadow text-sm font-medium flex items-center gap-2 cursor-pointer transition">
@@ -162,13 +160,12 @@
             </div>
         </div>
 
-        <!-- SORU ÇÖZÜM KUMBARASI & KESİNTİSİZ SERİ -->
+        <!-- 1. SORU ÇÖZÜM KUMBARASI (DÜZENLE BUTONLU) -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
                 <div>
                     <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
                         <span>🧠</span> Soru Çözüm Kumbarası
-                        <!-- Seri Rozeti Buraya Eklendi -->
                         <span id="streak-badge" class="hidden items-center gap-1 bg-gradient-to-r from-orange-100 to-amber-100 text-orange-600 text-xs font-black px-2.5 py-1 rounded-lg border border-orange-200 shadow-sm animate-pulse">
                             🔥 <span id="streak-count">0</span> Günlük Seri!
                         </span>
@@ -179,7 +176,8 @@
             </div>
 
             <div id="soru-ekleme-alani" class="hidden bg-indigo-50/60 border border-indigo-100 p-4 rounded-xl mb-6">
-                <h4 class="text-sm font-bold text-indigo-900 mb-3">📅 Yeni Soru Girişi</h4>
+                <h4 class="text-sm font-bold text-indigo-900 mb-3">📅 Soru Girişi ve Güncelleme</h4>
+                <input type="hidden" id="edit-soru-id">
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-3">
                     <div>
                         <label class="block text-[11px] font-semibold text-slate-600 mb-1">Türkçe</label>
@@ -211,7 +209,11 @@
                         <label class="text-xs font-medium text-slate-600">Tarih:</label>
                         <input type="date" id="soru-tarih" class="border border-slate-300 rounded-lg px-3 py-1 text-xs bg-white">
                     </div>
-                    <button onclick="soruKaydet()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">Kumbaraya At 🚀</button>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button id="btn-soru-kaydet" onclick="soruKaydet()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">Kumbaraya At 🚀</button>
+                        <button id="btn-soru-guncelle" onclick="soruGuncelle()" class="hidden w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">Güncelle 💾</button>
+                        <button id="btn-soru-iptal" onclick="soruDuzenleIptal()" class="hidden w-full sm:w-auto bg-slate-500 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">İptal</button>
+                    </div>
                 </div>
             </div>
 
@@ -227,7 +229,7 @@
                             <th class="p-2.5 text-center">Din</th>
                             <th class="p-2.5 text-center">İngilizce</th>
                             <th class="p-2.5 text-center text-indigo-700">Toplam Soru</th>
-                            <th class="p-2.5 text-center w-16">İşlem</th>
+                            <th class="p-2.5 text-center w-24">İşlem</th>
                         </tr>
                     </thead>
                     <tbody id="soru-kumbarasi-govde" class="divide-y divide-slate-100">
@@ -237,8 +239,56 @@
             </div>
         </div>
 
+        <!-- 2. GÜNLÜK KİTAP OKUMA KUMBARASI YENİ -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <span>📚</span> Günlük Kitap Okuma Kumbarası
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">LGS paragraf soruları için altın anahtar! Günlük okuduğunuz sayfa sayısını girin ve gelişiminizi takip edin.</p>
+                </div>
+                <div id="kitap-giris-formu-tetik" class="w-full sm:w-auto"></div>
+            </div>
+
+            <div id="kitap-ekleme-alani" class="hidden bg-emerald-50/60 border border-emerald-100 p-4 rounded-xl mb-6">
+                <h4 class="text-sm font-bold text-emerald-900 mb-3">📖 Yeni Okuma Girişi ve Güncelleme</h4>
+                <input type="hidden" id="edit-kitap-id">
+                <div class="flex flex-col sm:flex-row items-end gap-3 mb-3">
+                    <div class="flex-1">
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Okunan Sayfa Sayısı</label>
+                        <input type="number" id="kitap-sayfa" min="1" value="0" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-sm bg-white text-center font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Tarih</label>
+                        <input type="date" id="kitap-tarih" class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-sm bg-white text-center">
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto mt-3 sm:mt-0">
+                        <button id="btn-kitap-kaydet" onclick="kitapKaydet()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">Kaydet 📚</button>
+                        <button id="btn-kitap-guncelle" onclick="kitapGuncelle()" class="hidden w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">Güncelle 💾</button>
+                        <button id="btn-kitap-iptal" onclick="kitapDuzenleIptal()" class="hidden w-full sm:w-auto bg-slate-500 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition cursor-pointer">İptal</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 uppercase tracking-wider text-[11px] border-b border-slate-200">
+                            <th class="p-2.5">Tarih</th>
+                            <th class="p-2.5 text-center text-emerald-700">Sayfa Sayısı</th>
+                            <th class="p-2.5 text-center w-24">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kitap-kumbarasi-govde" class="divide-y divide-slate-100">
+                        <tr><td colspan="3" class="p-4 text-center text-slate-400">Kitap verileri yükleniyor...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Öğrenci Deneme Sonuçları Tablosu -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs sm:text-sm">
                     <thead>
@@ -266,7 +316,7 @@
         </div>
 
         <!-- EKSİK KAZANIMLAR -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
             <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2"><span>🎯</span> Eksik Kazanım Analizi (Yanlış / Boş Bırakılan Konular)</h3>
             <p class="text-xs text-slate-500 mb-4">Aşağıdaki liste, optik form taraması sonucunda öğrencinin hata yaptığı veya boş bıraktığı soruların konularını göstermektedir.</p>
             <div id="kazanim-analiz-govde" class="space-y-4"><div class="text-center text-slate-400 py-6 text-sm">Analiz verileri yükleniyor...</div></div>
@@ -309,6 +359,8 @@
                 if (cikisContainer) cikisContainer.classList.remove('hidden');
                 let geriDonBtn = document.getElementById('btn-geri-don');
                 if (geriDonBtn) geriDonBtn.style.display = 'none';
+                let wpBtn = document.getElementById('btn-whatsapp');
+                if (wpBtn) wpBtn.style.display = 'none';
             } else if (oturum && oturum.rol !== 'admin') {
                 let kulMenu = document.getElementById('menu-kullanicilar');
                 if (kulMenu) kulMenu.style.display = 'none';
@@ -336,6 +388,7 @@
             }
 
             document.getElementById('soru-tarih').value = new Date().toISOString().split('T')[0];
+            document.getElementById('kitap-tarih').value = new Date().toISOString().split('T')[0];
             
             lgsGeriSayimBaslat();
             setInterval(lgsGeriSayimBaslat, 1000);
@@ -445,15 +498,9 @@
             document.getElementById('ogr-baslik').innerText = `${ogrData.ad_soyad} - Deneme Karnesi`;
             document.getElementById('ogr-detay-bilgi').innerText = `Sınıf: ${ogrData.sinif} | Okul No: ${ogrData.ogrenci_no || ogrData.okul_no || '-'} | Mihmandar: ${mihmandarAdi} | Hedef: ${ogrData.hedef_lisesi || '-'}`;
 
-            // YETKİ KONTROLÜ - Rapor ve WhatsApp butonları için (Öğrenci görmeyecek)
             let yetkiliOgretmen = (oturum.rol === 'admin' || (oturum.rol === 'mihmandar' && ogrData.mihmandar_ogretmen_id === oturum.iliskili_id));
-            let raporBtn = document.getElementById('btn-veli-raporu');
             let wpBtn = document.getElementById('btn-whatsapp');
-            
-            if (oturum.rol === 'admin' || oturum.rol === 'gozlemci' || (oturum.rol === 'mihmandar' && ogrData.mihmandar_ogretmen_id === oturum.iliskili_id)) {
-                if (raporBtn) raporBtn.classList.remove('hidden');
-                if (wpBtn) wpBtn.classList.remove('hidden');
-            }
+            if (wpBtn && yetkiliOgretmen) wpBtn.classList.remove('hidden');
 
             let gridContainer = document.getElementById('koocluk-grid-container');
 
@@ -469,9 +516,13 @@
 
             if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
                 document.getElementById('soru-ekleme-alani').classList.remove('hidden');
-                document.getElementById('soru-giris-formu-tetik').innerHTML = `<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1.5 rounded-lg">✍️ Soru Girişi Açık</span>`;
+                document.getElementById('soru-giris-formu-tetik').innerHTML = `<span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1.5 rounded-lg">✍️ Veri Girişi Açık</span>`;
+                
+                document.getElementById('kitap-ekleme-alani').classList.remove('hidden');
+                document.getElementById('kitap-giris-formu-tetik').innerHTML = `<span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-lg">✍️ Veri Girişi Açık</span>`;
             } else {
-                document.getElementById('soru-giris-formu-tetik').innerHTML = `<span class="bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-lg">👁️ Gözlem Modu (Salt Okunur)</span>`;
+                document.getElementById('soru-giris-formu-tetik').innerHTML = `<span class="bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-lg">👁️ Gözlem Modu</span>`;
+                document.getElementById('kitap-giris-formu-tetik').innerHTML = `<span class="bg-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-lg">👁️ Gözlem Modu</span>`;
             }
 
             let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: true });
@@ -494,12 +545,463 @@
             rozetleriHesapla();
             await gorevleriGetir();
             if(yetkiliOgretmen) await notlariGetir();
+            
             await soruKumbarasiniGetir();
+            await kitapKumbarasiniGetir();
         }
 
         // ==========================================
-        // VELİ ANALİZ RAPORU PDF İNDİRME (TR KARAKTER DESTEKLİ)
+        // KİTAP OKUMA KUMBARASI FONKSİYONLARI
         // ==========================================
+        async function kitapKumbarasiniGetir() {
+            let tbody = document.getElementById('kitap-kumbarasi-govde');
+            try {
+                let { data, error } = await _supabase.from('cadep_kitap_okuma').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
+                if (error || !data) throw error;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">Henüz kitap okuma kaydı eklenmemiş. İlk okumanızı girin!</td></tr>`;
+                    return;
+                }
+
+                let html = '';
+                data.forEach(k => {
+                    let trTarih = k.tarih ? k.tarih.split('-').reverse().join('.') : '-';
+                    let islemBtn = '-';
+                    if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
+                        islemBtn = `
+                            <div class="flex justify-center gap-1.5">
+                                <button onclick="kitapDuzenleKurgula(${k.id}, ${k.sayfa_sayisi}, '${k.tarih}')" class="text-blue-500 hover:text-blue-700 font-semibold text-[10px] px-2 py-1 bg-blue-50 rounded">Düzenle</button>
+                                <button onclick="kitapSil(${k.id})" class="text-red-500 hover:text-red-700 font-semibold text-[10px] px-2 py-1 bg-red-50 rounded">Sil</button>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="p-2.5 font-medium text-slate-700">${trTarih}</td>
+                            <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50">${k.sayfa_sayisi || 0} Sayfa</td>
+                            <td class="p-2.5 text-center">${islemBtn}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-rose-500 text-xs">Kitap okuma tablosu yüklenemedi.</td></tr>`;
+            }
+        }
+
+        async function kitapKaydet() {
+            let sayfa = parseInt(document.getElementById('kitap-sayfa').value) || 0;
+            let tarih = document.getElementById('kitap-tarih').value;
+
+            if (sayfa <= 0) { alert("Lütfen geçerli bir sayfa sayısı giriniz."); return; }
+            if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
+
+            let { error } = await _supabase.from('cadep_kitap_okuma').insert([{
+                ogrenci_id: ogrenciId, sayfa_sayisi: sayfa, tarih: tarih
+            }]);
+
+            if (error) {
+                alert("Kayıt sırasında hata oluştu: " + error.message);
+            } else {
+                document.getElementById('kitap-sayfa').value = 0;
+                await kitapKumbarasiniGetir();
+            }
+        }
+
+        function kitapDuzenleKurgula(id, sayfa, tarih) {
+            document.getElementById('edit-kitap-id').value = id;
+            document.getElementById('kitap-sayfa').value = sayfa || 0;
+            document.getElementById('kitap-tarih').value = tarih;
+
+            document.getElementById('btn-kitap-kaydet').classList.add('hidden');
+            document.getElementById('btn-kitap-guncelle').classList.remove('hidden');
+            document.getElementById('btn-kitap-iptal').classList.remove('hidden');
+            
+            document.getElementById('kitap-ekleme-alani').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function kitapDuzenleIptal() {
+            document.getElementById('edit-kitap-id').value = '';
+            document.getElementById('kitap-sayfa').value = 0;
+            document.getElementById('kitap-tarih').value = new Date().toISOString().split('T')[0];
+
+            document.getElementById('btn-kitap-kaydet').classList.remove('hidden');
+            document.getElementById('btn-kitap-guncelle').classList.add('hidden');
+            document.getElementById('btn-kitap-iptal').classList.add('hidden');
+        }
+
+        async function kitapGuncelle() {
+            let id = document.getElementById('edit-kitap-id').value;
+            if(!id) return;
+
+            let sayfa = parseInt(document.getElementById('kitap-sayfa').value) || 0;
+            let tarih = document.getElementById('kitap-tarih').value;
+
+            if (sayfa <= 0) { alert("Lütfen geçerli bir sayfa sayısı giriniz."); return; }
+            if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
+
+            let { error } = await _supabase.from('cadep_kitap_okuma').update({
+                sayfa_sayisi: sayfa, tarih: tarih
+            }).eq('id', id);
+
+            if (error) {
+                alert("Güncelleme sırasında hata oluştu: " + error.message);
+            } else {
+                kitapDuzenleIptal();
+                await kitapKumbarasiniGetir();
+            }
+        }
+
+        async function kitapSil(id) {
+            if(confirm("Bu kitap okuma kaydını silmek istediğinize emin misiniz?")) {
+                let { error } = await _supabase.from('cadep_kitap_okuma').delete().eq('id', id);
+                if (!error) await kitapKumbarasiniGetir();
+            }
+        }
+
+        // ==========================================
+        // SORU ÇÖZÜM KUMBARASI & DÜZENLEME
+        // ==========================================
+        async function soruKumbarasiniGetir() {
+            let tbody = document.getElementById('soru-kumbarasi-govde');
+            let streakBadge = document.getElementById('streak-badge');
+            let streakCount = document.getElementById('streak-count');
+
+            try {
+                let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
+                if (error || !data) throw error;
+
+                if (data.length > 0) {
+                    let formatTarih = (d) => { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+                    let tarihler = [...new Set(data.map(s => s.tarih))];
+                    let bugun = new Date(); let dun = new Date(); dun.setDate(dun.getDate() - 1);
+                    let bugunStr = formatTarih(bugun); let dunStr = formatTarih(dun);
+                    
+                    let kontrolTarihi = null; let seri = 0;
+                    if (tarihler.includes(bugunStr)) { kontrolTarihi = bugun; } 
+                    else if (tarihler.includes(dunStr)) { kontrolTarihi = dun; }
+                    
+                    if (kontrolTarihi) {
+                        let anlikTarih = new Date(kontrolTarihi);
+                        while (true) {
+                            let anlikStr = formatTarih(anlikTarih);
+                            if (tarihler.includes(anlikStr)) {
+                                seri++; anlikTarih.setDate(anlikTarih.getDate() - 1);
+                            } else { break; }
+                        }
+                    }
+                    if (seri > 0) {
+                        streakCount.innerText = seri;
+                        streakBadge.classList.remove('hidden'); streakBadge.classList.add('inline-flex');
+                    } else {
+                        streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
+                    }
+                } else {
+                    streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
+                }
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 text-xs">Henüz soru kumbarasına kayıt eklenmemiş. İlk sorularınızı ekleyin!</td></tr>`;
+                    return;
+                }
+
+                let html = '';
+                data.forEach(s => {
+                    let trTarih = s.tarih ? s.tarih.split('-').reverse().join('.') : '-';
+                    let islemBtn = '-';
+                    if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
+                        islemBtn = `
+                            <div class="flex justify-center gap-1.5">
+                                <button onclick="soruDuzenleKurgula(${s.id}, ${s.turkce}, ${s.matematik}, ${s.fen}, ${s.inkilap}, ${s.din}, ${s.ingilizce}, '${s.tarih}')" class="text-blue-500 hover:text-blue-700 font-semibold text-[10px] px-2 py-1 bg-blue-50 rounded">Düzenle</button>
+                                <button onclick="soruSil(${s.id})" class="text-red-500 hover:text-red-700 font-semibold text-[10px] px-2 py-1 bg-red-50 rounded">Sil</button>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="p-2.5 font-medium text-slate-700">${trTarih}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.turkce || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.matematik || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.fen || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.inkilap || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.din || 0}</td>
+                            <td class="p-2.5 text-center text-slate-600">${s.ingilizce || 0}</td>
+                            <td class="p-2.5 text-center font-bold text-indigo-700 bg-indigo-50/50">${s.toplam_soru || 0}</td>
+                            <td class="p-2.5 text-center">${islemBtn}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-rose-500 text-xs">Soru kumbarası tablosu yüklenemedi.</td></tr>`;
+            }
+        }
+
+        async function soruKaydet() {
+            let turkce = parseInt(document.getElementById('soru-turkce').value) || 0;
+            let matematik = parseInt(document.getElementById('soru-matematik').value) || 0;
+            let fen = parseInt(document.getElementById('soru-fen').value) || 0;
+            let inkilap = parseInt(document.getElementById('soru-inkilap').value) || 0;
+            let din = parseInt(document.getElementById('soru-din').value) || 0;
+            let ingilizce = parseInt(document.getElementById('soru-ingilizce').value) || 0;
+            let tarih = document.getElementById('soru-tarih').value;
+
+            let toplamSoru = turkce + matematik + fen + inkilap + din + ingilizce;
+            if (toplamSoru <= 0) { alert("Lütfen en az bir derse ait soru sayısı giriniz."); return; }
+            if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
+
+            let { error } = await _supabase.from('cadep_soru_kumbarasi').insert([{
+                ogrenci_id: ogrenciId, turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih
+            }]);
+
+            if (error) { alert("Kayıt sırasında hata oluştu: " + error.message); } 
+            else {
+                soruDuzenleIptal();
+                await soruKumbarasiniGetir();
+            }
+        }
+
+        function soruDuzenleKurgula(id, tr, mat, fen, ink, din, ing, tarih) {
+            document.getElementById('edit-soru-id').value = id;
+            document.getElementById('soru-turkce').value = tr || 0;
+            document.getElementById('soru-matematik').value = mat || 0;
+            document.getElementById('soru-fen').value = fen || 0;
+            document.getElementById('soru-inkilap').value = ink || 0;
+            document.getElementById('soru-din').value = din || 0;
+            document.getElementById('soru-ingilizce').value = ing || 0;
+            document.getElementById('soru-tarih').value = tarih;
+
+            document.getElementById('btn-soru-kaydet').classList.add('hidden');
+            document.getElementById('btn-soru-guncelle').classList.remove('hidden');
+            document.getElementById('btn-soru-iptal').classList.remove('hidden');
+            
+            document.getElementById('soru-ekleme-alani').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function soruDuzenleIptal() {
+            document.getElementById('edit-soru-id').value = '';
+            document.getElementById('soru-turkce').value = 0;
+            document.getElementById('soru-matematik').value = 0;
+            document.getElementById('soru-fen').value = 0;
+            document.getElementById('soru-inkilap').value = 0;
+            document.getElementById('soru-din').value = 0;
+            document.getElementById('soru-ingilizce').value = 0;
+            document.getElementById('soru-tarih').value = new Date().toISOString().split('T')[0];
+
+            document.getElementById('btn-soru-kaydet').classList.remove('hidden');
+            document.getElementById('btn-soru-guncelle').classList.add('hidden');
+            document.getElementById('btn-soru-iptal').classList.add('hidden');
+        }
+
+        async function soruGuncelle() {
+            let id = document.getElementById('edit-soru-id').value;
+            if(!id) return;
+
+            let turkce = parseInt(document.getElementById('soru-turkce').value) || 0;
+            let matematik = parseInt(document.getElementById('soru-matematik').value) || 0;
+            let fen = parseInt(document.getElementById('soru-fen').value) || 0;
+            let inkilap = parseInt(document.getElementById('soru-inkilap').value) || 0;
+            let din = parseInt(document.getElementById('soru-din').value) || 0;
+            let ingilizce = parseInt(document.getElementById('soru-ingilizce').value) || 0;
+            let tarih = document.getElementById('soru-tarih').value;
+
+            let toplamSoru = turkce + matematik + fen + inkilap + din + ingilizce;
+            if (toplamSoru <= 0) { alert("Lütfen en az bir derse ait soru sayısı giriniz."); return; }
+            if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
+
+            let { error } = await _supabase.from('cadep_soru_kumbarasi').update({
+                turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih
+            }).eq('id', id);
+
+            if (error) {
+                alert("Güncelleme sırasında hata oluştu: " + error.message);
+            } else {
+                soruDuzenleIptal();
+                await soruKumbarasiniGetir();
+            }
+        }
+
+        async function soruSil(id) {
+            if(confirm("Bu soru kaydını silmek istediğinize emin misiniz?")) {
+                let { error } = await _supabase.from('cadep_soru_kumbarasi').delete().eq('id', id);
+                if (!error) await soruKumbarasiniGetir();
+            }
+        }
+
+        // ==========================================
+        // DİĞER STANDART FONKSİYONLAR
+        // ==========================================
+        
+        // EKSİK OLAN FONKSİYONLAR EKLENDİ!
+        function hedefBarometresiOlustur() {
+            let container = document.getElementById('barometre-container');
+            let hedefLise = globalOgrenci.hedef_lisesi || "Belirtilmemiş";
+            let tumSinavlar = [];
+            globalDenemeler.forEach(d => {
+                let s = globalSonuclar.find(res => res.deneme_id === d.id);
+                if (s && s.lgs_puan != null) tumSinavlar.push({ tarih: d.tarih, puan: s.lgs_puan, ad: d.deneme_adi });
+            });
+            globalOzelDenemeler.forEach(od => {
+                if(od.lgs_puan != null) tumSinavlar.push({ tarih: od.tarih, puan: od.lgs_puan, ad: od.deneme_adi + " (Özel)" });
+            });
+
+            if (tumSinavlar.length === 0 || hedefLise === "Belirtilmemiş" || hedefLise === "") {
+                container.innerHTML = `<div class="z-10 relative flex flex-col items-center justify-center text-center h-full"><span class="text-4xl mb-3 opacity-50">🎯</span><h3 class="text-lg font-bold text-slate-200 mb-1">Hedef Lise Verisi Yok</h3><p class="text-xs text-slate-400">Barometrenin çalışması için öğrencinin hedefini ve en az 1 puanlı denemesini sisteme girmelisiniz.</p></div>`;
+                return;
+            }
+
+            tumSinavlar.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+            let sonSinav = tumSinavlar[0];
+            let sonPuan = Number(sonSinav.puan);
+
+            const lisePuanlari = { "galatasaray": 498, "kabataş": 493, "ankara fen": 495, "garip zeycan": 485, "canik fen": 472, "aziz atik": 458, "samsun anadolu": 445, "tülay başaran": 435, "onur ateş": 420, "atatürk anadolu": 410, "fen lisesi": 460, "anadolu lisesi": 420 };
+            let aranan = hedefLise.toLowerCase();
+            let targetPuan = 430;
+            for (let key in lisePuanlari) { if (aranan.includes(key)) { targetPuan = lisePuanlari[key]; break; } }
+
+            let yuzde = (sonPuan / targetPuan) * 100;
+            if (yuzde > 100) yuzde = 100;
+            if (yuzde < 0) yuzde = 0;
+
+            let kalanPuan = (targetPuan - sonPuan).toFixed(2);
+            let mesaj = ""; let renk = ""; let emoji = "";
+
+            if (sonPuan >= targetPuan) { mesaj = "Hedefine ulaştın! Harika gidiyorsun, şimdi sıranı koruma vakti."; renk = "from-emerald-400 to-emerald-600"; emoji = "🎉"; } 
+            else if (kalanPuan <= 15) { mesaj = "Çok yaklaştın! Sadece ufak bir gayret daha gerekiyor."; renk = "from-amber-400 to-orange-500"; emoji = "🔥"; } 
+            else if (kalanPuan <= 40) { mesaj = "İyi gidiyorsun, vites yükseltme zamanı geldi!"; renk = "from-sky-400 to-blue-600"; emoji = "💪"; } 
+            else { mesaj = "Hedefin yüksek! Kazanım analizlerine odaklanmalısın."; renk = "from-red-400 to-rose-600"; emoji = "🚀"; }
+
+            container.innerHTML = `
+                <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-5 blur-2xl"></div>
+                <div class="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-indigo-500 opacity-10 blur-xl"></div>
+                <div class="z-10 relative flex flex-col justify-between h-full">
+                    <div>
+                        <h3 class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><span class="bg-indigo-500/30 p-1 rounded">🎯</span> Hedef Gerçeklik Barometresi</h3>
+                        <h2 class="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight line-clamp-2" title="${hedefLise}">${hedefLise}</h2>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex justify-between items-end mb-2.5">
+                            <div><span class="text-[10px] text-slate-400 block mb-0.5 line-clamp-1 max-w-[120px]" title="${sonSinav.ad}">Son Sınav: ${sonSinav.ad}</span><span class="text-2xl font-black text-white">${sonPuan.toFixed(2)}</span></div>
+                            <div class="text-right"><span class="text-[10px] text-slate-400 block mb-0.5">Tahmini Taban</span><span class="text-xl font-bold text-emerald-400">${targetPuan} Puan</span></div>
+                        </div>
+                        <div class="w-full bg-slate-800/80 rounded-full h-3.5 mb-4 relative overflow-hidden shadow-inner border border-slate-700">
+                            <div class="bg-gradient-to-r ${renk} h-3.5 rounded-full transition-all duration-1000 ease-out relative" style="width: ${yuzde}%"><div class="absolute top-0 right-0 bottom-0 w-4 bg-white/20 blur-sm rounded-full animate-pulse"></div></div>
+                        </div>
+                        <div class="bg-white/10 border border-white/10 px-3 py-2.5 rounded-xl text-center backdrop-blur-sm"><p class="text-[11px] sm:text-xs font-medium text-slate-200 leading-snug"><span class="text-sm mr-1">${emoji}</span> ${mesaj}</p></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function rozetleriHesapla() {
+            let container = document.getElementById('rozet-container');
+            let tumSinavlar = [];
+            globalDenemeler.forEach(d => {
+                let s = globalSonuclar.find(res => res.deneme_id === d.id);
+                if (s && s.lgs_puan != null) tumSinavlar.push({ ...s, tarih: d.tarih });
+            });
+            globalOzelDenemeler.forEach(od => {
+                if(od.lgs_puan != null) tumSinavlar.push({ ...od, tarih: od.tarih });
+            });
+
+            tumSinavlar.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+
+            if(tumSinavlar.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full text-center">Henüz puanlı sınav girilmediği için rozet verisi yok.</div>`;
+                return;
+            }
+
+            let kazanilanRozetler = [];
+            let sonSinav = tumSinavlar[tumSinavlar.length - 1];
+            let oncekiSinav = tumSinavlar.length > 1 ? tumSinavlar[tumSinavlar.length - 2] : null;
+
+            if (sonSinav.toplam_net >= 80) kazanilanRozetler.push({ icon: '🏔️', ad: 'Zirve Ziyaretçisi', aciklama: 'Son sınavda 80 net barajını aştı.', renk: 'bg-purple-50 text-purple-700 border-purple-200' });
+            let matNet = (sonSinav.matematik_d || 0) - ((sonSinav.matematik_y || 0) / 3);
+            if (matNet >= 15) kazanilanRozetler.push({ icon: '📐', ad: 'Matematik Fatihi', aciklama: 'Son sınavda Matematikte 15 neti geçti.', renk: 'bg-blue-50 text-blue-700 border-blue-200' });
+            let turNet = (sonSinav.turkce_d || 0) - ((sonSinav.turkce_y || 0) / 3);
+            if (turNet >= 17) kazanilanRozetler.push({ icon: '📚', ad: 'Türkçe Üstadı', aciklama: 'Son sınavda Türkçede 17 neti geçti.', renk: 'bg-rose-50 text-rose-700 border-rose-200' });
+            let fenNet = (sonSinav.fen_d || 0) - ((sonSinav.fen_y || 0) / 3);
+            if (fenNet >= 17) kazanilanRozetler.push({ icon: '🔬', ad: 'Fen Dehası', aciklama: 'Son sınavda Fen Bilimlerinde 17 neti geçti.', renk: 'bg-emerald-50 text-emerald-700 border-emerald-200' });
+            let inkNet = (sonSinav.inkilap_d || 0) - ((sonSinav.inkilap_y || 0) / 3);
+            if (inkNet === 10) kazanilanRozetler.push({ icon: '🇹🇷', ad: 'Tarih Yazan', aciklama: 'İnkılap Tarihinde tüm soruları doğru cevapladı.', renk: 'bg-red-50 text-red-700 border-red-200' });
+            if (oncekiSinav && (sonSinav.lgs_puan - oncekiSinav.lgs_puan >= 20)) kazanilanRozetler.push({ icon: '🚀', ad: 'Geri Dönüş Efsanesi', aciklama: 'Bir önceki sınava göre puanını 20+ artırdı!', renk: 'bg-amber-50 text-amber-700 border-amber-200' });
+            
+            if (tumSinavlar.length >= 3) {
+                let s1 = tumSinavlar[tumSinavlar.length - 1].lgs_puan;
+                let s2 = tumSinavlar[tumSinavlar.length - 2].lgs_puan;
+                let s3 = tumSinavlar[tumSinavlar.length - 3].lgs_puan;
+                if (s1 > s2 && s2 > s3) kazanilanRozetler.push({ icon: '📈', ad: 'İstikrar Abidesi', aciklama: 'Son 3 sınavda puanını sürekli artırmayı başardı.', renk: 'bg-cyan-50 text-cyan-700 border-cyan-200' });
+            }
+            
+            if (kazanilanRozetler.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full text-center">Öğrenci bu sınavda yeni rozet koşullarını sağlayamadı. Bir sonrakine! 💪</div>`;
+                return;
+            }
+
+            let html = '';
+            kazanilanRozetler.forEach(r => {
+                html += `
+                    <div class="${r.renk} border px-3 py-2 rounded-xl flex items-center gap-2.5 shadow-sm hover:shadow-md transition-shadow cursor-default group relative w-full sm:w-auto min-w-[200px]">
+                        <span class="text-2xl">${r.icon}</span>
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold uppercase tracking-wide leading-tight">${r.ad}</span>
+                            <span class="text-[10px] opacity-80 leading-tight mt-0.5">${r.aciklama}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function veliWhatsAppBildirimi() {
+            if (!globalOgrenci) return;
+            let tumSinavlar = [];
+            globalDenemeler.forEach(d => {
+                let s = globalSonuclar.find(res => res.deneme_id === d.id);
+                if (s && s.lgs_puan != null) tumSinavlar.push({ tarih: d.tarih, puan: s.lgs_puan, net: s.toplam_net, ad: d.deneme_adi });
+            });
+            globalOzelDenemeler.forEach(od => {
+                if(od.lgs_puan != null) tumSinavlar.push({ tarih: od.tarih, puan: od.lgs_puan, net: od.toplam_net, ad: od.deneme_adi + " (Özel)" });
+            });
+
+            if (tumSinavlar.length === 0) { alert("Öğrenciye ait puanlı bir sınav sonucu bulunmuyor."); return; }
+
+            tumSinavlar.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+            let sonSinav = tumSinavlar[0];
+            let hedefLise = globalOgrenci.hedef_lisesi && globalOgrenci.hedef_lisesi.trim() !== "" ? globalOgrenci.hedef_lisesi : "Belirtilmemiş";
+
+            let mesaj = `Sayın Velimiz, iyi günler dilerim.\n\nÖğrencimiz *${globalOgrenci.ad_soyad}* (${globalOgrenci.sinif}), okulumuzda uygulanan son deneme sınavında (*${sonSinav.ad}*) aşağıdaki sonuçları elde etmiştir:\n\n*Toplam Net:* ${sonSinav.net}\n*LGS Puanı:* ${sonSinav.puan.toFixed(2)}\n`;
+
+            if (hedefLise !== "Belirtilmemiş") mesaj += `\nÖğrencimizin hedefi olan *${hedefLise}* için çalışmalarını yakından takip ediyoruz. `;
+            else mesaj += `\nÖğrencimizin deneme gelişimini sistemimiz üzerinden yakından takip ediyoruz. `;
+
+            mesaj += `Eksik konularına yönelik analiz raporu öğretmenlerimiz tarafından değerlendirilmektedir.\n\nİyi çalışmalar dileriz.\n- Hasköy Ortaokulu LGS Koordinatörlüğü`;
+
+            let url = `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
+            
+            if (globalOgrenci.veli_telefonu && globalOgrenci.veli_telefonu.length >= 10) {
+                let tel = globalOgrenci.veli_telefonu.replace(/[^0-9]/g, '');
+                if(tel.length === 10) tel = "90" + tel;
+                if(tel.length === 11 && tel.startsWith("0")) tel = "9" + tel;
+                url = `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`;
+            }
+            window.open(url, '_blank');
+        }
+
+        function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
+            if (ogrenciPuan == null || ogrenciPuan === '-') return '-';
+            let sinifSonuclari = tumDenemeSonuclari.filter(s => s.deneme_id === denemeId && s.lgs_puan != null).sort((a, b) => b.lgs_puan - a.lgs_puan);
+            let sira = sinifSonuclari.findIndex(s => s.ogrenci_id === ogrenciId) + 1;
+            if (sira === 0) return '-';
+            if (sira === 1) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">🥇 1.</span>';
+            if (sira === 2) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-xs">🥈 2.</span>';
+            if (sira === 3) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-xs">🥉 3.</span>';
+            return `<span class="font-semibold text-slate-600">${sira}.</span>`;
+        }
+
         async function veliAnalizRaporuPdfAl() {
             if (!globalOgrenci) return;
             
@@ -706,10 +1208,158 @@
             }
         }
 
-        // ==========================================
-        // DİĞER VERİ VE LİSTELEME FONKSİYONLARI
-        // ==========================================
-        
+        async function gorevleriGetir() {
+            let container = document.getElementById('gorev-listesi');
+            try {
+                let { data, error } = await _supabase.from('cadep_ogrenci_gorevler').select('*').eq('ogrenci_id', ogrenciId).order('id', { ascending: false });
+                if (error || !data) throw error;
+                if (data.length === 0) {
+                    container.innerHTML = `<li class="text-center text-slate-400 text-xs py-4">Henüz atanmış bir görev bulunmuyor.</li>`;
+                    return;
+                }
+
+                let kutucukYetkisi = (oturum.rol === 'ogrenci' || oturum.rol === 'admin') ? '' : 'disabled title="Bu görevi yalnızca öğrencinin kendisi işaretleyebilir."';
+                let cursorStyle = (oturum.rol === 'ogrenci' || oturum.rol === 'admin') ? 'cursor-pointer' : 'cursor-not-allowed opacity-80';
+
+                let html = '';
+                data.forEach(g => {
+                    let isChecked = g.durum ? 'checked' : '';
+                    let textStyle = g.durum ? 'line-through text-slate-400' : 'text-slate-700 font-medium';
+                    let yetkiliOgretmen = (oturum.rol === 'admin' || (oturum.rol === 'mihmandar' && globalOgrenci && globalOgrenci.mihmandar_ogretmen_id === oturum.iliskili_id));
+                    let actionBtns = yetkiliOgretmen ? 
+                        `<div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="gorevDuzenle(this, ${g.id})" class="text-[10px] text-blue-500 hover:text-blue-700 font-semibold px-1">Düzenle</button>
+                            <button onclick="gorevSil(${g.id})" class="text-[10px] text-red-500 hover:text-red-700 font-semibold px-1">Sil</button>
+                         </div>` : '';
+
+                    html += `
+                        <li class="group flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg shadow-sm hover:border-indigo-100 transition" id="gorev-item-${g.id}">
+                            <div class="flex items-center gap-3 ${cursorStyle} flex-1 overflow-hidden" id="gorev-gorunum-${g.id}">
+                                <input type="checkbox" onchange="gorevDurumDegistir(${g.id}, this.checked)" ${isChecked} ${kutucukYetkisi} class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 flex-shrink-0 ${cursorStyle}">
+                                <span class="text-sm ${textStyle} select-none transition-all truncate">${g.gorev_metni}</span>
+                            </div>
+                            <div id="gorev-duzenle-panel-${g.id}" class="hidden flex-1 flex gap-2 w-full">
+                                <input type="text" id="gorev-edit-input-${g.id}" value="${g.gorev_metni}" class="border border-indigo-300 rounded px-2 py-1 text-sm flex-1 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <button onclick="gorevGuncelle(${g.id})" class="bg-indigo-500 text-white text-xs px-2 py-1 rounded hover:bg-indigo-600">Kaydet</button>
+                                <button onclick="gorevDuzenleIptal(${g.id})" class="text-slate-500 text-xs px-2 hover:text-slate-700">İptal</button>
+                            </div>
+                            ${actionBtns}
+                        </li>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<li class="text-center text-rose-500 text-xs py-4">Görev tablosu hatası.</li>`;
+            }
+        }
+
+        async function yeniGorevEkle() {
+            let input = document.getElementById('yeni-gorev-input');
+            let gorevMetni = input.value.trim();
+            if (!gorevMetni) return;
+            let tarih = new Date().toISOString().split('T')[0];
+            await _supabase.from('cadep_ogrenci_gorevler').insert([{ ogrenci_id: ogrenciId, gorev_metni: gorevMetni, durum: false, tarih: tarih }]);
+            input.value = '';
+            gorevleriGetir();
+        }
+
+        async function gorevDurumDegistir(id, yeniDurum) {
+            await _supabase.from('cadep_ogrenci_gorevler').update({ durum: yeniDurum }).eq('id', id);
+            gorevleriGetir(); 
+        }
+
+        async function gorevSil(id) {
+            if(confirm("Görevi silmek istediğinize emin misiniz?")) {
+                await _supabase.from('cadep_ogrenci_gorevler').delete().eq('id', id);
+                gorevleriGetir();
+            }
+        }
+
+        function gorevDuzenle(btn, id) {
+            document.getElementById(`gorev-gorunum-${id}`).classList.add('hidden');
+            btn.parentElement.classList.add('hidden'); 
+            document.getElementById(`gorev-duzenle-panel-${id}`).classList.remove('hidden');
+        }
+
+        function gorevDuzenleIptal(id) { gorevleriGetir(); }
+
+        async function gorevGuncelle(id) {
+            let yeniMetin = document.getElementById(`gorev-edit-input-${id}`).value.trim();
+            if(!yeniMetin) return;
+            await _supabase.from('cadep_ogrenci_gorevler').update({ gorev_metni: yeniMetin }).eq('id', id);
+            gorevleriGetir();
+        }
+
+        async function notlariGetir() {
+            let container = document.getElementById('not-listesi');
+            try {
+                let { data, error } = await _supabase.from('cadep_mihmandar_notlari').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false }).order('id', { ascending: false });
+                if (error || !data) throw error;
+                if (data.length === 0) {
+                    container.innerHTML = `<div class="text-center text-amber-700/50 text-xs py-4">Seyir defteri henüz boş. İlk notunuzu ekleyin.</div>`;
+                    return;
+                }
+                let html = '';
+                data.forEach(n => {
+                    let trTarih = n.tarih ? n.tarih.split('-').reverse().join('.') : '-';
+                    html += `
+                        <div class="bg-amber-100/50 border border-amber-200/50 p-3 rounded-xl relative group" id="not-item-${n.id}">
+                            <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onclick="notDuzenle(this, ${n.id})" class="text-[10px] text-blue-500 hover:bg-blue-50 px-1.5 py-0.5 rounded transition">Düzenle</button>
+                                <button onclick="notSil(${n.id})" class="text-[10px] text-red-500 hover:bg-red-50 px-1.5 py-0.5 rounded transition">Sil</button>
+                            </div>
+                            <div id="not-gorunum-${n.id}">
+                                <span class="text-[10px] font-bold text-amber-800/60 block mb-1">📅 ${trTarih}</span>
+                                <p class="text-xs text-amber-900 leading-relaxed whitespace-pre-wrap">${n.not_metni}</p>
+                            </div>
+                            <div id="not-duzenle-panel-${n.id}" class="hidden mt-2">
+                                <textarea id="not-edit-input-${n.id}" class="w-full border border-amber-400 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-amber-500 h-16 resize-none">${n.not_metni}</textarea>
+                                <div class="flex justify-end gap-2 mt-1">
+                                    <button onclick="notDuzenleIptal(${n.id})" class="text-slate-500 text-[10px] px-2 hover:text-slate-700">İptal</button>
+                                    <button onclick="notGuncelle(${n.id})" class="bg-amber-500 text-white text-[10px] px-3 py-1 rounded hover:bg-amber-600">Kaydet</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<div class="text-center text-rose-500 text-xs py-4">Not tablosu hatası.</div>`;
+            }
+        }
+
+        async function yeniNotEkle() {
+            let input = document.getElementById('yeni-not-input');
+            let notMetni = input.value.trim();
+            if (!notMetni) return;
+            let tarih = new Date().toISOString().split('T')[0];
+            await _supabase.from('cadep_mihmandar_notlari').insert([{ ogrenci_id: ogrenciId, not_metni: notMetni, tarih: tarih }]);
+            input.value = '';
+            notlariGetir();
+        }
+
+        async function notSil(id) {
+            if(confirm("Bu görüşme notunu silmek istediğinize emin misiniz?")) {
+                await _supabase.from('cadep_mihmandar_notlari').delete().eq('id', id);
+                notlariGetir();
+            }
+        }
+
+        function notDuzenle(btn, id) {
+            document.getElementById(`not-gorunum-${id}`).classList.add('hidden');
+            btn.parentElement.classList.add('hidden'); 
+            document.getElementById(`not-duzenle-panel-${id}`).classList.remove('hidden');
+        }
+
+        function notDuzenleIptal(id) { notlariGetir(); }
+
+        async function notGuncelle(id) {
+            let yeniMetin = document.getElementById(`not-edit-input-${id}`).value.trim();
+            if(!yeniMetin) return;
+            await _supabase.from('cadep_mihmandar_notlari').update({ not_metni: yeniMetin }).eq('id', id);
+            notlariGetir();
+        }
+
         function karneyiOlustur() {
             let tbody = document.getElementById('ogr-karne-govde');
             if(globalDenemeler.length === 0 && globalOzelDenemeler.length === 0) { tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`; return; }
@@ -880,425 +1530,6 @@
             container.innerHTML = html === '' ? `<div class="text-center text-slate-500 text-sm">Kazanım detayları bulunamadı.</div>` : html;
         }
 
-        async function soruKumbarasiniGetir() {
-            let tbody = document.getElementById('soru-kumbarasi-govde');
-            let streakBadge = document.getElementById('streak-badge');
-            let streakCount = document.getElementById('streak-count');
-
-            try {
-                let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
-                if (error || !data) throw error;
-
-                if (data.length > 0) {
-                    let formatTarih = (d) => { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-                    let tarihler = [...new Set(data.map(s => s.tarih))];
-                    let bugun = new Date(); let dun = new Date(); dun.setDate(dun.getDate() - 1);
-                    let bugunStr = formatTarih(bugun); let dunStr = formatTarih(dun);
-                    
-                    let kontrolTarihi = null; let seri = 0;
-                    if (tarihler.includes(bugunStr)) { kontrolTarihi = bugun; } 
-                    else if (tarihler.includes(dunStr)) { kontrolTarihi = dun; }
-                    
-                    if (kontrolTarihi) {
-                        let anlikTarih = new Date(kontrolTarihi);
-                        while (true) {
-                            let anlikStr = formatTarih(anlikTarih);
-                            if (tarihler.includes(anlikStr)) {
-                                seri++; anlikTarih.setDate(anlikTarih.getDate() - 1);
-                            } else { break; }
-                        }
-                    }
-                    if (seri > 0) {
-                        streakCount.innerText = seri;
-                        streakBadge.classList.remove('hidden'); streakBadge.classList.add('inline-flex');
-                    } else {
-                        streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
-                    }
-                } else {
-                    streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
-                }
-
-                if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 text-xs">Henüz soru kumbarasına kayıt eklenmemiş. İlk sorularınızı ekleyin!</td></tr>`;
-                    return;
-                }
-
-                let html = '';
-                data.forEach(s => {
-                    let trTarih = s.tarih ? s.tarih.split('-').reverse().join('.') : '-';
-                    let silBtn = (oturum.rol === 'ogrenci' || oturum.rol === 'admin') ? 
-                        `<button onclick="soruSil(${s.id})" class="text-red-500 hover:text-red-700 font-semibold text-xs px-2 py-1">Sil</button>` : '-';
-                    html += `
-                        <tr class="hover:bg-slate-50/80 transition">
-                            <td class="p-2.5 font-medium text-slate-700">${trTarih}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.turkce || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.matematik || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.fen || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.inkilap || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.din || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.ingilizce || 0}</td>
-                            <td class="p-2.5 text-center font-bold text-indigo-700 bg-indigo-50/50">${s.toplam_soru || 0}</td>
-                            <td class="p-2.5 text-center">${silBtn}</td>
-                        </tr>
-                    `;
-                });
-                tbody.innerHTML = html;
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-rose-500 text-xs">Soru kumbarası tablosu yüklenemedi.</td></tr>`;
-            }
-        }
-
-        async function soruKaydet() {
-            let turkce = parseInt(document.getElementById('soru-turkce').value) || 0;
-            let matematik = parseInt(document.getElementById('soru-matematik').value) || 0;
-            let fen = parseInt(document.getElementById('soru-fen').value) || 0;
-            let inkilap = parseInt(document.getElementById('soru-inkilap').value) || 0;
-            let din = parseInt(document.getElementById('soru-din').value) || 0;
-            let ingilizce = parseInt(document.getElementById('soru-ingilizce').value) || 0;
-            let tarih = document.getElementById('soru-tarih').value;
-
-            let toplamSoru = turkce + matematik + fen + inkilap + din + ingilizce;
-            if (toplamSoru <= 0) { alert("Lütfen en az bir derse ait soru sayısı giriniz."); return; }
-            if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
-
-            let { error } = await _supabase.from('cadep_soru_kumbarasi').insert([{
-                ogrenci_id: ogrenciId, turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih
-            }]);
-
-            if (error) { alert("Kayıt sırasında hata oluştu: " + error.message); } 
-            else {
-                document.getElementById('soru-turkce').value = 0; document.getElementById('soru-matematik').value = 0;
-                document.getElementById('soru-fen').value = 0; document.getElementById('soru-inkilap').value = 0;
-                document.getElementById('soru-din').value = 0; document.getElementById('soru-ingilizce').value = 0;
-                await soruKumbarasiniGetir();
-            }
-        }
-
-        async function soruSil(id) {
-            if(confirm("Bu soru kaydını silmek istediğinize emin misiniz?")) {
-                let { error } = await _supabase.from('cadep_soru_kumbarasi').delete().eq('id', id);
-                if (!error) await soruKumbarasiniGetir();
-            }
-        }
-
-        async function gorevleriGetir() {
-            let container = document.getElementById('gorev-listesi');
-            try {
-                let { data, error } = await _supabase.from('cadep_ogrenci_gorevler').select('*').eq('ogrenci_id', ogrenciId).order('id', { ascending: false });
-                if (error || !data) throw error;
-                if (data.length === 0) {
-                    container.innerHTML = `<li class="text-center text-slate-400 text-xs py-4">Henüz atanmış bir görev bulunmuyor.</li>`;
-                    return;
-                }
-
-                let kutucukYetkisi = (oturum.rol === 'ogrenci' || oturum.rol === 'admin') ? '' : 'disabled title="Bu görevi yalnızca öğrencinin kendisi işaretleyebilir."';
-                let cursorStyle = (oturum.rol === 'ogrenci' || oturum.rol === 'admin') ? 'cursor-pointer' : 'cursor-not-allowed opacity-80';
-
-                let html = '';
-                data.forEach(g => {
-                    let isChecked = g.durum ? 'checked' : '';
-                    let textStyle = g.durum ? 'line-through text-slate-400' : 'text-slate-700 font-medium';
-                    let yetkiliOgretmen = (oturum.rol === 'admin' || (oturum.rol === 'mihmandar' && globalOgrenci && globalOgrenci.mihmandar_ogretmen_id === oturum.iliskili_id));
-                    let actionBtns = yetkiliOgretmen ? 
-                        `<div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="gorevDuzenle(this, ${g.id})" class="text-[10px] text-blue-500 hover:text-blue-700 font-semibold px-1">Düzenle</button>
-                            <button onclick="gorevSil(${g.id})" class="text-[10px] text-red-500 hover:text-red-700 font-semibold px-1">Sil</button>
-                         </div>` : '';
-
-                    html += `
-                        <li class="group flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg shadow-sm hover:border-indigo-100 transition" id="gorev-item-${g.id}">
-                            <div class="flex items-center gap-3 ${cursorStyle} flex-1 overflow-hidden" id="gorev-gorunum-${g.id}">
-                                <input type="checkbox" onchange="gorevDurumDegistir(${g.id}, this.checked)" ${isChecked} ${kutucukYetkisi} class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 flex-shrink-0 ${cursorStyle}">
-                                <span class="text-sm ${textStyle} select-none transition-all truncate">${g.gorev_metni}</span>
-                            </div>
-                            <div id="gorev-duzenle-panel-${g.id}" class="hidden flex-1 flex gap-2 w-full">
-                                <input type="text" id="gorev-edit-input-${g.id}" value="${g.gorev_metni}" class="border border-indigo-300 rounded px-2 py-1 text-sm flex-1 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                                <button onclick="gorevGuncelle(${g.id})" class="bg-indigo-500 text-white text-xs px-2 py-1 rounded hover:bg-indigo-600">Kaydet</button>
-                                <button onclick="gorevDuzenleIptal(${g.id})" class="text-slate-500 text-xs px-2 hover:text-slate-700">İptal</button>
-                            </div>
-                            ${actionBtns}
-                        </li>
-                    `;
-                });
-                container.innerHTML = html;
-            } catch (err) {
-                container.innerHTML = `<li class="text-center text-rose-500 text-xs py-4">Görev tablosu hatası.</li>`;
-            }
-        }
-
-        async function yeniGorevEkle() {
-            let input = document.getElementById('yeni-gorev-input');
-            let gorevMetni = input.value.trim();
-            if (!gorevMetni) return;
-            let tarih = new Date().toISOString().split('T')[0];
-            await _supabase.from('cadep_ogrenci_gorevler').insert([{ ogrenci_id: ogrenciId, gorev_metni: gorevMetni, durum: false, tarih: tarih }]);
-            input.value = '';
-            gorevleriGetir();
-        }
-
-        async function gorevDurumDegistir(id, yeniDurum) {
-            await _supabase.from('cadep_ogrenci_gorevler').update({ durum: yeniDurum }).eq('id', id);
-            gorevleriGetir(); 
-        }
-
-        async function gorevSil(id) {
-            if(confirm("Görevi silmek istediğinize emin misiniz?")) {
-                await _supabase.from('cadep_ogrenci_gorevler').delete().eq('id', id);
-                gorevleriGetir();
-            }
-        }
-
-        function gorevDuzenle(btn, id) {
-            document.getElementById(`gorev-gorunum-${id}`).classList.add('hidden');
-            btn.parentElement.classList.add('hidden'); 
-            document.getElementById(`gorev-duzenle-panel-${id}`).classList.remove('hidden');
-        }
-
-        function gorevDuzenleIptal(id) { gorevleriGetir(); }
-
-        async function gorevGuncelle(id) {
-            let yeniMetin = document.getElementById(`gorev-edit-input-${id}`).value.trim();
-            if(!yeniMetin) return;
-            await _supabase.from('cadep_ogrenci_gorevler').update({ gorev_metni: yeniMetin }).eq('id', id);
-            gorevleriGetir();
-        }
-
-        async function notlariGetir() {
-            let container = document.getElementById('not-listesi');
-            try {
-                let { data, error } = await _supabase.from('cadep_mihmandar_notlari').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false }).order('id', { ascending: false });
-                if (error || !data) throw error;
-                if (data.length === 0) {
-                    container.innerHTML = `<div class="text-center text-amber-700/50 text-xs py-4">Seyir defteri henüz boş. İlk notunuzu ekleyin.</div>`;
-                    return;
-                }
-                let html = '';
-                data.forEach(n => {
-                    let trTarih = n.tarih ? n.tarih.split('-').reverse().join('.') : '-';
-                    html += `
-                        <div class="bg-amber-100/50 border border-amber-200/50 p-3 rounded-xl relative group" id="not-item-${n.id}">
-                            <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick="notDuzenle(this, ${n.id})" class="text-[10px] text-blue-500 hover:bg-blue-50 px-1.5 py-0.5 rounded transition">Düzenle</button>
-                                <button onclick="notSil(${n.id})" class="text-[10px] text-red-500 hover:bg-red-50 px-1.5 py-0.5 rounded transition">Sil</button>
-                            </div>
-                            <div id="not-gorunum-${n.id}">
-                                <span class="text-[10px] font-bold text-amber-800/60 block mb-1">📅 ${trTarih}</span>
-                                <p class="text-xs text-amber-900 leading-relaxed whitespace-pre-wrap">${n.not_metni}</p>
-                            </div>
-                            <div id="not-duzenle-panel-${n.id}" class="hidden mt-2">
-                                <textarea id="not-edit-input-${n.id}" class="w-full border border-amber-400 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-amber-500 h-16 resize-none">${n.not_metni}</textarea>
-                                <div class="flex justify-end gap-2 mt-1">
-                                    <button onclick="notDuzenleIptal(${n.id})" class="text-slate-500 text-[10px] px-2 hover:text-slate-700">İptal</button>
-                                    <button onclick="notGuncelle(${n.id})" class="bg-amber-500 text-white text-[10px] px-3 py-1 rounded hover:bg-amber-600">Kaydet</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            } catch (err) {
-                container.innerHTML = `<div class="text-center text-rose-500 text-xs py-4">Not tablosu hatası.</div>`;
-            }
-        }
-
-        async function yeniNotEkle() {
-            let input = document.getElementById('yeni-not-input');
-            let notMetni = input.value.trim();
-            if (!notMetni) return;
-            let tarih = new Date().toISOString().split('T')[0];
-            await _supabase.from('cadep_mihmandar_notlari').insert([{ ogrenci_id: ogrenciId, not_metni: notMetni, tarih: tarih }]);
-            input.value = '';
-            notlariGetir();
-        }
-
-        async function notSil(id) {
-            if(confirm("Bu görüşme notunu silmek istediğinize emin misiniz?")) {
-                await _supabase.from('cadep_mihmandar_notlari').delete().eq('id', id);
-                notlariGetir();
-            }
-        }
-
-        function notDuzenle(btn, id) {
-            document.getElementById(`not-gorunum-${id}`).classList.add('hidden');
-            btn.parentElement.classList.add('hidden'); 
-            document.getElementById(`not-duzenle-panel-${id}`).classList.remove('hidden');
-        }
-
-        function notDuzenleIptal(id) { notlariGetir(); }
-
-        async function notGuncelle(id) {
-            let yeniMetin = document.getElementById(`not-edit-input-${id}`).value.trim();
-            if(!yeniMetin) return;
-            await _supabase.from('cadep_mihmandar_notlari').update({ not_metni: yeniMetin }).eq('id', id);
-            notlariGetir();
-        }
-
-        function rozetleriHesapla() {
-            let container = document.getElementById('rozet-container');
-            let tumSinavlar = [];
-            globalDenemeler.forEach(d => {
-                let s = globalSonuclar.find(res => res.deneme_id === d.id);
-                if (s && s.lgs_puan != null) tumSinavlar.push({ ...s, tarih: d.tarih });
-            });
-            globalOzelDenemeler.forEach(od => {
-                if(od.lgs_puan != null) tumSinavlar.push({ ...od, tarih: od.tarih });
-            });
-
-            tumSinavlar.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
-
-            if(tumSinavlar.length === 0) {
-                container.innerHTML = `<div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full text-center">Henüz puanlı sınav girilmediği için rozet verisi yok.</div>`;
-                return;
-            }
-
-            let kazanilanRozetler = [];
-            let sonSinav = tumSinavlar[tumSinavlar.length - 1];
-            let oncekiSinav = tumSinavlar.length > 1 ? tumSinavlar[tumSinavlar.length - 2] : null;
-
-            if (sonSinav.toplam_net >= 80) kazanilanRozetler.push({ icon: '🏔️', ad: 'Zirve Ziyaretçisi', aciklama: 'Son sınavda 80 net barajını aştı.', renk: 'bg-purple-50 text-purple-700 border-purple-200' });
-            let matNet = (sonSinav.matematik_d || 0) - ((sonSinav.matematik_y || 0) / 3);
-            if (matNet >= 15) kazanilanRozetler.push({ icon: '📐', ad: 'Matematik Fatihi', aciklama: 'Son sınavda Matematikte 15 neti geçti.', renk: 'bg-blue-50 text-blue-700 border-blue-200' });
-            let turNet = (sonSinav.turkce_d || 0) - ((sonSinav.turkce_y || 0) / 3);
-            if (turNet >= 17) kazanilanRozetler.push({ icon: '📚', ad: 'Türkçe Üstadı', aciklama: 'Son sınavda Türkçede 17 neti geçti.', renk: 'bg-rose-50 text-rose-700 border-rose-200' });
-            let fenNet = (sonSinav.fen_d || 0) - ((sonSinav.fen_y || 0) / 3);
-            if (fenNet >= 17) kazanilanRozetler.push({ icon: '🔬', ad: 'Fen Dehası', aciklama: 'Son sınavda Fen Bilimlerinde 17 neti geçti.', renk: 'bg-emerald-50 text-emerald-700 border-emerald-200' });
-            let inkNet = (sonSinav.inkilap_d || 0) - ((sonSinav.inkilap_y || 0) / 3);
-            if (inkNet === 10) kazanilanRozetler.push({ icon: '🇹🇷', ad: 'Tarih Yazan', aciklama: 'İnkılap Tarihinde tüm soruları doğru cevapladı.', renk: 'bg-red-50 text-red-700 border-red-200' });
-            if (oncekiSinav && (sonSinav.lgs_puan - oncekiSinav.lgs_puan >= 20)) kazanilanRozetler.push({ icon: '🚀', ad: 'Geri Dönüş Efsanesi', aciklama: 'Bir önceki sınava göre puanını 20+ artırdı!', renk: 'bg-amber-50 text-amber-700 border-amber-200' });
-            
-            if (tumSinavlar.length >= 3) {
-                let s1 = tumSinavlar[tumSinavlar.length - 1].lgs_puan;
-                let s2 = tumSinavlar[tumSinavlar.length - 2].lgs_puan;
-                let s3 = tumSinavlar[tumSinavlar.length - 3].lgs_puan;
-                if (s1 > s2 && s2 > s3) kazanilanRozetler.push({ icon: '📈', ad: 'İstikrar Abidesi', aciklama: 'Son 3 sınavda puanını sürekli artırmayı başardı.', renk: 'bg-cyan-50 text-cyan-700 border-cyan-200' });
-            }
-            
-            if (kazanilanRozetler.length === 0) {
-                container.innerHTML = `<div class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100 w-full text-center">Öğrenci bu sınavda yeni rozet koşullarını sağlayamadı. Bir sonrakine! 💪</div>`;
-                return;
-            }
-
-            let html = '';
-            kazanilanRozetler.forEach(r => {
-                html += `
-                    <div class="${r.renk} border px-3 py-2 rounded-xl flex items-center gap-2.5 shadow-sm hover:shadow-md transition-shadow cursor-default group relative w-full sm:w-auto min-w-[200px]">
-                        <span class="text-2xl">${r.icon}</span>
-                        <div class="flex flex-col">
-                            <span class="text-xs font-bold uppercase tracking-wide leading-tight">${r.ad}</span>
-                            <span class="text-[10px] opacity-80 leading-tight mt-0.5">${r.aciklama}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function veliWhatsAppBildirimi() {
-            if (!globalOgrenci) return;
-            let tumSinavlar = [];
-            globalDenemeler.forEach(d => {
-                let s = globalSonuclar.find(res => res.deneme_id === d.id);
-                if (s && s.lgs_puan != null) tumSinavlar.push({ tarih: d.tarih, puan: s.lgs_puan, net: s.toplam_net, ad: d.deneme_adi });
-            });
-            globalOzelDenemeler.forEach(od => {
-                if(od.lgs_puan != null) tumSinavlar.push({ tarih: od.tarih, puan: od.lgs_puan, net: od.toplam_net, ad: od.deneme_adi + " (Özel)" });
-            });
-
-            if (tumSinavlar.length === 0) { alert("Öğrenciye ait puanlı bir sınav sonucu bulunmuyor."); return; }
-
-            tumSinavlar.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
-            let sonSinav = tumSinavlar[0];
-            let hedefLise = globalOgrenci.hedef_lisesi && globalOgrenci.hedef_lisesi.trim() !== "" ? globalOgrenci.hedef_lisesi : "Belirtilmemiş";
-
-            let mesaj = `Sayın Velimiz, iyi günler dilerim.\n\nÖğrencimiz *${globalOgrenci.ad_soyad}* (${globalOgrenci.sinif}), okulumuzda uygulanan son deneme sınavında (*${sonSinav.ad}*) aşağıdaki sonuçları elde etmiştir:\n\n*Toplam Net:* ${sonSinav.net}\n*LGS Puanı:* ${sonSinav.puan.toFixed(2)}\n`;
-
-            if (hedefLise !== "Belirtilmemiş") mesaj += `\nÖğrencimizin hedefi olan *${hedefLise}* için çalışmalarını yakından takip ediyoruz. `;
-            else mesaj += `\nÖğrencimizin deneme gelişimini sistemimiz üzerinden yakından takip ediyoruz. `;
-
-            mesaj += `Eksik konularına yönelik analiz raporu öğretmenlerimiz tarafından değerlendirilmektedir.\n\nİyi çalışmalar dileriz.\n- Hasköy Ortaokulu LGS Koordinatörlüğü`;
-
-            let url = `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
-            
-            if (globalOgrenci.veli_telefonu && globalOgrenci.veli_telefonu.length >= 10) {
-                let tel = globalOgrenci.veli_telefonu.replace(/[^0-9]/g, '');
-                if(tel.length === 10) tel = "90" + tel;
-                if(tel.length === 11 && tel.startsWith("0")) tel = "9" + tel;
-                url = `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`;
-            }
-            window.open(url, '_blank');
-        }
-
-        function hedefBarometresiOlustur() {
-            let container = document.getElementById('barometre-container');
-            let hedefLise = globalOgrenci.hedef_lisesi || "Belirtilmemiş";
-            let tumSinavlar = [];
-            globalDenemeler.forEach(d => {
-                let s = globalSonuclar.find(res => res.deneme_id === d.id);
-                if (s && s.lgs_puan != null) tumSinavlar.push({ tarih: d.tarih, puan: s.lgs_puan, ad: d.deneme_adi });
-            });
-            globalOzelDenemeler.forEach(od => {
-                if(od.lgs_puan != null) tumSinavlar.push({ tarih: od.tarih, puan: od.lgs_puan, ad: od.deneme_adi + " (Özel)" });
-            });
-
-            if (tumSinavlar.length === 0 || hedefLise === "Belirtilmemiş" || hedefLise === "") {
-                container.innerHTML = `<div class="z-10 relative flex flex-col items-center justify-center text-center h-full"><span class="text-4xl mb-3 opacity-50">🎯</span><h3 class="text-lg font-bold text-slate-200 mb-1">Hedef Lise Verisi Yok</h3><p class="text-xs text-slate-400">Barometrenin çalışması için öğrencinin hedefini ve en az 1 puanlı denemesini sisteme girmelisiniz.</p></div>`;
-                return;
-            }
-
-            tumSinavlar.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
-            let sonSinav = tumSinavlar[0];
-            let sonPuan = Number(sonSinav.puan);
-
-            const lisePuanlari = { "galatasaray": 498, "kabataş": 493, "ankara fen": 495, "garip zeycan": 485, "canik fen": 472, "aziz atik": 458, "samsun anadolu": 445, "tülay başaran": 435, "onur ateş": 420, "atatürk anadolu": 410, "fen lisesi": 460, "anadolu lisesi": 420 };
-            let aranan = hedefLise.toLowerCase();
-            let targetPuan = 430;
-            for (let key in lisePuanlari) { if (aranan.includes(key)) { targetPuan = lisePuanlari[key]; break; } }
-
-            let yuzde = (sonPuan / targetPuan) * 100;
-            if (yuzde > 100) yuzde = 100;
-            if (yuzde < 0) yuzde = 0;
-
-            let kalanPuan = (targetPuan - sonPuan).toFixed(2);
-            let mesaj = ""; let renk = ""; let emoji = "";
-
-            if (sonPuan >= targetPuan) { mesaj = "Hedefine ulaştın! Harika gidiyorsun, şimdi sıranı koruma vakti."; renk = "from-emerald-400 to-emerald-600"; emoji = "🎉"; } 
-            else if (kalanPuan <= 15) { mesaj = "Çok yaklaştın! Sadece ufak bir gayret daha gerekiyor."; renk = "from-amber-400 to-orange-500"; emoji = "🔥"; } 
-            else if (kalanPuan <= 40) { mesaj = "İyi gidiyorsun, vites yükseltme zamanı geldi!"; renk = "from-sky-400 to-blue-600"; emoji = "💪"; } 
-            else { mesaj = "Hedefin yüksek! Kazanım analizlerine odaklanmalısın."; renk = "from-red-400 to-rose-600"; emoji = "🚀"; }
-
-            container.innerHTML = `
-                <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-5 blur-2xl"></div>
-                <div class="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-indigo-500 opacity-10 blur-xl"></div>
-                <div class="z-10 relative flex flex-col justify-between h-full">
-                    <div>
-                        <h3 class="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><span class="bg-indigo-500/30 p-1 rounded">🎯</span> Hedef Gerçeklik Barometresi</h3>
-                        <h2 class="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight line-clamp-2" title="${hedefLise}">${hedefLise}</h2>
-                    </div>
-                    <div class="mt-4">
-                        <div class="flex justify-between items-end mb-2.5">
-                            <div><span class="text-[10px] text-slate-400 block mb-0.5 line-clamp-1 max-w-[120px]" title="${sonSinav.ad}">Son Sınav: ${sonSinav.ad}</span><span class="text-2xl font-black text-white">${sonPuan.toFixed(2)}</span></div>
-                            <div class="text-right"><span class="text-[10px] text-slate-400 block mb-0.5">Tahmini Taban</span><span class="text-xl font-bold text-emerald-400">${targetPuan} Puan</span></div>
-                        </div>
-                        <div class="w-full bg-slate-800/80 rounded-full h-3.5 mb-4 relative overflow-hidden shadow-inner border border-slate-700">
-                            <div class="bg-gradient-to-r ${renk} h-3.5 rounded-full transition-all duration-1000 ease-out relative" style="width: ${yuzde}%"><div class="absolute top-0 right-0 bottom-0 w-4 bg-white/20 blur-sm rounded-full animate-pulse"></div></div>
-                        </div>
-                        <div class="bg-white/10 border border-white/10 px-3 py-2.5 rounded-xl text-center backdrop-blur-sm"><p class="text-[11px] sm:text-xs font-medium text-slate-200 leading-snug"><span class="text-sm mr-1">${emoji}</span> ${mesaj}</p></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
-            if (ogrenciPuan == null || ogrenciPuan === '-') return '-';
-            let sinifSonuclari = tumDenemeSonuclari.filter(s => s.deneme_id === denemeId && s.lgs_puan != null).sort((a, b) => b.lgs_puan - a.lgs_puan);
-            let sira = sinifSonuclari.findIndex(s => s.ogrenci_id === ogrenciId) + 1;
-            if (sira === 0) return '-';
-            if (sira === 1) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">🥇 1.</span>';
-            if (sira === 2) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-xs">🥈 2.</span>';
-            if (sira === 3) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-xs">🥉 3.</span>';
-            return `<span class="font-semibold text-slate-600">${sira}.</span>`;
-        }
-
         function excelRaporAl() {
             if(!globalOgrenci) return;
             let excelVerisi = [
@@ -1376,6 +1607,7 @@
             XLSX.utils.book_append_sheet(workbook, worksheet, "Ogrenci Karnesi");
             XLSX.writeFile(workbook, `CADEP_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9]/g, '_')}_Karnesi.xlsx`);
         }
+
         function mihmandarLinkYonlendir(e) {
             e.preventDefault();
             let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));

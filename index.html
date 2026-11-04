@@ -198,35 +198,69 @@
             </div>
         </div>
 
-        <!-- İSTEDİĞİNİZ ARA BÖLGEYE TAŞINAN WIDGET: BU HAFTA EN ÇOK SORU ÇÖZENLER TOP 5 -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-slate-100 pb-3">
-                <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
-                    <span class="bg-amber-100 text-amber-600 p-1.5 rounded-lg text-sm">🔥</span> 
-                    Bu Hafta En Çok Soru Çözenler (Top 5)
-                </h3>
-                <div class="flex items-center gap-2">
-                    <label class="text-xs text-slate-500 font-medium">Şube Filtrele:</label>
-                    <select id="top5-sinif-filtre" onchange="top5LiderlikTablosunuYukle()" class="border border-slate-300 rounded-lg px-3 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-slate-700">
-                        <option value="TUM">Tüm Okul (Genel)</option>
-                    </select>
+        <!-- YENİ LİDERLİK TABLOLARI GRİDİ (SORU VE KİTAP YAN YANA / ALT ALTA) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- WIDGET 1: BU HAFTA EN ÇOK SORU ÇÖZENLER TOP 5 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                    <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
+                        <span class="bg-amber-100 text-amber-600 p-1.5 rounded-lg text-sm">🔥</span> 
+                        Bu Hafta En Çok Soru Çözenler
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <select id="top5-sinif-filtre" onchange="top5SoruTablosunuYukle()" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-slate-700">
+                            <option value="TUM">Tüm Okul (Genel)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 uppercase tracking-wider border-b border-slate-100 text-[10px]">
+                                <th class="p-2 w-12 text-center">Sıra</th>
+                                <th class="p-2">Öğrenci Adı</th>
+                                <th class="p-2 text-center">Şube</th>
+                                <th class="p-2 text-center text-indigo-700 font-bold">Çözülen Soru</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top5-soru-govde" class="divide-y divide-slate-100">
+                            <tr><td colspan="4" class="p-4 text-center text-slate-400">Liderlik tablosu yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs sm:text-sm">
-                    <thead>
-                        <tr class="bg-slate-50 text-slate-500 uppercase tracking-wider border-b border-slate-100 text-[11px]">
-                            <th class="p-2.5 w-16 text-center">Sıra</th>
-                            <th class="p-2.5">Öğrenci Adı</th>
-                            <th class="p-2.5 text-center">Şube</th>
-                            <th class="p-2.5 text-center text-indigo-700 font-bold">Bu Hafta Çözülen Soru</th>
-                        </tr>
-                    </thead>
-                    <tbody id="top5-soru-govde" class="divide-y divide-slate-100">
-                        <tr><td colspan="4" class="p-4 text-center text-slate-400">Liderlik tablosu yükleniyor...</td></tr>
-                    </tbody>
-                </table>
+
+            <!-- WIDGET 2: YENİ EKLENEN KİTAP KURTLARI TOP 5 -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+                    <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
+                        <span class="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg text-sm">📚</span> 
+                        Bu Hafta En Çok Kitap Okuyanlar
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <select id="top5-kitap-filtre" onchange="top5KitapTablosunuYukle()" class="border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium text-slate-700">
+                            <option value="TUM">Tüm Okul (Genel)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 uppercase tracking-wider border-b border-slate-100 text-[10px]">
+                                <th class="p-2 w-12 text-center">Sıra</th>
+                                <th class="p-2">Öğrenci Adı</th>
+                                <th class="p-2 text-center">Şube</th>
+                                <th class="p-2 text-center text-emerald-700 font-bold">Okunan Sayfa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top5-kitap-govde" class="divide-y divide-slate-100">
+                            <tr><td colspan="4" class="p-4 text-center text-slate-400">Kitap kurtları yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -286,8 +320,10 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_y8ImQZ7mMvcx0XgDd5_zAQ_UzMEludA';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let isAdmin = (oturum && oturum.rol === 'admin');
+        
         let globalOgrenciler = [];
         let globalSoruKayitlari = [];
+        let globalKitapKayitlari = [];
 
         window.onload = async function() {
             try {
@@ -317,7 +353,12 @@
                 const { data: ekp } = await _supabase.from('cadep_ekip').select('*');
                 const { data: mih } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*');
                 const { data: den } = await _supabase.from('denemeler').select('*');
-                const { data: sorular } = await _supabase.from('cadep_soru_kumbarasi').select('*');
+                
+                // Paralel Veri Çekimi Soru + Kitap
+                const [sorularRes, kitaplarRes] = await Promise.all([
+                    _supabase.from('cadep_soru_kumbarasi').select('*'),
+                    _supabase.from('cadep_kitap_okuma').select('*')
+                ]);
 
                 if(ogr) document.getElementById('stat-ogr-sayi').innerText = ogr.length;
                 if(den) document.getElementById('stat-deneme-sayi').innerText = den.length;
@@ -325,10 +366,13 @@
                 if(ekp) document.getElementById('stat-ekip-sayi').innerText = ekp.length;
 
                 globalOgrenciler = ogr || [];
-                globalSoruKayitlari = sorular || [];
+                globalSoruKayitlari = sorularRes.data || [];
+                globalKitapKayitlari = kitaplarRes.data || [];
 
                 sinifFiltresiniDoldur(globalOgrenciler);
-                top5LiderlikTablosunuYukle();
+                
+                top5SoruTablosunuYukle();
+                top5KitapTablosunuYukle();
 
                 await sonDenemeOzetiniYukle(globalOgrenciler);
                 await sonDenemeZayifKazanimlariGetir();
@@ -339,17 +383,22 @@
         };
 
         function sinifFiltresiniDoldur(ogrenciler) {
-            let select = document.getElementById('top5-sinif-filtre');
-            if(!select) return;
+            let soruSelect = document.getElementById('top5-sinif-filtre');
+            let kitapSelect = document.getElementById('top5-kitap-filtre');
+            if(!soruSelect || !kitapSelect) return;
+            
             let siniflar = [...new Set(ogrenciler.map(o => o.sinif ? o.sinif.trim() : 'Diğer'))].sort();
             let html = '<option value="TUM">Tüm Okul (Genel)</option>';
             siniflar.forEach(s => {
                 html += `<option value="${s}">${s} Şubesi</option>`;
             });
-            select.innerHTML = html;
+            
+            soruSelect.innerHTML = html;
+            kitapSelect.innerHTML = html;
         }
 
-        function top5LiderlikTablosunuYukle() {
+        // --- SORU LİDERLİK TABLOSU ---
+        function top5SoruTablosunuYukle() {
             let tbody = document.getElementById('top5-soru-govde');
             let secilenSinif = document.getElementById('top5-sinif-filtre').value;
             if(!tbody) return;
@@ -375,7 +424,7 @@
             let liste = Object.values(ogrenciSoruMap).sort((a, b) => b.toplam - a.toplam).slice(0, 5);
 
             if (liste.length === 0 || liste.every(item => item.toplam === 0)) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 text-xs">Bu hafta henüz soru girişi yapılan öğrenci bulunmuyor.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 text-xs">Bu hafta henüz soru girişi yapan öğrenci bulunmuyor.</td></tr>`;
                 return;
             }
 
@@ -383,13 +432,59 @@
             liste.forEach((item, idx) => {
                 let madalya = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `${idx + 1}.`));
                 let bgClass = idx === 0 ? 'bg-amber-50/60 font-semibold' : '';
-
                 html += `
                     <tr class="${bgClass} hover:bg-slate-50 transition">
-                        <td class="p-2.5 text-center font-bold text-slate-600">${madalya}</td>
-                        <td class="p-2.5 text-slate-800 font-medium">${item.ad}</td>
-                        <td class="p-2.5 text-center text-slate-500 text-xs">${item.sinif}</td>
-                        <td class="p-2.5 text-center font-black text-indigo-700 text-sm">${item.toplam.toLocaleString('tr-TR')} Soru</td>
+                        <td class="p-2 text-center font-bold text-slate-600 text-[14px]">${madalya}</td>
+                        <td class="p-2 text-slate-800 font-medium">${item.ad}</td>
+                        <td class="p-2 text-center text-slate-500 text-xs">${item.sinif}</td>
+                        <td class="p-2 text-center font-black text-indigo-700 text-xs">${item.toplam.toLocaleString('tr-TR')} Soru</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // --- KİTAP OKUMA LİDERLİK TABLOSU ---
+        function top5KitapTablosunuYukle() {
+            let tbody = document.getElementById('top5-kitap-govde');
+            let secilenSinif = document.getElementById('top5-kitap-filtre').value;
+            if(!tbody) return;
+
+            let simdi = new Date();
+            let birHaftaOnce = new Date();
+            birHaftaOnce.setDate(simdi.getDate() - 7);
+
+            let ogrenciKitapMap = {};
+            globalOgrenciler.forEach(o => {
+                if(secilenSinif !== 'TUM' && (!o.sinif || o.sinif.trim() !== secilenSinif)) return;
+                ogrenciKitapMap[o.id] = { ad: o.ad_soyad, sinif: o.sinif || '-', toplamSayfa: 0 };
+            });
+
+            globalKitapKayitlari.forEach(kq => {
+                if(!kq.tarih) return;
+                let kitapTarihi = new Date(kq.tarih);
+                if(kitapTarihi >= birHaftaOnce && ogrenciKitapMap[kq.ogrenci_id]) {
+                    ogrenciKitapMap[kq.ogrenci_id].toplamSayfa += (kq.sayfa_sayisi || 0);
+                }
+            });
+
+            let liste = Object.values(ogrenciKitapMap).sort((a, b) => b.toplamSayfa - a.toplamSayfa).slice(0, 5);
+
+            if (liste.length === 0 || liste.every(item => item.toplamSayfa === 0)) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 text-xs">Bu hafta henüz kitap okuma girişi yapan öğrenci bulunmuyor.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            liste.forEach((item, idx) => {
+                let madalya = idx === 0 ? '🏆' : (idx === 1 ? '🌟' : (idx === 2 ? '✨' : `${idx + 1}.`));
+                let bgClass = idx === 0 ? 'bg-emerald-50/60 font-semibold' : '';
+                html += `
+                    <tr class="${bgClass} hover:bg-slate-50 transition">
+                        <td class="p-2 text-center font-bold text-slate-600 text-[14px]">${madalya}</td>
+                        <td class="p-2 text-slate-800 font-medium">${item.ad}</td>
+                        <td class="p-2 text-center text-slate-500 text-xs">${item.sinif}</td>
+                        <td class="p-2 text-center font-black text-emerald-600 text-xs">${item.toplamSayfa.toLocaleString('tr-TR')} Sayfa</td>
                     </tr>
                 `;
             });
