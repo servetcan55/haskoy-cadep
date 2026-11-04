@@ -348,6 +348,8 @@
         let grafikObjekt = null;
         let eksikKazanimlar = [];
         let kazanimVeritabani = [];
+        let globalTumSorular = []; // PDF raporu için yeni eklendi
+        let globalTumKitaplar = []; // PDF raporu için yeni eklendi
 
         let lgsHedefTarih = '2027-06-06T10:00:00';
 
@@ -558,6 +560,8 @@
             try {
                 let { data, error } = await _supabase.from('cadep_kitap_okuma').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
                 if (error || !data) throw error;
+                
+                globalTumKitaplar = data; // PDF raporu için globalde tut
 
                 if (data.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">Henüz kitap okuma kaydı eklenmemiş. İlk okumanızı girin!</td></tr>`;
@@ -672,6 +676,8 @@
             try {
                 let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
                 if (error || !data) throw error;
+                
+                globalTumSorular = data; // PDF raporu için globalde tut
 
                 if (data.length > 0) {
                     let formatTarih = (d) => { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -835,7 +841,6 @@
         // DİĞER STANDART FONKSİYONLAR
         // ==========================================
         
-        // EKSİK OLAN FONKSİYONLAR EKLENDİ!
         function hedefBarometresiOlustur() {
             let container = document.getElementById('barometre-container');
             let hedefLise = globalOgrenci.hedef_lisesi || "Belirtilmemiş";
@@ -1002,6 +1007,9 @@
             return `<span class="font-semibold text-slate-600">${sira}.</span>`;
         }
 
+        // ==========================================
+        // GÜNCELLENEN: VELİ ANALİZ RAPORU (AYLIK SORU VE KİTAP TABLOSU İLE)
+        // ==========================================
         async function veliAnalizRaporuPdfAl() {
             if (!globalOgrenci) return;
             
@@ -1026,6 +1034,7 @@
                 doc.addFileToVFS("Roboto-Medium.ttf", b64Bold);
                 doc.addFont("Roboto-Medium.ttf", "Roboto", "bold");
 
+                // --- Başlık ---
                 doc.setFont("Roboto", "bold");
                 doc.setFontSize(16);
                 doc.text("Hasköy Ortaokulu LGS Koordinatörlüğü", 105, 20, { align: "center" });
@@ -1037,6 +1046,7 @@
                 doc.setDrawColor(200, 200, 200);
                 doc.line(15, 32, 195, 32);
 
+                // --- Öğrenci Bilgileri ---
                 doc.setTextColor(0, 0, 0);
                 doc.setFont("Roboto", "bold");
                 doc.setFontSize(11);
@@ -1065,6 +1075,7 @@
 
                 let currentY = 62;
 
+                // --- 1. Deneme Performansı ---
                 doc.setFont("Roboto", "bold");
                 doc.setFontSize(12);
                 doc.setTextColor(79, 70, 229);
@@ -1098,9 +1109,7 @@
                     ]);
                 });
 
-                if (tableData.length === 0) {
-                    tableData.push(["-", "Kayıtlı sınav bulunamadı.", "-", "-", "-", "-"]);
-                }
+                if (tableData.length === 0) { tableData.push(["-", "Kayıtlı sınav bulunamadı.", "-", "-", "-", "-"]); }
 
                 doc.autoTable({
                     startY: currentY,
@@ -1113,6 +1122,7 @@
 
                 currentY = doc.lastAutoTable.finalY + 15;
 
+                // --- 2. Eksik Kazanımlar ---
                 doc.setFont("Roboto", "bold");
                 doc.setFontSize(12);
                 doc.setTextColor(220, 38, 38);
@@ -1159,18 +1169,96 @@
                     currentY = doc.lastAutoTable.finalY + 15;
                 }
 
-                if (currentY > 240) {
-                    doc.addPage();
-                    currentY = 20;
+                if (currentY > 210) { doc.addPage(); currentY = 20; }
+
+                // --- 3. AYLIK SORU VE KİTAP OKUMA TAKİBİ (YENİ EKLENDİ) ---
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(16, 185, 129); // Emerald Yeşili
+                doc.text("3. Aylık Soru Çözümü ve Kitap Okuma Takibi", 15, currentY);
+                currentY += 7;
+
+                // Aylık verileri grupla
+                let aylikData = {};
+                const aylarIsim = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+                // Soruları Grupla
+                globalTumSorular.forEach(s => {
+                    if(s.tarih) {
+                        let date = new Date(s.tarih);
+                        let ayYil = `${aylarIsim[date.getMonth()]} ${date.getFullYear()}`;
+                        let siralamaKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`; // Doğru sıralama için
+                        
+                        if(!aylikData[siralamaKey]) {
+                            aylikData[siralamaKey] = { etiket: ayYil, tr: 0, mat: 0, fen: 0, diger: 0, toplamSoru: 0, sayfa: 0 };
+                        }
+                        
+                        aylikData[siralamaKey].tr += (s.turkce || 0);
+                        aylikData[siralamaKey].mat += (s.matematik || 0);
+                        aylikData[siralamaKey].fen += (s.fen || 0);
+                        let diger = (s.inkilap || 0) + (s.din || 0) + (s.ingilizce || 0);
+                        aylikData[siralamaKey].diger += diger;
+                        aylikData[siralamaKey].toplamSoru += (s.toplam_soru || 0);
+                    }
+                });
+
+                // Kitapları Grupla
+                globalTumKitaplar.forEach(k => {
+                    if(k.tarih) {
+                        let date = new Date(k.tarih);
+                        let ayYil = `${aylarIsim[date.getMonth()]} ${date.getFullYear()}`;
+                        let siralamaKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
+                        
+                        if(!aylikData[siralamaKey]) {
+                            aylikData[siralamaKey] = { etiket: ayYil, tr: 0, mat: 0, fen: 0, diger: 0, toplamSoru: 0, sayfa: 0 };
+                        }
+                        
+                        aylikData[siralamaKey].sayfa += (k.sayfa_sayisi || 0);
+                    }
+                });
+
+                let aylikTablo = [];
+                // Tarihe göre eskiden yeniye sırala
+                let siraliAylar = Object.keys(aylikData).sort(); 
+                
+                siraliAylar.forEach(key => {
+                    let d = aylikData[key];
+                    aylikTablo.push([
+                        d.etiket,
+                        d.tr.toLocaleString('tr-TR'),
+                        d.mat.toLocaleString('tr-TR'),
+                        d.fen.toLocaleString('tr-TR'),
+                        d.diger.toLocaleString('tr-TR'),
+                        d.toplamSoru.toLocaleString('tr-TR'),
+                        d.sayfa.toLocaleString('tr-TR')
+                    ]);
+                });
+
+                if (aylikTablo.length === 0) {
+                    aylikTablo.push(["-", "-", "-", "-", "-", "-", "Öğrencinin kayıtlı soru/kitap verisi bulunmuyor."]);
                 }
 
+                doc.autoTable({
+                    startY: currentY,
+                    head: [['Ay', 'Türkçe', 'Matematik', 'Fen Bil.', 'Diğer Dersler', 'Toplam Soru', 'Okunan Kitap (Sayfa)']],
+                    body: aylikTablo,
+                    theme: 'grid',
+                    headStyles: { fillColor: [16, 185, 129], font: "Roboto", fontStyle: "bold" },
+                    styles: { fontSize: 8, font: "Roboto", halign: 'center' },
+                    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
+                });
+                currentY = doc.lastAutoTable.finalY + 15;
+
+                if (currentY > 240) { doc.addPage(); currentY = 20; }
+
+                // --- 4. Genel Değerlendirme ---
                 let streakEl = document.getElementById('streak-count');
                 let streak = streakEl ? streakEl.innerText : "0";
 
                 doc.setFont("Roboto", "bold");
                 doc.setFontSize(12);
                 doc.setTextColor(79, 70, 229);
-                doc.text("3. Genel Değerlendirme & Koçluk Notu", 15, currentY);
+                doc.text("4. Genel Değerlendirme & Koçluk Notu", 15, currentY);
                 currentY += 7;
 
                 doc.setFont("Roboto", "normal");
@@ -1187,16 +1275,22 @@
 
                 currentY += Math.max(25, splittedText.length * 6 + 10);
 
+                // İmzalar
                 doc.setFont("Roboto", "bold");
                 doc.setFontSize(10);
                 doc.setTextColor(0, 0, 0);
                 doc.text("Mihmandar / LGS Koçu", 40, currentY, { align: "center" });
                 doc.text("Veli İmzası", 170, currentY, { align: "center" });
 
-                doc.setFont("Roboto", "normal");
-                doc.setFontSize(8);
-                doc.setTextColor(150, 150, 150);
-                doc.text("Hasköy Ortaokulu CADEP Takip Sistemi - Otomatik Üretilmiştir", 105, 290, { align: "center" });
+                // Footer (Tüm Sayfalara)
+                const pageCount = doc.internal.getNumberOfPages();
+                for(let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFont("Roboto", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text("Hasköy Ortaokulu CADEP Takip Sistemi - Otomatik Üretilmiştir", 105, 290, { align: "center" });
+                }
 
                 doc.save(`CADEP_Veli_Raporu_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ]/g, '_')}.pdf`);
                 
