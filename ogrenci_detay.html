@@ -1529,22 +1529,7 @@ function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
                     body: tableData,
                     theme: 'grid',
                     headStyles: { fillColor: [79, 70, 229], font: "Roboto", fontStyle: "bold" },
-                    styles: { fontSize: 9, font: "Roboto" },
-                    didParseCell: function(data) {
-                        // Tablodaki satır metnini kontrol et
-                        let text = data.row.cells[1] ? data.row.cells[1].text : '';
-                        if (text.includes('ORT.')) {
-                            // Okul ve Özel Ortalama satırları için açık mavi/lacivert tonu
-                            data.cell.styles.fillColor = [224, 231, 255]; // Hafif indigo arkaplan
-                            data.cell.styles.textColor = [49, 46, 129];  // Koyu lacivert yazı
-                            data.cell.styles.fontStyle = 'bold';
-                        } else if (text.includes('GENEL ORTALAMA')) {
-                            // Genel Ortalama satırı için daha dikkat çekici koyu bir ton veya yeşil/mavi vurgu
-                            data.cell.styles.fillColor = [203, 213, 225]; // Slate gri/mavi tonu
-                            data.cell.styles.textColor = [15, 23, 42];   // Neredeyse siyah koyu yazı
-                            data.cell.styles.fontStyle = 'bold';
-                        }
-                    }
+                    styles: { fontSize: 9, font: "Roboto" }
                 });
 
                 currentY = doc.lastAutoTable.finalY + 15;
