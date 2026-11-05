@@ -160,7 +160,7 @@
             </div>
         </div>
 
-        <!-- 1. SORU ÇÖZÜM KUMBARASI (DÜZENLE BUTONLU) -->
+        <!-- SORU ÇÖZÜM KUMBARASI -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
                 <div>
@@ -239,7 +239,7 @@
             </div>
         </div>
 
-        <!-- 2. GÜNLÜK KİTAP OKUMA KUMBARASI YENİ -->
+        <!-- KİTAP OKUMA KUMBARASI -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
                 <div>
@@ -287,8 +287,11 @@
             </div>
         </div>
 
-        <!-- Öğrenci Deneme Sonuçları Tablosu -->
+        <!-- ÖĞRENCİ DENEME SONUÇLARI TABLOSU (ESKİ YERİNDE: KUMBARALARIN ALTINDA) -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+            <div class="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2"><span>📊</span> Öğrenci Deneme Karnesi</h3>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs sm:text-sm">
                     <thead>
@@ -348,8 +351,8 @@
         let grafikObjekt = null;
         let eksikKazanimlar = [];
         let kazanimVeritabani = [];
-        let globalTumSorular = []; // PDF raporu için yeni eklendi
-        let globalTumKitaplar = []; // PDF raporu için yeni eklendi
+        let globalTumSorular = []; 
+        let globalTumKitaplar = []; 
 
         let lgsHedefTarih = '2027-06-06T10:00:00';
 
@@ -370,7 +373,7 @@
                 if (kazanimMenu) kazanimMenu.style.display = 'none';
             }
 
-            await lgsTarihiniGetir();
+            try { await lgsTarihiniGetir(); } catch(e){}
 
             if (oturum && oturum.rol === 'admin') {
                 let ayarContainer = document.getElementById('lgs-ayar-container');
@@ -399,12 +402,10 @@
         };
 
         async function lgsTarihiniGetir() {
-            try {
-                let { data, error } = await _supabase.from('cadep_genel_ayarlar').select('deger').eq('anahtar', 'lgs_tarih').single();
-                if (data && data.deger) {
-                    lgsHedefTarih = data.deger;
-                }
-            } catch (e) {}
+            let { data, error } = await _supabase.from('cadep_genel_ayarlar').select('deger').eq('anahtar', 'lgs_tarih').single();
+            if (data && data.deger) {
+                lgsHedefTarih = data.deger;
+            }
         }
 
         async function lgsTarihGuncelle(yeniTarih) {
@@ -540,89 +541,55 @@
             let { data: kazDb } = await _supabase.from('cadep_kazanimlar').select('*');
             kazanimVeritabani = kazDb || [];
 
-            karneyiOlustur();
-            ogrenciGelisimGrafiginiCiz();
-            eksikKazanimlariGoster();
-            hedefBarometresiOlustur();
-            rozetleriHesapla();
-            await gorevleriGetir();
-            if(yetkiliOgretmen) await notlariGetir();
-            
-            await soruKumbarasiniGetir();
-            await kitapKumbarasiniGetir();
+            try { karneyiOlustur(); } catch(e) { console.error("Karne Hatası:", e); }
+            try { ogrenciGelisimGrafiginiCiz(); } catch(e) { console.error("Grafik Hatası:", e); }
+            try { eksikKazanimlariGoster(); } catch(e) { console.error("Kazanım Hatası:", e); }
+            try { hedefBarometresiOlustur(); } catch(e) { console.error("Barometre Hatası:", e); }
+            try { rozetleriHesapla(); } catch(e) { console.error("Rozet Hatası:", e); }
+            try { await gorevleriGetir(); } catch(e) { console.error("Görev Hatası:", e); }
+            if(yetkiliOgretmen) { try { await notlariGetir(); } catch(e) { console.error("Not Hatası:", e); } }
+            try { await soruKumbarasiniGetir(); } catch(e) { console.error("Soru Hatası:", e); }
+            try { await kitapKumbarasiniGetir(); } catch(e) { console.error("Kitap Hatası:", e); }
         }
 
-        // ==========================================
-        // KİTAP OKUMA KUMBARASI FONKSİYONLARI
-        // ==========================================
         async function kitapKumbarasiniGetir() {
             let tbody = document.getElementById('kitap-kumbarasi-govde');
-            try {
-                let { data, error } = await _supabase.from('cadep_kitap_okuma').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
-                if (error || !data) throw error;
-                
-                globalTumKitaplar = data; // PDF raporu için globalde tut
-
-                if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">Henüz kitap okuma kaydı eklenmemiş. İlk okumanızı girin!</td></tr>`;
-                    return;
-                }
-
-                let html = '';
-                data.forEach(k => {
-                    let trTarih = k.tarih ? k.tarih.split('-').reverse().join('.') : '-';
-                    let islemBtn = '-';
-                    if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
-                        islemBtn = `
-                            <div class="flex justify-center gap-1.5">
-                                <button onclick="kitapDuzenleKurgula(${k.id}, ${k.sayfa_sayisi}, '${k.tarih}')" class="text-blue-500 hover:text-blue-700 font-semibold text-[10px] px-2 py-1 bg-blue-50 rounded">Düzenle</button>
-                                <button onclick="kitapSil(${k.id})" class="text-red-500 hover:text-red-700 font-semibold text-[10px] px-2 py-1 bg-red-50 rounded">Sil</button>
-                            </div>
-                        `;
-                    }
-
-                    html += `
-                        <tr class="hover:bg-slate-50/80 transition">
-                            <td class="p-2.5 font-medium text-slate-700">${trTarih}</td>
-                            <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50">${k.sayfa_sayisi || 0} Sayfa</td>
-                            <td class="p-2.5 text-center">${islemBtn}</td>
-                        </tr>
-                    `;
-                });
-                tbody.innerHTML = html;
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-rose-500 text-xs">Kitap okuma tablosu yüklenemedi.</td></tr>`;
+            let { data, error } = await _supabase.from('cadep_kitap_okuma').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
+            if (error || !data) throw error;
+            globalTumKitaplar = data; 
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">Henüz kitap okuma kaydı eklenmemiş. İlk okumanızı girin!</td></tr>`;
+                return;
             }
+            let html = '';
+            data.forEach(k => {
+                let trTarih = k.tarih ? k.tarih.split('-').reverse().join('.') : '-';
+                let islemBtn = '-';
+                if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
+                    islemBtn = `<div class="flex justify-center gap-1.5"><button onclick="kitapDuzenleKurgula(${k.id}, ${k.sayfa_sayisi}, '${k.tarih}')" class="text-blue-500 hover:text-blue-700 font-semibold text-[10px] px-2 py-1 bg-blue-50 rounded">Düzenle</button><button onclick="kitapSil(${k.id})" class="text-red-500 hover:text-red-700 font-semibold text-[10px] px-2 py-1 bg-red-50 rounded">Sil</button></div>`;
+                }
+                html += `<tr class="hover:bg-slate-50/80 transition"><td class="p-2.5 font-medium text-slate-700">${trTarih}</td><td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/50">${k.sayfa_sayisi || 0} Sayfa</td><td class="p-2.5 text-center">${islemBtn}</td></tr>`;
+            });
+            tbody.innerHTML = html;
         }
 
         async function kitapKaydet() {
             let sayfa = parseInt(document.getElementById('kitap-sayfa').value) || 0;
             let tarih = document.getElementById('kitap-tarih').value;
-
             if (sayfa <= 0) { alert("Lütfen geçerli bir sayfa sayısı giriniz."); return; }
             if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
-
-            let { error } = await _supabase.from('cadep_kitap_okuma').insert([{
-                ogrenci_id: ogrenciId, sayfa_sayisi: sayfa, tarih: tarih
-            }]);
-
-            if (error) {
-                alert("Kayıt sırasında hata oluştu: " + error.message);
-            } else {
-                document.getElementById('kitap-sayfa').value = 0;
-                await kitapKumbarasiniGetir();
-            }
+            let { error } = await _supabase.from('cadep_kitap_okuma').insert([{ ogrenci_id: ogrenciId, sayfa_sayisi: sayfa, tarih: tarih }]);
+            if (error) alert("Kayıt sırasında hata oluştu: " + error.message);
+            else { document.getElementById('kitap-sayfa').value = 0; await kitapKumbarasiniGetir(); }
         }
 
         function kitapDuzenleKurgula(id, sayfa, tarih) {
             document.getElementById('edit-kitap-id').value = id;
             document.getElementById('kitap-sayfa').value = sayfa || 0;
             document.getElementById('kitap-tarih').value = tarih;
-
             document.getElementById('btn-kitap-kaydet').classList.add('hidden');
             document.getElementById('btn-kitap-guncelle').classList.remove('hidden');
             document.getElementById('btn-kitap-iptal').classList.remove('hidden');
-            
             document.getElementById('kitap-ekleme-alani').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
@@ -630,7 +597,6 @@
             document.getElementById('edit-kitap-id').value = '';
             document.getElementById('kitap-sayfa').value = 0;
             document.getElementById('kitap-tarih').value = new Date().toISOString().split('T')[0];
-
             document.getElementById('btn-kitap-kaydet').classList.remove('hidden');
             document.getElementById('btn-kitap-guncelle').classList.add('hidden');
             document.getElementById('btn-kitap-iptal').classList.add('hidden');
@@ -639,23 +605,13 @@
         async function kitapGuncelle() {
             let id = document.getElementById('edit-kitap-id').value;
             if(!id) return;
-
             let sayfa = parseInt(document.getElementById('kitap-sayfa').value) || 0;
             let tarih = document.getElementById('kitap-tarih').value;
-
             if (sayfa <= 0) { alert("Lütfen geçerli bir sayfa sayısı giriniz."); return; }
             if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
-
-            let { error } = await _supabase.from('cadep_kitap_okuma').update({
-                sayfa_sayisi: sayfa, tarih: tarih
-            }).eq('id', id);
-
-            if (error) {
-                alert("Güncelleme sırasında hata oluştu: " + error.message);
-            } else {
-                kitapDuzenleIptal();
-                await kitapKumbarasiniGetir();
-            }
+            let { error } = await _supabase.from('cadep_kitap_okuma').update({ sayfa_sayisi: sayfa, tarih: tarih }).eq('id', id);
+            if (error) alert("Güncelleme sırasında hata oluştu: " + error.message);
+            else { kitapDuzenleIptal(); await kitapKumbarasiniGetir(); }
         }
 
         async function kitapSil(id) {
@@ -665,85 +621,55 @@
             }
         }
 
-        // ==========================================
-        // SORU ÇÖZÜM KUMBARASI & DÜZENLEME
-        // ==========================================
         async function soruKumbarasiniGetir() {
             let tbody = document.getElementById('soru-kumbarasi-govde');
             let streakBadge = document.getElementById('streak-badge');
             let streakCount = document.getElementById('streak-count');
 
-            try {
-                let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
-                if (error || !data) throw error;
-                
-                globalTumSorular = data; // PDF raporu için globalde tut
+            let { data, error } = await _supabase.from('cadep_soru_kumbarasi').select('*').eq('ogrenci_id', ogrenciId).order('tarih', { ascending: false });
+            if (error || !data) throw error;
+            globalTumSorular = data; 
 
-                if (data.length > 0) {
-                    let formatTarih = (d) => { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-                    let tarihler = [...new Set(data.map(s => s.tarih))];
-                    let bugun = new Date(); let dun = new Date(); dun.setDate(dun.getDate() - 1);
-                    let bugunStr = formatTarih(bugun); let dunStr = formatTarih(dun);
-                    
-                    let kontrolTarihi = null; let seri = 0;
-                    if (tarihler.includes(bugunStr)) { kontrolTarihi = bugun; } 
-                    else if (tarihler.includes(dunStr)) { kontrolTarihi = dun; }
-                    
-                    if (kontrolTarihi) {
-                        let anlikTarih = new Date(kontrolTarihi);
-                        while (true) {
-                            let anlikStr = formatTarih(anlikTarih);
-                            if (tarihler.includes(anlikStr)) {
-                                seri++; anlikTarih.setDate(anlikTarih.getDate() - 1);
-                            } else { break; }
-                        }
+            if (data.length > 0) {
+                let formatTarih = (d) => { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+                let tarihler = [...new Set(data.map(s => s.tarih))];
+                let bugun = new Date(); let dun = new Date(); dun.setDate(dun.getDate() - 1);
+                let bugunStr = formatTarih(bugun); let dunStr = formatTarih(dun);
+                let kontrolTarihi = null; let seri = 0;
+                if (tarihler.includes(bugunStr)) { kontrolTarihi = bugun; } 
+                else if (tarihler.includes(dunStr)) { kontrolTarihi = dun; }
+                if (kontrolTarihi) {
+                    let anlikTarih = new Date(kontrolTarihi);
+                    while (true) {
+                        let anlikStr = formatTarih(anlikTarih);
+                        if (tarihler.includes(anlikStr)) { seri++; anlikTarih.setDate(anlikTarih.getDate() - 1); } else { break; }
                     }
-                    if (seri > 0) {
-                        streakCount.innerText = seri;
-                        streakBadge.classList.remove('hidden'); streakBadge.classList.add('inline-flex');
-                    } else {
-                        streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
-                    }
+                }
+                if (seri > 0) {
+                    streakCount.innerText = seri;
+                    streakBadge.classList.remove('hidden'); streakBadge.classList.add('inline-flex');
                 } else {
                     streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
                 }
-
-                if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 text-xs">Henüz soru kumbarasına kayıt eklenmemiş. İlk sorularınızı ekleyin!</td></tr>`;
-                    return;
-                }
-
-                let html = '';
-                data.forEach(s => {
-                    let trTarih = s.tarih ? s.tarih.split('-').reverse().join('.') : '-';
-                    let islemBtn = '-';
-                    if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
-                        islemBtn = `
-                            <div class="flex justify-center gap-1.5">
-                                <button onclick="soruDuzenleKurgula(${s.id}, ${s.turkce}, ${s.matematik}, ${s.fen}, ${s.inkilap}, ${s.din}, ${s.ingilizce}, '${s.tarih}')" class="text-blue-500 hover:text-blue-700 font-semibold text-[10px] px-2 py-1 bg-blue-50 rounded">Düzenle</button>
-                                <button onclick="soruSil(${s.id})" class="text-red-500 hover:text-red-700 font-semibold text-[10px] px-2 py-1 bg-red-50 rounded">Sil</button>
-                            </div>
-                        `;
-                    }
-
-                    html += `
-                        <tr class="hover:bg-slate-50/80 transition">
-                            <td class="p-2.5 font-medium text-slate-700">${trTarih}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.turkce || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.matematik || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.fen || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.inkilap || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.din || 0}</td>
-                            <td class="p-2.5 text-center text-slate-600">${s.ingilizce || 0}</td>
-                            <td class="p-2.5 text-center font-bold text-indigo-700 bg-indigo-50/50">${s.toplam_soru || 0}</td>
-                            <td class="p-2.5 text-center">${islemBtn}</td>
-                        </tr>
-                    `;
-                });
-                tbody.innerHTML = html;
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-rose-500 text-xs">Soru kumbarası tablosu yüklenemedi.</td></tr>`;
+            } else {
+                streakBadge.classList.add('hidden'); streakBadge.classList.remove('inline-flex');
             }
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400 text-xs">Henüz soru kumbarasına kayıt eklenmemiş. İlk sorularınızı ekleyin!</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            data.forEach(s => {
+                let trTarih = s.tarih ? s.tarih.split('-').reverse().join('.') : '-';
+                let islemBtn = '-';
+                if (oturum.rol === 'ogrenci' || oturum.rol === 'admin') {
+                    islemBtn = `<div class="flex justify-center gap-1.5"><button onclick="soruDuzenleKurgula(${s.id}, ${s.turkce}, ${s.matematik}, ${s.fen}, ${s.inkilap}, ${s.din}, ${s.ingilizce}, '${s.tarih}')" class="text-blue-500 hover:text-blue-700 font-semibold text-[10px] px-2 py-1 bg-blue-50 rounded">Düzenle</button><button onclick="soruSil(${s.id})" class="text-red-500 hover:text-red-700 font-semibold text-[10px] px-2 py-1 bg-red-50 rounded">Sil</button></div>`;
+                }
+                html += `<tr class="hover:bg-slate-50/80 transition"><td class="p-2.5 font-medium text-slate-700">${trTarih}</td><td class="p-2.5 text-center text-slate-600">${s.turkce || 0}</td><td class="p-2.5 text-center text-slate-600">${s.matematik || 0}</td><td class="p-2.5 text-center text-slate-600">${s.fen || 0}</td><td class="p-2.5 text-center text-slate-600">${s.inkilap || 0}</td><td class="p-2.5 text-center text-slate-600">${s.din || 0}</td><td class="p-2.5 text-center text-slate-600">${s.ingilizce || 0}</td><td class="p-2.5 text-center font-bold text-indigo-700 bg-indigo-50/50">${s.toplam_soru || 0}</td><td class="p-2.5 text-center">${islemBtn}</td></tr>`;
+            });
+            tbody.innerHTML = html;
         }
 
         async function soruKaydet() {
@@ -759,15 +685,9 @@
             if (toplamSoru <= 0) { alert("Lütfen en az bir derse ait soru sayısı giriniz."); return; }
             if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
 
-            let { error } = await _supabase.from('cadep_soru_kumbarasi').insert([{
-                ogrenci_id: ogrenciId, turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih
-            }]);
-
-            if (error) { alert("Kayıt sırasında hata oluştu: " + error.message); } 
-            else {
-                soruDuzenleIptal();
-                await soruKumbarasiniGetir();
-            }
+            let { error } = await _supabase.from('cadep_soru_kumbarasi').insert([{ ogrenci_id: ogrenciId, turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih }]);
+            if (error) alert("Kayıt sırasında hata oluştu: " + error.message);
+            else { soruDuzenleIptal(); await soruKumbarasiniGetir(); }
         }
 
         function soruDuzenleKurgula(id, tr, mat, fen, ink, din, ing, tarih) {
@@ -779,11 +699,9 @@
             document.getElementById('soru-din').value = din || 0;
             document.getElementById('soru-ingilizce').value = ing || 0;
             document.getElementById('soru-tarih').value = tarih;
-
             document.getElementById('btn-soru-kaydet').classList.add('hidden');
             document.getElementById('btn-soru-guncelle').classList.remove('hidden');
             document.getElementById('btn-soru-iptal').classList.remove('hidden');
-            
             document.getElementById('soru-ekleme-alani').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
@@ -796,7 +714,6 @@
             document.getElementById('soru-din').value = 0;
             document.getElementById('soru-ingilizce').value = 0;
             document.getElementById('soru-tarih').value = new Date().toISOString().split('T')[0];
-
             document.getElementById('btn-soru-kaydet').classList.remove('hidden');
             document.getElementById('btn-soru-guncelle').classList.add('hidden');
             document.getElementById('btn-soru-iptal').classList.add('hidden');
@@ -805,7 +722,6 @@
         async function soruGuncelle() {
             let id = document.getElementById('edit-soru-id').value;
             if(!id) return;
-
             let turkce = parseInt(document.getElementById('soru-turkce').value) || 0;
             let matematik = parseInt(document.getElementById('soru-matematik').value) || 0;
             let fen = parseInt(document.getElementById('soru-fen').value) || 0;
@@ -813,21 +729,13 @@
             let din = parseInt(document.getElementById('soru-din').value) || 0;
             let ingilizce = parseInt(document.getElementById('soru-ingilizce').value) || 0;
             let tarih = document.getElementById('soru-tarih').value;
-
             let toplamSoru = turkce + matematik + fen + inkilap + din + ingilizce;
             if (toplamSoru <= 0) { alert("Lütfen en az bir derse ait soru sayısı giriniz."); return; }
             if (!tarih) { alert("Lütfen bir tarih seçiniz."); return; }
 
-            let { error } = await _supabase.from('cadep_soru_kumbarasi').update({
-                turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih
-            }).eq('id', id);
-
-            if (error) {
-                alert("Güncelleme sırasında hata oluştu: " + error.message);
-            } else {
-                soruDuzenleIptal();
-                await soruKumbarasiniGetir();
-            }
+            let { error } = await _supabase.from('cadep_soru_kumbarasi').update({ turkce: turkce, matematik: matematik, fen: fen, inkilap: inkilap, din: din, ingilizce: ingilizce, toplam_soru: toplamSoru, tarih: tarih }).eq('id', id);
+            if (error) alert("Güncelleme sırasında hata oluştu: " + error.message);
+            else { soruDuzenleIptal(); await soruKumbarasiniGetir(); }
         }
 
         async function soruSil(id) {
@@ -837,10 +745,6 @@
             }
         }
 
-        // ==========================================
-        // DİĞER STANDART FONKSİYONLAR
-        // ==========================================
-        
         function hedefBarometresiOlustur() {
             let container = document.getElementById('barometre-container');
             let hedefLise = globalOgrenci.hedef_lisesi || "Belirtilmemiş";
@@ -900,6 +804,16 @@
                 </div>
             `;
         }
+function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
+            if (ogrenciPuan == null || ogrenciPuan === '-') return '-';
+            let sinifSonuclari = tumDenemeSonuclari.filter(s => s.deneme_id === denemeId && s.lgs_puan != null).sort((a, b) => b.lgs_puan - a.lgs_puan);
+            let sira = sinifSonuclari.findIndex(s => s.ogrenci_id === ogrenciId) + 1;
+            if (sira === 0) return '-';
+            if (sira === 1) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">🥇 1.</span>';
+            if (sira === 2) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-xs">🥈 2.</span>';
+            if (sira === 3) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-xs">🥉 3.</span>';
+            return `<span class="font-semibold text-slate-600">${sira}.</span>`;
+        }
 
         function rozetleriHesapla() {
             let container = document.getElementById('rozet-container');
@@ -923,7 +837,7 @@
             let sonSinav = tumSinavlar[tumSinavlar.length - 1];
             let oncekiSinav = tumSinavlar.length > 1 ? tumSinavlar[tumSinavlar.length - 2] : null;
 
-            if (sonSinav.toplam_net >= 80) kazanilanRozetler.push({ icon: '🏔️', ad: 'Zirve Ziyaretçisi', aciklama: 'Son sınavda 80 net barajını aştı.', renk: 'bg-purple-50 text-purple-700 border-purple-200' });
+            if (sonSinav && (sonSinav.toplam_net || 0) >= 80) kazanilanRozetler.push({ icon: '🏔️', ad: 'Zirve Ziyaretçisi', aciklama: 'Son sınavda 80 net barajını aştı.', renk: 'bg-purple-50 text-purple-700 border-purple-200' });
             let matNet = (sonSinav.matematik_d || 0) - ((sonSinav.matematik_y || 0) / 3);
             if (matNet >= 15) kazanilanRozetler.push({ icon: '📐', ad: 'Matematik Fatihi', aciklama: 'Son sınavda Matematikte 15 neti geçti.', renk: 'bg-blue-50 text-blue-700 border-blue-200' });
             let turNet = (sonSinav.turkce_d || 0) - ((sonSinav.turkce_y || 0) / 3);
@@ -932,12 +846,12 @@
             if (fenNet >= 17) kazanilanRozetler.push({ icon: '🔬', ad: 'Fen Dehası', aciklama: 'Son sınavda Fen Bilimlerinde 17 neti geçti.', renk: 'bg-emerald-50 text-emerald-700 border-emerald-200' });
             let inkNet = (sonSinav.inkilap_d || 0) - ((sonSinav.inkilap_y || 0) / 3);
             if (inkNet === 10) kazanilanRozetler.push({ icon: '🇹🇷', ad: 'Tarih Yazan', aciklama: 'İnkılap Tarihinde tüm soruları doğru cevapladı.', renk: 'bg-red-50 text-red-700 border-red-200' });
-            if (oncekiSinav && (sonSinav.lgs_puan - oncekiSinav.lgs_puan >= 20)) kazanilanRozetler.push({ icon: '🚀', ad: 'Geri Dönüş Efsanesi', aciklama: 'Bir önceki sınava göre puanını 20+ artırdı!', renk: 'bg-amber-50 text-amber-700 border-amber-200' });
+            if (oncekiSinav && sonSinav && ((sonSinav.lgs_puan || 0) - (oncekiSinav.lgs_puan || 0) >= 20)) kazanilanRozetler.push({ icon: '🚀', ad: 'Geri Dönüş Efsanesi', aciklama: 'Bir önceki sınava göre puanını 20+ artırdı!', renk: 'bg-amber-50 text-amber-700 border-amber-200' });
             
             if (tumSinavlar.length >= 3) {
-                let s1 = tumSinavlar[tumSinavlar.length - 1].lgs_puan;
-                let s2 = tumSinavlar[tumSinavlar.length - 2].lgs_puan;
-                let s3 = tumSinavlar[tumSinavlar.length - 3].lgs_puan;
+                let s1 = tumSinavlar[tumSinavlar.length - 1].lgs_puan || 0;
+                let s2 = tumSinavlar[tumSinavlar.length - 2].lgs_puan || 0;
+                let s3 = tumSinavlar[tumSinavlar.length - 3].lgs_puan || 0;
                 if (s1 > s2 && s2 > s3) kazanilanRozetler.push({ icon: '📈', ad: 'İstikrar Abidesi', aciklama: 'Son 3 sınavda puanını sürekli artırmayı başardı.', renk: 'bg-cyan-50 text-cyan-700 border-cyan-200' });
             }
             
@@ -960,346 +874,240 @@
             });
             container.innerHTML = html;
         }
+        function karneyiOlustur() {
+            let tbody = document.getElementById('ogr-karne-govde');
+            if(globalDenemeler.length === 0 && globalOzelDenemeler.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`; 
+                return; 
+            }
 
-        function veliWhatsAppBildirimi() {
-            if (!globalOgrenci) return;
-            let tumSinavlar = [];
+            let html = ''; let siraNo = 1;
+            let okulKatilim = 0; let ozelKatilim = 0;
+            let okulTop = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
+            let ozelTop = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
+
+            let fmt = (val, count) => { if(count===0) return '-'; let n = val / count; return Number.isInteger(n) ? n.toString() : n.toFixed(2); };
+            let fmtPuan = (val, count) => { if(count===0) return '-'; let n = val / count; return Number.isInteger(n) ? n.toString() : n.toFixed(3); };
+
+            globalDenemeler.forEach((deneme) => {
+                let sonuc = globalSonuclar.find(s => s.deneme_id === deneme.id);
+                let isKatildi = sonuc && (sonuc.lgs_puan != null || sonuc.toplam_net != null);
+
+                let td = isKatildi ? (sonuc.turkce_d ?? 0) : '-'; let ty = isKatildi ? (sonuc.turkce_y ?? 0) : '-'; let tb = isKatildi ? (sonuc.turkce_b ?? 0) : '-';
+                let md = isKatildi ? (sonuc.matematik_d ?? 0) : '-'; let my = isKatildi ? (sonuc.matematik_y ?? 0) : '-'; let mb = isKatildi ? (sonuc.matematik_b ?? 0) : '-';
+                let fd = isKatildi ? (sonuc.fen_d ?? 0) : '-'; let fy = isKatildi ? (sonuc.fen_y ?? 0) : '-'; let fb = isKatildi ? (sonuc.fen_b ?? 0) : '-';
+                let ind = isKatildi ? (sonuc.inkilap_d ?? 0) : '-'; let iny = isKatildi ? (sonuc.inkilap_y ?? 0) : '-'; let inb = isKatildi ? (sonuc.inkilap_b ?? 0) : '-';
+                let dd = isKatildi ? (sonuc.din_d ?? 0) : '-'; let dy = isKatildi ? (sonuc.din_y ?? 0) : '-'; let db = isKatildi ? (sonuc.din_b ?? 0) : '-';
+                let ingd = isKatildi ? (sonuc.ingilizce_d ?? 0) : '-'; let ingy = isKatildi ? (sonuc.ingilizce_y ?? 0) : '-'; let ingb = isKatildi ? (sonuc.ingilizce_b ?? 0) : '-';
+                let net = isKatildi && sonuc.toplam_net != null ? sonuc.toplam_net : '-';
+                let puan = isKatildi && sonuc.lgs_puan != null ? sonuc.lgs_puan : '-';
+                let yuzde = isKatildi && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : '-';
+                let dereceHtml = isKatildi ? ogrenciDerecesiniBul(deneme.id, ogrenciId, sonuc.lgs_puan) : '-';
+
+                if(isKatildi) {
+                    okulKatilim++;
+                    okulTop.t_d += (sonuc.turkce_d ?? 0); okulTop.t_y += (sonuc.turkce_y ?? 0); okulTop.t_b += (sonuc.turkce_b ?? (20 - (sonuc.turkce_d ?? 0) - (sonuc.turkce_y ?? 0)));
+                    okulTop.m_d += (sonuc.matematik_d ?? 0); okulTop.m_y += (sonuc.matematik_y ?? 0); okulTop.m_b += (sonuc.matematik_b ?? (20 - (sonuc.matematik_d ?? 0) - (sonuc.matematik_y ?? 0)));
+                    okulTop.f_d += (sonuc.fen_d ?? 0); okulTop.f_y += (sonuc.fen_y ?? 0); okulTop.f_b += (sonuc.fen_b ?? (20 - (sonuc.fen_d ?? 0) - (sonuc.fen_y ?? 0)));
+                    okulTop.ind += (sonuc.inkilap_d ?? 0); okulTop.iny += (sonuc.inkilap_y ?? 0); okulTop.inb += (sonuc.inkilap_b ?? (10 - (sonuc.inkilap_d ?? 0) - (sonuc.inkilap_y ?? 0)));
+                    okulTop.d_d += (sonuc.din_d ?? 0); okulTop.d_y += (sonuc.din_y ?? 0); okulTop.d_b += (sonuc.din_b ?? (10 - (sonuc.din_d ?? 0) - (sonuc.din_y ?? 0)));
+                    okulTop.ingd += (sonuc.ingilizce_d ?? 0); okulTop.ingy += (sonuc.ingilizce_y ?? 0); okulTop.ingb += (sonuc.ingilizce_b ?? (10 - (sonuc.ingilizce_d ?? 0) - (sonuc.ingilizce_y ?? 0)));
+                    okulTop.net += (sonuc.toplam_net ?? 0); okulTop.puan += (sonuc.lgs_puan ?? 0); okulTop.yuzde += (sonuc.yuzdelik_dilim ?? 0);
+                }
+
+                html += `<tr>
+                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
+                    <td class="p-2.5 font-semibold text-slate-800">${deneme.deneme_adi}</td>
+                    <td class="p-2.5 text-slate-500 text-xs">${deneme.tarih || ''}</td>
+                    <td class="p-2.5 text-center">${dereceHtml}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${td}/${ty}/${tb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${md}/${my}/${mb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${fd}/${fy}/${fb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${ind}/${iny}/${inb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${dd}/${dy}/${db}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${ingd}/${ingy}/${ingb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center font-bold text-indigo-700">${net}</td>
+                    <td class="p-2.5 text-center font-semibold text-emerald-700">${puan}</td>
+                    <td class="p-2.5 text-center font-semibold text-sky-700">${yuzde}</td>
+                </tr>`;
+            });
+
+            if(okulKatilim > 0 && globalOzelDenemeler.length > 0) {
+                html += `<tr class="bg-indigo-50/80 font-bold text-slate-800 border-y border-indigo-200 shadow-sm">
+                    <td class="p-2.5 text-center text-indigo-700" colspan="4">OKUL DENEMELERİ ORT. (${okulKatilim} Sınav)</td>
+                    <td class="p-2.5 text-center">${fmt(okulTop.t_d, okulKatilim)}/${fmt(okulTop.t_y, okulKatilim)}/${fmt(okulTop.t_b, okulKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(okulTop.m_d, okulKatilim)}/${fmt(okulTop.m_y, okulKatilim)}/${fmt(okulTop.m_b, okulKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(okulTop.f_d, okulKatilim)}/${fmt(okulTop.f_y, okulKatilim)}/${fmt(okulTop.f_b, okulKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(okulTop.ind, okulKatilim)}/${fmt(okulTop.iny, okulKatilim)}/${fmt(okulTop.inb, okulKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(okulTop.d_d, okulKatilim)}/${fmt(okulTop.d_y, okulKatilim)}/${fmt(okulTop.d_b, okulKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(okulTop.ingd, okulKatilim)}/${fmt(okulTop.ingy, okulKatilim)}/${fmt(okulTop.ingb, okulKatilim)}</td>
+                    <td class="p-2.5 text-center text-indigo-900">${fmt(okulTop.net, okulKatilim)}</td>
+                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(okulTop.puan, okulKatilim)}</td>
+                    <td class="p-2.5 text-center text-sky-800">${fmt(okulTop.yuzde, okulKatilim)}</td>
+                </tr>`;
+            }
+
+            let siraliOzelDenemeler = [...globalOzelDenemeler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+            siraliOzelDenemeler.forEach((od) => {
+                let isKatildi = (od.lgs_puan != null || od.toplam_net != null);
+                
+                if(isKatildi) {
+                    ozelKatilim++;
+                    ozelTop.t_d += (od.turkce_d ?? 0); ozelTop.t_y += (od.turkce_y ?? 0); ozelTop.t_b += (od.turkce_b ?? 0);
+                    ozelTop.m_d += (od.matematik_d ?? 0); ozelTop.m_y += (od.matematik_y ?? 0); ozelTop.m_b += (od.matematik_b ?? 0);
+                    ozelTop.f_d += (od.fen_d ?? 0); ozelTop.f_y += (od.fen_y ?? 0); ozelTop.f_b += (od.fen_b ?? 0);
+                    ozelTop.ind += (od.inkilap_d ?? 0); ozelTop.iny += (od.inkilap_y ?? 0); ozelTop.inb += (od.inkilap_b ?? 0);
+                    ozelTop.d_d += (od.din_d ?? 0); ozelTop.d_y += (od.din_y ?? 0); ozelTop.d_b += (od.din_b ?? 0);
+                    ozelTop.ingd += (od.ingilizce_d ?? 0); ozelTop.ingy += (od.ingilizce_y ?? 0); ozelTop.ingb += (od.ingilizce_b ?? 0);
+                    ozelTop.net += (od.toplam_net ?? 0); ozelTop.puan += (od.lgs_puan ?? 0); ozelTop.yuzde += (od.yuzdelik_dilim ?? 0);
+                }
+
+                let td = isKatildi ? (od.turkce_d ?? 0) : '-'; let ty = isKatildi ? (od.turkce_y ?? 0) : '-'; let tb = isKatildi ? (od.turkce_b ?? 0) : '-';
+                let md = isKatildi ? (od.matematik_d ?? 0) : '-'; let my = isKatildi ? (od.matematik_y ?? 0) : '-'; let mb = isKatildi ? (od.matematik_b ?? 0) : '-';
+                let fd = isKatildi ? (od.fen_d ?? 0) : '-'; let fy = isKatildi ? (od.fen_y ?? 0) : '-'; let fb = isKatildi ? (od.fen_b ?? 0) : '-';
+                let ind = isKatildi ? (od.inkilap_d ?? 0) : '-'; let iny = isKatildi ? (od.inkilap_y ?? 0) : '-'; let inb = isKatildi ? (od.inkilap_b ?? 0) : '-';
+                let dd = isKatildi ? (od.din_d ?? 0) : '-'; let dy = isKatildi ? (od.din_y ?? 0) : '-'; let db = isKatildi ? (od.din_b ?? 0) : '-';
+                let ingd = isKatildi ? (od.ingilizce_d ?? 0) : '-'; let ingy = isKatildi ? (od.ingilizce_y ?? 0) : '-'; let ingb = isKatildi ? (od.ingilizce_b ?? 0) : '-';
+
+                html += `<tr class="bg-amber-50/40">
+                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
+                    <td class="p-2.5 font-semibold text-slate-800">${od.deneme_adi} <span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1">Özel</span></td>
+                    <td class="p-2.5 text-slate-500 text-xs">${od.tarih || ''}</td>
+                    <td class="p-2.5 text-center">-</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${td}/${ty}/${tb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${md}/${my}/${mb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${fd}/${fy}/${fb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${ind}/${iny}/${inb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${dd}/${dy}/${db}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center">${isKatildi ? `${ingd}/${ingy}/${ingb}` : '-/-/-'}</td>
+                    <td class="p-2.5 text-center font-bold text-indigo-700">${isKatildi ? (od.toplam_net ?? '-') : '-'}</td>
+                    <td class="p-2.5 text-center font-semibold text-emerald-700">${isKatildi ? (od.lgs_puan ?? '-') : '-'}</td>
+                    <td class="p-2.5 text-center font-semibold text-sky-700">${isKatildi ? (od.yuzdelik_dilim ?? '-') : '-'}</td>
+                </tr>`;
+            });
+
+            if(ozelKatilim > 0 && okulKatilim > 0) {
+                html += `<tr class="bg-amber-100/60 font-bold text-slate-800 border-y border-amber-300 shadow-sm">
+                    <td class="p-2.5 text-center text-amber-800" colspan="4">ÖZEL DENEMELER ORT. (${ozelKatilim} Sınav)</td>
+                    <td class="p-2.5 text-center">${fmt(ozelTop.t_d, ozelKatilim)}/${fmt(ozelTop.t_y, ozelKatilim)}/${fmt(ozelTop.t_b, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(ozelTop.m_d, ozelKatilim)}/${fmt(ozelTop.m_y, ozelKatilim)}/${fmt(ozelTop.m_b, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(ozelTop.f_d, ozelKatilim)}/${fmt(ozelTop.f_y, ozelKatilim)}/${fmt(ozelTop.f_b, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(ozelTop.ind, ozelKatilim)}/${fmt(ozelTop.iny, ozelKatilim)}/${fmt(ozelTop.inb, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(ozelTop.d_d, ozelKatilim)}/${fmt(ozelTop.d_y, ozelKatilim)}/${fmt(ozelTop.d_b, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center">${fmt(ozelTop.ingd, ozelKatilim)}/${fmt(ozelTop.ingy, ozelKatilim)}/${fmt(ozelTop.ingb, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center text-indigo-900">${fmt(ozelTop.net, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(ozelTop.puan, ozelKatilim)}</td>
+                    <td class="p-2.5 text-center text-sky-800">${fmt(ozelTop.yuzde, ozelKatilim)}</td>
+                </tr>`;
+            }
+
+            let genKat = okulKatilim + ozelKatilim;
+            if(genKat > 0) {
+                let genTop = {
+                    t_d: okulTop.t_d + ozelTop.t_d, t_y: okulTop.t_y + ozelTop.t_y, t_b: okulTop.t_b + ozelTop.t_b,
+                    m_d: okulTop.m_d + ozelTop.m_d, m_y: okulTop.m_y + ozelTop.m_y, m_b: okulTop.m_b + ozelTop.m_b,
+                    f_d: okulTop.f_d + ozelTop.f_d, f_y: okulTop.f_y + ozelTop.f_y, f_b: okulTop.f_b + ozelTop.f_b,
+                    ind: okulTop.ind + ozelTop.ind, iny: okulTop.iny + ozelTop.iny, inb: okulTop.inb + ozelTop.inb,
+                    d_d: okulTop.d_d + ozelTop.d_d, d_y: okulTop.d_y + ozelTop.d_y, d_b: okulTop.d_b + ozelTop.d_b,
+                    ingd: okulTop.ingd + ozelTop.ingd, ingy: okulTop.ingy + ozelTop.ingy, ingb: okulTop.ingb + ozelTop.ingb,
+                    net: okulTop.net + ozelTop.net, puan: okulTop.puan + ozelTop.puan, yuzde: okulTop.yuzde + ozelTop.yuzde
+                };
+
+                html += `<tr class="bg-slate-200/90 font-black text-slate-800 border-t-2 border-slate-300">
+                    <td class="p-2.5 text-center text-indigo-900" colspan="4">GENEL ORTALAMA (${genKat} Sınav)</td>
+                    <td class="p-2.5 text-center">${fmt(genTop.t_d, genKat)}/${fmt(genTop.t_y, genKat)}/${fmt(genTop.t_b, genKat)}</td>
+                    <td class="p-2.5 text-center">${fmt(genTop.m_d, genKat)}/${fmt(genTop.m_y, genKat)}/${fmt(genTop.m_b, genKat)}</td>
+                    <td class="p-2.5 text-center">${fmt(genTop.f_d, genKat)}/${fmt(genTop.f_y, genKat)}/${fmt(genTop.f_b, genKat)}</td>
+                    <td class="p-2.5 text-center">${fmt(genTop.ind, genKat)}/${fmt(genTop.iny, genKat)}/${fmt(genTop.inb, genKat)}</td>
+                    <td class="p-2.5 text-center">${fmt(genTop.d_d, genKat)}/${fmt(genTop.d_y, genKat)}/${fmt(genTop.d_b, genKat)}</td>
+                    <td class="p-2.5 text-center">${fmt(genTop.ingd, genKat)}/${fmt(genTop.ingy, genKat)}/${fmt(genTop.ingb, genKat)}</td>
+                    <td class="p-2.5 text-center text-indigo-900">${fmt(genTop.net, genKat)}</td>
+                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(genTop.puan, genKat)}</td>
+                    <td class="p-2.5 text-center text-sky-800">${fmt(genTop.yuzde, genKat)}</td>
+                </tr>`;
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        function ogrenciGelisimGrafiginiCiz() {
+            if (typeof Chart === 'undefined') return;
+            let etiketler = []; let netVerileri = []; let puanVerileri = []; let birlesikListe = [];
             globalDenemeler.forEach(d => {
-                let s = globalSonuclar.find(res => res.deneme_id === d.id);
-                if (s && s.lgs_puan != null) tumSinavlar.push({ tarih: d.tarih, puan: s.lgs_puan, net: s.toplam_net, ad: d.deneme_adi });
+                let sonuc = globalSonuclar.find(s => s.deneme_id === d.id);
+                if (sonuc && (sonuc.toplam_net != null || sonuc.lgs_puan != null)) {
+                    birlesikListe.push({ ad: d.deneme_adi, tarih: d.tarih || '1970-01-01', net: sonuc.toplam_net || 0, puan: sonuc.lgs_puan || 0 });
+                }
             });
             globalOzelDenemeler.forEach(od => {
-                if(od.lgs_puan != null) tumSinavlar.push({ tarih: od.tarih, puan: od.lgs_puan, net: od.toplam_net, ad: od.deneme_adi + " (Özel)" });
+                if (od.toplam_net != null || od.lgs_puan != null) {
+                    birlesikListe.push({ ad: od.deneme_adi + " (Özel)", tarih: od.tarih || '1970-01-01', net: od.toplam_net || 0, puan: od.lgs_puan || 0 });
+                }
+            });
+            birlesikListe.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+            birlesikListe.forEach(item => { etiketler.push(item.ad); netVerileri.push(item.net); puanVerileri.push(item.puan); });
+
+            let ctx = document.getElementById('gelisimGrafik').getContext('2d');
+            if (grafikObjekt) grafikObjekt.destroy();
+            grafikObjekt = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: etiketler,
+                    datasets: [
+                        { label: 'Toplam Net', data: netVerileri, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y', fill: true },
+                        { label: 'LGS Puanı', data: puanVerileri, borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y1', fill: true }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net' } }, y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Puan' } } } }
+            });
+        }
+
+        function eksikKazanimlariGoster() {
+            let container = document.getElementById('kazanim-analiz-govde');
+            if (eksikKazanimlar.length === 0) {
+                container.innerHTML = `<div class="text-center text-emerald-600 bg-emerald-50 p-4 rounded-xl font-medium border border-emerald-100">Öğrencinin kayıtlı herhangi bir eksik kazanımı (yanlışı/boşu) bulunmuyor. Harika iş! 🎉</div>`;
+                return;
+            }
+
+            let denemeyeGoreGruplar = {};
+            eksikKazanimlar.forEach(eksik => {
+                let deneme = globalDenemeler.find(d => d.id === eksik.deneme_id);
+                let denemeAdi = deneme ? deneme.deneme_adi : 'Bilinmeyen Deneme';
+                let kazanimDetay = kazanimVeritabani.find(k => k.id === eksik.kazanim_id);
+                
+                if (kazanimDetay) {
+                    if (!denemeyeGoreGruplar[denemeAdi]) denemeyeGoreGruplar[denemeAdi] = [];
+                    let gercekKazanimMetni = kazanimDetay.kazanim_adi || kazanimDetay.kazanim || kazanimDetay.kazanim_metni || kazanimDetay.metin || kazanimDetay.icerik || 'İsimsiz Kazanım';
+                    let gercekDersAdi = kazanimDetay.ders_adi || kazanimDetay.ders || kazanimDetay.brans || 'Ders Belirtilmemiş';
+
+                    let varOlan = denemeyeGoreGruplar[denemeAdi].find(k => k.id === kazanimDetay.id);
+                    if (varOlan) { varOlan.hataSayisi++; } else { denemeyeGoreGruplar[denemeAdi].push({ id: kazanimDetay.id, ders_adi: gercekDersAdi, kazanim_metni: gercekKazanimMetni, hataSayisi: 1 }); }
+                }
             });
 
-            if (tumSinavlar.length === 0) { alert("Öğrenciye ait puanlı bir sınav sonucu bulunmuyor."); return; }
+            let html = ''; let isFirst = true; let tersSiraliDenemeler = Object.entries(denemeyeGoreGruplar).reverse();
+            for (const [denemeAdi, kazanimDizisi] of tersSiraliDenemeler) {
+                let dersGruplari = {};
+                kazanimDizisi.forEach(k => { if (!dersGruplari[k.ders_adi]) dersGruplari[k.ders_adi] = []; dersGruplari[k.ders_adi].push(k); });
 
-            tumSinavlar.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
-            let sonSinav = tumSinavlar[0];
-            let hedefLise = globalOgrenci.hedef_lisesi && globalOgrenci.hedef_lisesi.trim() !== "" ? globalOgrenci.hedef_lisesi : "Belirtilmemiş";
-
-            let mesaj = `Sayın Velimiz, iyi günler dilerim.\n\nÖğrencimiz *${globalOgrenci.ad_soyad}* (${globalOgrenci.sinif}), okulumuzda uygulanan son deneme sınavında (*${sonSinav.ad}*) aşağıdaki sonuçları elde etmiştir:\n\n*Toplam Net:* ${sonSinav.net}\n*LGS Puanı:* ${sonSinav.puan.toFixed(2)}\n`;
-
-            if (hedefLise !== "Belirtilmemiş") mesaj += `\nÖğrencimizin hedefi olan *${hedefLise}* için çalışmalarını yakından takip ediyoruz. `;
-            else mesaj += `\nÖğrencimizin deneme gelişimini sistemimiz üzerinden yakından takip ediyoruz. `;
-
-            mesaj += `Eksik konularına yönelik analiz raporu öğretmenlerimiz tarafından değerlendirilmektedir.\n\nİyi çalışmalar dileriz.\n- Hasköy Ortaokulu LGS Koordinatörlüğü`;
-
-            let url = `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
-            
-            if (globalOgrenci.veli_telefonu && globalOgrenci.veli_telefonu.length >= 10) {
-                let tel = globalOgrenci.veli_telefonu.replace(/[^0-9]/g, '');
-                if(tel.length === 10) tel = "90" + tel;
-                if(tel.length === 11 && tel.startsWith("0")) tel = "9" + tel;
-                url = `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`;
-            }
-            window.open(url, '_blank');
-        }
-
-        function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
-            if (ogrenciPuan == null || ogrenciPuan === '-') return '-';
-            let sinifSonuclari = tumDenemeSonuclari.filter(s => s.deneme_id === denemeId && s.lgs_puan != null).sort((a, b) => b.lgs_puan - a.lgs_puan);
-            let sira = sinifSonuclari.findIndex(s => s.ogrenci_id === ogrenciId) + 1;
-            if (sira === 0) return '-';
-            if (sira === 1) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">🥇 1.</span>';
-            if (sira === 2) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-xs">🥈 2.</span>';
-            if (sira === 3) return '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-xs">🥉 3.</span>';
-            return `<span class="font-semibold text-slate-600">${sira}.</span>`;
-        }
-
-        // ==========================================
-        // GÜNCELLENEN: VELİ ANALİZ RAPORU (AYLIK SORU VE KİTAP TABLOSU İLE)
-        // ==========================================
-        async function veliAnalizRaporuPdfAl() {
-            if (!globalOgrenci) return;
-            
-            let btn = document.querySelector('button[onclick="veliAnalizRaporuPdfAl()"]');
-            let btnOrijinalHtml = btn.innerHTML;
-            btn.innerHTML = "⏳ Rapor Hazırlanıyor...";
-            btn.disabled = true;
-
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-
-                const fontReqReg = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf");
-                const blobReg = await fontReqReg.blob();
-                const b64Reg = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobReg); });
-                doc.addFileToVFS("Roboto-Regular.ttf", b64Reg);
-                doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-
-                const fontReqBold = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf");
-                const blobBold = await fontReqBold.blob();
-                const b64Bold = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobBold); });
-                doc.addFileToVFS("Roboto-Medium.ttf", b64Bold);
-                doc.addFont("Roboto-Medium.ttf", "Roboto", "bold");
-
-                // --- Başlık ---
-                doc.setFont("Roboto", "bold");
-                doc.setFontSize(16);
-                doc.text("Hasköy Ortaokulu LGS Koordinatörlüğü", 105, 20, { align: "center" });
-                doc.setFontSize(12);
-                doc.setTextColor(79, 70, 229);
-                doc.text("CADEP Veli Analiz ve Gelişim Raporu", 105, 27, { align: "center" });
-
-                doc.setLineWidth(0.5);
-                doc.setDrawColor(200, 200, 200);
-                doc.line(15, 32, 195, 32);
-
-                // --- Öğrenci Bilgileri ---
-                doc.setTextColor(0, 0, 0);
-                doc.setFont("Roboto", "bold");
-                doc.setFontSize(11);
-                doc.text("Öğrenci: ", 15, 42);
-                doc.setFont("Roboto", "normal");
-                doc.text(globalOgrenci.ad_soyad, 35, 42);
-
-                doc.setFont("Roboto", "bold");
-                doc.text("Sınıf / No: ", 15, 49);
-                doc.setFont("Roboto", "normal");
-                doc.text(globalOgrenci.sinif + " / " + (globalOgrenci.ogrenci_no || globalOgrenci.okul_no || "-"), 38, 49);
-                
-                doc.setFont("Roboto", "bold");
-                doc.text("Hedef Lisesi: ", 110, 42);
-                doc.setFont("Roboto", "normal");
-                doc.text(globalOgrenci.hedef_lisesi || "-", 135, 42);
-                
-                let detayMetni = document.getElementById('ogr-detay-bilgi').innerText;
-                let mihmandarIsmi = detayMetni.includes("Mihmandar:") ? detayMetni.split("Mihmandar:")[1].split("|")[0].trim() : "-";
-                doc.setFont("Roboto", "bold");
-                doc.text("Danışman: ", 110, 49);
-                doc.setFont("Roboto", "normal");
-                doc.text(mihmandarIsmi, 132, 49);
-
-                doc.line(15, 54, 195, 54);
-
-                let currentY = 62;
-
-                // --- 1. Deneme Performansı ---
-                doc.setFont("Roboto", "bold");
-                doc.setFontSize(12);
-                doc.setTextColor(79, 70, 229);
-                doc.text("1. Deneme Sınavı Performansı", 15, currentY);
-                currentY += 5;
-
-                let tableData = [];
-                let denemeSira = 1;
-                
-                globalDenemeler.forEach((deneme) => {
-                    let s = globalSonuclar.find(res => res.deneme_id === deneme.id);
-                    if(s) {
-                        tableData.push([
-                            denemeSira++,
-                            deneme.deneme_adi,
-                            deneme.tarih || "-",
-                            s.toplam_net != null ? s.toplam_net.toString() : "-",
-                            s.lgs_puan != null ? s.lgs_puan.toString() : "-",
-                            s.yuzdelik_dilim != null ? s.yuzdelik_dilim.toString() : "-"
-                        ]);
-                    }
-                });
-                globalOzelDenemeler.forEach((od) => {
-                    tableData.push([
-                        denemeSira++,
-                        od.deneme_adi + " (Özel)",
-                        od.tarih || "-",
-                        od.toplam_net != null ? od.toplam_net.toString() : "-",
-                        od.lgs_puan != null ? od.lgs_puan.toString() : "-",
-                        od.yuzdelik_dilim != null ? od.yuzdelik_dilim.toString() : "-"
-                    ]);
-                });
-
-                if (tableData.length === 0) { tableData.push(["-", "Kayıtlı sınav bulunamadı.", "-", "-", "-", "-"]); }
-
-                doc.autoTable({
-                    startY: currentY,
-                    head: [['Sıra', 'Deneme Adı', 'Tarih', 'Net', 'Puan', 'Yüzde']],
-                    body: tableData,
-                    theme: 'grid',
-                    headStyles: { fillColor: [79, 70, 229], font: "Roboto", fontStyle: "bold" },
-                    styles: { fontSize: 9, font: "Roboto" }
-                });
-
-                currentY = doc.lastAutoTable.finalY + 15;
-
-                // --- 2. Eksik Kazanımlar ---
-                doc.setFont("Roboto", "bold");
-                doc.setFontSize(12);
-                doc.setTextColor(220, 38, 38);
-                doc.text("2. Öncelikli Gelişim Alanları (Eksik Kazanımlar)", 15, currentY);
-                currentY += 7;
-
-                doc.setFontSize(9);
-                doc.setTextColor(0, 0, 0);
-                if (eksikKazanimlar.length === 0) {
-                    doc.setFont("Roboto", "normal");
-                    doc.text("Kayıtlı eksik kazanım bulunmamaktadır. Harika!", 15, currentY);
-                    currentY += 10;
-                } else {
-                    let analiz = {};
-                    eksikKazanimlar.forEach(e => {
-                        let k = kazanimVeritabani.find(x => x.id === e.kazanim_id);
-                        if(k) {
-                            let metin = k.kazanim_adi || k.kazanim || k.kazanim_metni || k.metin || k.icerik || "";
-                            let ders = k.ders_adi || k.ders || k.brans || "Diğer";
-                            if(!analiz[ders]) analiz[ders] = {};
-                            if(!analiz[ders][metin]) analiz[ders][metin] = 0;
-                            analiz[ders][metin]++;
-                        }
+                html += `<details class="group border border-slate-200 rounded-xl mb-4 shadow-sm bg-white" ${isFirst ? 'open' : ''}>
+                            <summary class="bg-slate-50 px-4 py-3 font-bold text-slate-700 flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-slate-100 transition rounded-xl group-open:rounded-b-none border-b border-transparent group-open:border-slate-200">
+                                <div class="flex items-center gap-2"><span class="text-slate-400 group-open:rotate-90 transition-transform duration-200 text-xs">▶</span><span>📋 ${denemeAdi} Sonrası Analiz</span></div>
+                                <span class="text-xs bg-red-100 text-red-600 px-2.5 py-1 rounded-full">${kazanimDizisi.length} Farklı Konu</span>
+                            </summary>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">`;
+                for (const [dersAdi, konular] of Object.entries(dersGruplari)) {
+                    html += `<div class="bg-white border border-slate-100 rounded-lg p-3 shadow-sm"><h4 class="font-bold text-indigo-700 text-sm mb-2 border-b border-indigo-100 pb-1">${dersAdi}</h4><ul class="space-y-2">`;
+                    konular.forEach(k => {
+                        let hataBadge = k.hataSayisi > 1 ? `<span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">${k.hataSayisi} Hata</span>` : '';
+                        html += `<li class="text-xs text-slate-600 flex items-start gap-1.5 leading-relaxed"><span class="text-red-400 mt-0.5">✖</span><span>${k.kazanim_metni} ${hataBadge}</span></li>`;
                     });
-
-                    let kazanimTablosu = [];
-                    for(let ders in analiz) {
-                        for(let k in analiz[ders]) {
-                            kazanimTablosu.push([ders, k, analiz[ders][k] + " Kez Hata"]);
-                        }
-                    }
-
-                    kazanimTablosu.sort((a,b) => parseInt(b[2]) - parseInt(a[2]));
-                    kazanimTablosu = kazanimTablosu.slice(0, 15); 
-
-                    doc.autoTable({
-                        startY: currentY,
-                        head: [['Ders', 'Kazanım / Konu (En Sık Hata Yapılanlar)', 'Hata']],
-                        body: kazanimTablosu,
-                        theme: 'grid',
-                        headStyles: { fillColor: [220, 38, 38], font: "Roboto", fontStyle: "bold" },
-                        styles: { fontSize: 8, font: "Roboto" }
-                    });
-                    currentY = doc.lastAutoTable.finalY + 15;
+                    html += `</ul></div>`;
                 }
-
-                if (currentY > 210) { doc.addPage(); currentY = 20; }
-
-                // --- 3. AYLIK SORU VE KİTAP OKUMA TAKİBİ (YENİ EKLENDİ) ---
-                doc.setFont("Roboto", "bold");
-                doc.setFontSize(12);
-                doc.setTextColor(16, 185, 129); // Emerald Yeşili
-                doc.text("3. Aylık Soru Çözümü ve Kitap Okuma Takibi", 15, currentY);
-                currentY += 7;
-
-                // Aylık verileri grupla
-                let aylikData = {};
-                const aylarIsim = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-
-                // Soruları Grupla
-                globalTumSorular.forEach(s => {
-                    if(s.tarih) {
-                        let date = new Date(s.tarih);
-                        let ayYil = `${aylarIsim[date.getMonth()]} ${date.getFullYear()}`;
-                        let siralamaKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`; // Doğru sıralama için
-                        
-                        if(!aylikData[siralamaKey]) {
-                            aylikData[siralamaKey] = { etiket: ayYil, tr: 0, mat: 0, fen: 0, diger: 0, toplamSoru: 0, sayfa: 0 };
-                        }
-                        
-                        aylikData[siralamaKey].tr += (s.turkce || 0);
-                        aylikData[siralamaKey].mat += (s.matematik || 0);
-                        aylikData[siralamaKey].fen += (s.fen || 0);
-                        let diger = (s.inkilap || 0) + (s.din || 0) + (s.ingilizce || 0);
-                        aylikData[siralamaKey].diger += diger;
-                        aylikData[siralamaKey].toplamSoru += (s.toplam_soru || 0);
-                    }
-                });
-
-                // Kitapları Grupla
-                globalTumKitaplar.forEach(k => {
-                    if(k.tarih) {
-                        let date = new Date(k.tarih);
-                        let ayYil = `${aylarIsim[date.getMonth()]} ${date.getFullYear()}`;
-                        let siralamaKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
-                        
-                        if(!aylikData[siralamaKey]) {
-                            aylikData[siralamaKey] = { etiket: ayYil, tr: 0, mat: 0, fen: 0, diger: 0, toplamSoru: 0, sayfa: 0 };
-                        }
-                        
-                        aylikData[siralamaKey].sayfa += (k.sayfa_sayisi || 0);
-                    }
-                });
-
-                let aylikTablo = [];
-                // Tarihe göre eskiden yeniye sırala
-                let siraliAylar = Object.keys(aylikData).sort(); 
-                
-                siraliAylar.forEach(key => {
-                    let d = aylikData[key];
-                    aylikTablo.push([
-                        d.etiket,
-                        d.tr.toLocaleString('tr-TR'),
-                        d.mat.toLocaleString('tr-TR'),
-                        d.fen.toLocaleString('tr-TR'),
-                        d.diger.toLocaleString('tr-TR'),
-                        d.toplamSoru.toLocaleString('tr-TR'),
-                        d.sayfa.toLocaleString('tr-TR')
-                    ]);
-                });
-
-                if (aylikTablo.length === 0) {
-                    aylikTablo.push(["-", "-", "-", "-", "-", "-", "Öğrencinin kayıtlı soru/kitap verisi bulunmuyor."]);
-                }
-
-                doc.autoTable({
-                    startY: currentY,
-                    head: [['Ay', 'Türkçe', 'Matematik', 'Fen Bil.', 'Diğer Dersler', 'Toplam Soru', 'Okunan Kitap (Sayfa)']],
-                    body: aylikTablo,
-                    theme: 'grid',
-                    headStyles: { fillColor: [16, 185, 129], font: "Roboto", fontStyle: "bold" },
-                    styles: { fontSize: 8, font: "Roboto", halign: 'center' },
-                    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
-                });
-                currentY = doc.lastAutoTable.finalY + 15;
-
-                if (currentY > 240) { doc.addPage(); currentY = 20; }
-
-                // --- 4. Genel Değerlendirme ---
-                let streakEl = document.getElementById('streak-count');
-                let streak = streakEl ? streakEl.innerText : "0";
-
-                doc.setFont("Roboto", "bold");
-                doc.setFontSize(12);
-                doc.setTextColor(79, 70, 229);
-                doc.text("4. Genel Değerlendirme & Koçluk Notu", 15, currentY);
-                currentY += 7;
-
-                doc.setFont("Roboto", "normal");
-                doc.setFontSize(10);
-                doc.setTextColor(60, 60, 60);
-                
-                let degerlendirme = "Öğrencimizin deneme sınavı sonuçları ve eksik kazanımları incelendiğinde, hedeflenen liseye ulaşması adına düzenli soru çözümü yapması kritik öneme sahiptir.";
-                if(parseInt(streak) > 0) {
-                    degerlendirme += ` Ayrıca öğrencimiz an itibariyle ${streak} günlük kesintisiz soru çözüm serisine ulaşmıştır. Bu motivasyonun devam etmesi başarıyı getirecektir.`;
-                }
-                
-                let splittedText = doc.splitTextToSize(degerlendirme, 180);
-                doc.text(splittedText, 15, currentY);
-
-                currentY += Math.max(25, splittedText.length * 6 + 10);
-
-                // İmzalar
-                doc.setFont("Roboto", "bold");
-                doc.setFontSize(10);
-                doc.setTextColor(0, 0, 0);
-                doc.text("Mihmandar / LGS Koçu", 40, currentY, { align: "center" });
-                doc.text("Veli İmzası", 170, currentY, { align: "center" });
-
-                // Footer (Tüm Sayfalara)
-                const pageCount = doc.internal.getNumberOfPages();
-                for(let i = 1; i <= pageCount; i++) {
-                    doc.setPage(i);
-                    doc.setFont("Roboto", "normal");
-                    doc.setFontSize(8);
-                    doc.setTextColor(150, 150, 150);
-                    doc.text("Hasköy Ortaokulu CADEP Takip Sistemi - Otomatik Üretilmiştir", 105, 290, { align: "center" });
-                }
-
-                doc.save(`CADEP_Veli_Raporu_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ]/g, '_')}.pdf`);
-                
-            } catch(e) {
-                alert("Rapor oluşturulurken bir hata oluştu: " + e.message);
-            } finally {
-                btn.innerHTML = btnOrijinalHtml;
-                btn.disabled = false;
+                html += `</div></details>`;
+                isFirst = false;
             }
+            container.innerHTML = html === '' ? `<div class="text-center text-slate-500 text-sm">Kazanım detayları bulunamadı.</div>` : html;
         }
 
         async function gorevleriGetir() {
@@ -1434,7 +1242,7 @@
 
         async function notSil(id) {
             if(confirm("Bu görüşme notunu silmek istediğinize emin misiniz?")) {
-                await _supabase.from('cadep_mihmandar_notlari').delete().eq('id', id);
+                let { error } = await _supabase.from('cadep_mihmandar_notlari').delete().eq('id', id);
                 notlariGetir();
             }
         }
@@ -1454,176 +1262,6 @@
             notlariGetir();
         }
 
-        function karneyiOlustur() {
-            let tbody = document.getElementById('ogr-karne-govde');
-            if(globalDenemeler.length === 0 && globalOzelDenemeler.length === 0) { tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Sistemde kayıtlı deneme sınavı bulunmuyor.</td></tr>`; return; }
-
-            let html = ''; let siraNo = 1; let katildigiSinavSayisi = 0;
-            let toplam = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
-
-            globalDenemeler.forEach((deneme) => {
-                let sonuc = globalSonuclar.find(s => s.deneme_id === deneme.id);
-                let td = sonuc ? (sonuc.turkce_d ?? 0) : '-'; let ty = sonuc ? (sonuc.turkce_y ?? 0) : '-'; let tb = sonuc ? (sonuc.turkce_b ?? 0) : '-';
-                let md = sonuc ? (sonuc.matematik_d ?? 0) : '-'; let my = sonuc ? (sonuc.matematik_y ?? 0) : '-'; let mb = sonuc ? (sonuc.matematik_b ?? 0) : '-';
-                let fd = sonuc ? (sonuc.fen_d ?? 0) : '-'; let fy = sonuc ? (sonuc.fen_y ?? 0) : '-'; let fb = sonuc ? (sonuc.fen_b ?? 0) : '-';
-                let ind = sonuc ? (sonuc.inkilap_d ?? 0) : '-'; let iny = sonuc ? (sonuc.inkilap_y ?? 0) : '-'; let inb = sonuc ? (sonuc.inkilap_b ?? 0) : '-';
-                let dd = sonuc ? (sonuc.din_d ?? 0) : '-'; let dy = sonuc ? (sonuc.din_y ?? 0) : '-'; let db = sonuc ? (sonuc.din_b ?? 0) : '-';
-                let ingd = sonuc ? (sonuc.ingilizce_d ?? 0) : '-'; let ingy = sonuc ? (sonuc.ingilizce_y ?? 0) : '-'; let ingb = sonuc ? (sonuc.ingilizce_b ?? 0) : '-';
-                let net = sonuc && sonuc.toplam_net != null ? sonuc.toplam_net : '-';
-                let puan = sonuc && sonuc.lgs_puan != null ? sonuc.lgs_puan : '-';
-                let yuzde = sonuc && sonuc.yuzdelik_dilim != null ? sonuc.yuzdelik_dilim : '-';
-                let dereceHtml = ogrenciDerecesiniBul(deneme.id, ogrenciId, sonuc ? sonuc.lgs_puan : null);
-
-                if(sonuc) {
-                    katildigiSinavSayisi++;
-                    toplam.t_d += (sonuc.turkce_d ?? 0); toplam.t_y += (sonuc.turkce_y ?? 0); toplam.t_b += (sonuc.turkce_b ?? (20 - (sonuc.turkce_d ?? 0) - (sonuc.turkce_y ?? 0)));
-                    toplam.m_d += (sonuc.matematik_d ?? 0); toplam.m_y += (sonuc.matematik_y ?? 0); toplam.m_b += (sonuc.matematik_b ?? (20 - (sonuc.matematik_d ?? 0) - (sonuc.matematik_y ?? 0)));
-                    toplam.f_d += (sonuc.fen_d ?? 0); toplam.f_y += (sonuc.fen_y ?? 0); toplam.f_b += (sonuc.fen_b ?? (20 - (sonuc.fen_d ?? 0) - (sonuc.fen_y ?? 0)));
-                    toplam.ind += (sonuc.inkilap_d ?? 0); toplam.iny += (sonuc.inkilap_y ?? 0); toplam.inb += (sonuc.inkilap_b ?? (10 - (sonuc.inkilap_d ?? 0) - (sonuc.inkilap_y ?? 0)));
-                    toplam.d_d += (sonuc.din_d ?? 0); toplam.d_y += (sonuc.din_y ?? 0); toplam.d_b += (sonuc.din_b ?? (10 - (sonuc.din_d ?? 0) - (sonuc.din_y ?? 0)));
-                    toplam.ingd += (sonuc.ingilizce_d ?? 0); toplam.ingy += (sonuc.ingilizce_y ?? 0); toplam.ingb += (sonuc.ingilizce_b ?? (10 - (sonuc.ingilizce_d ?? 0) - (sonuc.ingilizce_y ?? 0)));
-                    toplam.net += (sonuc.toplam_net ?? 0); toplam.puan += (sonuc.lgs_puan ?? 0); toplam.yuzde += (sonuc.yuzdelik_dilim ?? 0);
-                }
-
-                html += `<tr>
-                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
-                    <td class="p-2.5 font-semibold text-slate-800">${deneme.deneme_adi}</td>
-                    <td class="p-2.5 text-slate-500 text-xs">${deneme.tarih || ''}</td>
-                    <td class="p-2.5 text-center">${dereceHtml}</td>
-                    <td class="p-2.5 text-center">${td}/${ty}/${tb}</td>
-                    <td class="p-2.5 text-center">${md}/${my}/${mb}</td>
-                    <td class="p-2.5 text-center">${fd}/${fy}/${fb}</td>
-                    <td class="p-2.5 text-center">${ind}/${iny}/${inb}</td>
-                    <td class="p-2.5 text-center">${dd}/${dy}/${db}</td>
-                    <td class="p-2.5 text-center">${ingd}/${ingy}/${ingb}</td>
-                    <td class="p-2.5 text-center font-bold text-indigo-700">${net}</td>
-                    <td class="p-2.5 text-center font-semibold text-emerald-700">${puan}</td>
-                    <td class="p-2.5 text-center font-semibold text-sky-700">${yuzde}</td>
-                </tr>`;
-            });
-
-            globalOzelDenemeler.forEach((od) => {
-                katildigiSinavSayisi++;
-                toplam.t_d += (od.turkce_d ?? 0); toplam.t_y += (od.turkce_y ?? 0); toplam.t_b += (od.turkce_b ?? 0);
-                toplam.m_d += (od.matematik_d ?? 0); toplam.m_y += (od.matematik_y ?? 0); toplam.m_b += (od.matematik_b ?? 0);
-                toplam.f_d += (od.fen_d ?? 0); toplam.f_y += (od.fen_y ?? 0); toplam.f_b += (od.fen_b ?? 0);
-                toplam.ind += (od.inkilap_d ?? 0); toplam.iny += (od.inkilap_y ?? 0); toplam.inb += (od.inkilap_b ?? 0);
-                toplam.d_d += (od.din_d ?? 0); toplam.d_y += (od.din_y ?? 0); toplam.d_b += (od.din_b ?? 0);
-                toplam.ingd += (od.ingilizce_d ?? 0); toplam.ingy += (od.ingilizce_y ?? 0); toplam.ingb += (od.ingilizce_b ?? 0);
-                toplam.net += (od.toplam_net ?? 0); toplam.puan += (od.lgs_puan ?? 0); toplam.yuzde += (od.yuzdelik_dilim ?? 0);
-
-                html += `<tr class="bg-amber-50/50">
-                    <td class="p-2.5 text-center font-bold text-slate-500">${siraNo++}</td>
-                    <td class="p-2.5 font-semibold text-slate-800">${od.deneme_adi} <span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1">Özel</span></td>
-                    <td class="p-2.5 text-slate-500 text-xs">${od.tarih || ''}</td>
-                    <td class="p-2.5 text-center">-</td>
-                    <td class="p-2.5 text-center">${od.turkce_d ?? 0}/${od.turkce_y ?? 0}/${od.turkce_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.matematik_d ?? 0}/${od.matematik_y ?? 0}/${od.matematik_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.fen_d ?? 0}/${od.fen_y ?? 0}/${od.fen_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.inkilap_d ?? 0}/${od.inkilap_y ?? 0}/${od.inkilap_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.din_d ?? 0}/${od.din_y ?? 0}/${od.din_b ?? 0}</td>
-                    <td class="p-2.5 text-center">${od.ingilizce_d ?? 0}/${od.ingilizce_y ?? 0}/${od.ingilizce_b ?? 0}</td>
-                    <td class="p-2.5 text-center font-bold text-indigo-700">${od.toplam_net ?? '-'}</td>
-                    <td class="p-2.5 text-center font-semibold text-emerald-700">${od.lgs_puan ?? '-'}</td>
-                    <td class="p-2.5 text-center font-semibold text-sky-700">${od.yuzdelik_dilim ?? '-'}</td>
-                </tr>`;
-            });
-
-            if(katildigiSinavSayisi > 0) {
-                let fmt = (val, dec = 2) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n.toString() : n.toFixed(dec); };
-                let fmtPuan = (val) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n.toString() : n.toFixed(3); };
-
-                html += `<tr class="bg-indigo-50 font-bold text-slate-800 border-t-2 border-indigo-200">
-                    <td class="p-2.5 text-center text-indigo-700" colspan="4">GENEL ORTALAMA (${katildigiSinavSayisi} Sınav)</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.t_d)}/${fmt(toplam.t_y)}/${fmt(toplam.t_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.m_d)}/${fmt(toplam.m_y)}/${fmt(toplam.m_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.f_d)}/${fmt(toplam.f_y)}/${fmt(toplam.f_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.ind)}/${fmt(toplam.iny)}/${fmt(toplam.inb)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.d_d)}/${fmt(toplam.d_y)}/${fmt(toplam.d_b)}</td>
-                    <td class="p-2.5 text-center">${fmt(toplam.ingd)}/${fmt(toplam.ingy)}/${fmt(toplam.ingb)}</td>
-                    <td class="p-2.5 text-center text-indigo-900">${fmt(toplam.net)}</td>
-                    <td class="p-2.5 text-center text-emerald-800">${fmtPuan(toplam.puan)}</td>
-                    <td class="p-2.5 text-center text-sky-800">${fmt(toplam.yuzde)}</td>
-                </tr>`;
-            }
-            tbody.innerHTML = html;
-        }
-
-        function ogrenciGelisimGrafiginiCiz() {
-            let etiketler = []; let netVerileri = []; let puanVerileri = []; let birlesikListe = [];
-            globalDenemeler.forEach(d => {
-                let sonuc = globalSonuclar.find(s => s.deneme_id === d.id);
-                if (sonuc) birlesikListe.push({ ad: d.deneme_adi, tarih: d.tarih || '1970-01-01', net: sonuc.toplam_net || 0, puan: sonuc.lgs_puan || 0 });
-            });
-            globalOzelDenemeler.forEach(od => {
-                birlesikListe.push({ ad: od.deneme_adi + " (Özel)", tarih: od.tarih || '1970-01-01', net: od.toplam_net || 0, puan: od.lgs_puan || 0 });
-            });
-            birlesikListe.sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
-            birlesikListe.forEach(item => { etiketler.push(item.ad); netVerileri.push(item.net); puanVerileri.push(item.puan); });
-
-            let ctx = document.getElementById('gelisimGrafik').getContext('2d');
-            if (grafikObjekt) grafikObjekt.destroy();
-            grafikObjekt = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: etiketler,
-                    datasets: [
-                        { label: 'Toplam Net', data: netVerileri, borderColor: 'rgb(79, 70, 229)', backgroundColor: 'rgba(79, 70, 229, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y', fill: true },
-                        { label: 'LGS Puanı', data: puanVerileri, borderColor: 'rgb(16, 185, 129)', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.3, yAxisID: 'y1', fill: true }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Net' } }, y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Puan' } } } }
-            });
-        }
-
-        function eksikKazanimlariGoster() {
-            let container = document.getElementById('kazanim-analiz-govde');
-            if (eksikKazanimlar.length === 0) {
-                container.innerHTML = `<div class="text-center text-emerald-600 bg-emerald-50 p-4 rounded-xl font-medium border border-emerald-100">Öğrencinin kayıtlı herhangi bir eksik kazanımı (yanlışı/boşu) bulunmuyor. Harika iş! 🎉</div>`;
-                return;
-            }
-
-            let denemeyeGoreGruplar = {};
-            eksikKazanimlar.forEach(eksik => {
-                let deneme = globalDenemeler.find(d => d.id === eksik.deneme_id);
-                let denemeAdi = deneme ? deneme.deneme_adi : 'Bilinmeyen Deneme';
-                let kazanimDetay = kazanimVeritabani.find(k => k.id === eksik.kazanim_id);
-                
-                if (kazanimDetay) {
-                    if (!denemeyeGoreGruplar[denemeAdi]) denemeyeGoreGruplar[denemeAdi] = [];
-                    let gercekKazanimMetni = kazanimDetay.kazanim_adi || kazanimDetay.kazanim || kazanimDetay.kazanim_metni || kazanimDetay.metin || kazanimDetay.icerik || 'İsimsiz Kazanım';
-                    let gercekDersAdi = kazanimDetay.ders_adi || kazanimDetay.ders || kazanimDetay.brans || 'Ders Belirtilmemiş';
-
-                    let varOlan = denemeyeGoreGruplar[denemeAdi].find(k => k.id === kazanimDetay.id);
-                    if (varOlan) { varOlan.hataSayisi++; } else { denemeyeGoreGruplar[denemeAdi].push({ id: kazanimDetay.id, ders_adi: gercekDersAdi, kazanim_metni: gercekKazanimMetni, hataSayisi: 1 }); }
-                }
-            });
-
-            let html = ''; let isFirst = true; let tersSiraliDenemeler = Object.entries(denemeyeGoreGruplar).reverse();
-            for (const [denemeAdi, kazanimDizisi] of tersSiraliDenemeler) {
-                let dersGruplari = {};
-                kazanimDizisi.forEach(k => { if (!dersGruplari[k.ders_adi]) dersGruplari[k.ders_adi] = []; dersGruplari[k.ders_adi].push(k); });
-
-                html += `<details class="group border border-slate-200 rounded-xl mb-4 shadow-sm bg-white" ${isFirst ? 'open' : ''}>
-                            <summary class="bg-slate-50 px-4 py-3 font-bold text-slate-700 flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden hover:bg-slate-100 transition rounded-xl group-open:rounded-b-none border-b border-transparent group-open:border-slate-200">
-                                <div class="flex items-center gap-2"><span class="text-slate-400 group-open:rotate-90 transition-transform duration-200 text-xs">▶</span><span>📋 ${denemeAdi} Sonrası Analiz</span></div>
-                                <span class="text-xs bg-red-100 text-red-600 px-2.5 py-1 rounded-full">${kazanimDizisi.length} Farklı Konu</span>
-                            </summary>
-                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">`;
-                for (const [dersAdi, konular] of Object.entries(dersGruplari)) {
-                    html += `<div class="bg-white border border-slate-100 rounded-lg p-3 shadow-sm"><h4 class="font-bold text-indigo-700 text-sm mb-2 border-b border-indigo-100 pb-1">${dersAdi}</h4><ul class="space-y-2">`;
-                    konular.forEach(k => {
-                        let hataBadge = k.hataSayisi > 1 ? `<span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded ml-1">${k.hataSayisi} Hata</span>` : '';
-                        html += `<li class="text-xs text-slate-600 flex items-start gap-1.5 leading-relaxed"><span class="text-red-400 mt-0.5">✖</span><span>${k.kazanim_metni} ${hataBadge}</span></li>`;
-                    });
-                    html += `</ul></div>`;
-                }
-                html += `</div></details>`;
-                isFirst = false;
-            }
-            container.innerHTML = html === '' ? `<div class="text-center text-slate-500 text-sm">Kazanım detayları bulunamadı.</div>` : html;
-        }
-
         function excelRaporAl() {
             if(!globalOgrenci) return;
             let excelVerisi = [
@@ -1631,68 +1269,112 @@
                 ["Sıra", "Deneme Adı", "Tarih", "Derece", "Türkçe (D/Y/B)", "Matematik (D/Y/B)", "Fen (D/Y/B)", "İnkılap (D/Y/B)", "Din (D/Y/B)", "İngilizce (D/Y/B)", "Toplam Net", "LGS Puanı", "Yüzdelik Dilim"]
             ];
             
-            let siraNo = 1; let katildigiSinavSayisi = 0;
-            let toplam = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
+            let siraNo = 1; let okulKatilim = 0; let ozelKatilim = 0;
+            let okulTop = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
+            let ozelTop = { t_d: 0, t_y: 0, t_b: 0, m_d: 0, m_y: 0, m_b: 0, f_d: 0, f_y: 0, f_b: 0, ind: 0, iny: 0, inb: 0, d_d: 0, d_y: 0, d_b: 0, ingd: 0, ingy: 0, ingb: 0, net: 0, puan: 0, yuzde: 0 };
 
             globalDenemeler.forEach((deneme) => {
                 let s = globalSonuclar.find(res => res.deneme_id === deneme.id) || {};
-                let hasData = globalSonuclar.some(res => res.deneme_id === deneme.id);
+                let isKatildi = s && (s.lgs_puan != null || s.toplam_net != null);
                 let siraText = "-";
-                if(hasData && s.lgs_puan != null) {
+                if(isKatildi && s.lgs_puan != null) {
                     let sinifSonuclari = tumDenemeSonuclari.filter(res => res.deneme_id === deneme.id && res.lgs_puan != null).sort((a, b) => b.lgs_puan - a.lgs_puan);
                     let sira = sinifSonuclari.findIndex(res => res.ogrenci_id === ogrenciId) + 1;
                     if(sira > 0) siraText = `${sira}.`;
                 }
 
-                if(hasData) {
-                    katildigiSinavSayisi++;
-                    toplam.t_d += (s.turkce_d ?? 0); toplam.t_y += (s.turkce_y ?? 0); toplam.t_b += (s.turkce_b ?? (20 - (s.turkce_d ?? 0) - (s.turkce_y ?? 0)));
-                    toplam.m_d += (s.matematik_d ?? 0); toplam.m_y += (s.matematik_y ?? 0); toplam.m_b += (s.matematik_b ?? (20 - (s.matematik_d ?? 0) - (s.matematik_y ?? 0)));
-                    toplam.f_d += (s.fen_d ?? 0); toplam.f_y += (s.fen_y ?? 0); toplam.f_b += (s.fen_b ?? (20 - (s.fen_d ?? 0) - (s.fen_y ?? 0)));
-                    toplam.ind += (s.inkilap_d ?? 0); toplam.iny += (s.inkilap_y ?? 0); toplam.inb += (s.inkilap_b ?? (10 - (s.inkilap_d ?? 0) - (s.inkilap_y ?? 0)));
-                    toplam.d_d += (s.din_d ?? 0); toplam.d_y += (s.din_y ?? 0); toplam.d_b += (s.din_b ?? (10 - (s.din_d ?? 0) - (s.din_y ?? 0)));
-                    toplam.ingd += (s.ingilizce_d ?? 0); toplam.ingy += (s.ingilizce_y ?? 0); toplam.ingb += (s.ingilizce_b ?? (10 - (s.ingilizce_d ?? 0) - (s.ingilizce_y ?? 0)));
-                    toplam.net += (s.toplam_net ?? 0); toplam.puan += (s.lgs_puan ?? 0); toplam.yuzde += (s.yuzdelik_dilim ?? 0);
+                if(isKatildi) {
+                    okulKatilim++;
+                    okulTop.t_d += (s.turkce_d ?? 0); okulTop.t_y += (s.turkce_y ?? 0); okulTop.t_b += (s.turkce_b ?? (20 - (s.turkce_d ?? 0) - (s.turkce_y ?? 0)));
+                    okulTop.m_d += (s.matematik_d ?? 0); okulTop.m_y += (s.matematik_y ?? 0); okulTop.m_b += (s.matematik_b ?? (20 - (s.matematik_d ?? 0) - (s.matematik_y ?? 0)));
+                    okulTop.f_d += (s.fen_d ?? 0); okulTop.f_y += (s.fen_y ?? 0); okulTop.f_b += (s.fen_b ?? (20 - (s.fen_d ?? 0) - (s.fen_y ?? 0)));
+                    okulTop.ind += (s.inkilap_d ?? 0); okulTop.iny += (s.inkilap_y ?? 0); okulTop.inb += (s.inkilap_b ?? (10 - (s.inkilap_d ?? 0) - (s.inkilap_y ?? 0)));
+                    okulTop.d_d += (s.din_d ?? 0); okulTop.d_y += (s.din_y ?? 0); okulTop.d_b += (s.din_b ?? (10 - (s.din_d ?? 0) - (s.din_y ?? 0)));
+                    okulTop.ingd += (s.ingilizce_d ?? 0); okulTop.ingy += (s.ingilizce_y ?? 0); okulTop.ingb += (s.ingilizce_b ?? (10 - (s.ingilizce_d ?? 0) - (s.ingilizce_y ?? 0)));
+                    okulTop.net += (s.toplam_net ?? 0); okulTop.puan += (s.lgs_puan ?? 0); okulTop.yuzde += (s.yuzdelik_dilim ?? 0);
                 }
 
                 excelVerisi.push([
                     siraNo++, deneme.deneme_adi, deneme.tarih || "", siraText,
-                    hasData ? `${s.turkce_d ?? 0}/${s.turkce_y ?? 0}/${s.turkce_b ?? 0}` : "-", hasData ? `${s.matematik_d ?? 0}/${s.matematik_y ?? 0}/${s.matematik_b ?? 0}` : "-",
-                    hasData ? `${s.fen_d ?? 0}/${s.fen_y ?? 0}/${s.fen_b ?? 0}` : "-", hasData ? `${s.inkilap_d ?? 0}/${s.inkilap_y ?? 0}/${s.inkilap_b ?? 0}` : "-",
-                    hasData ? `${s.din_d ?? 0}/${s.din_y ?? 0}/${s.din_b ?? 0}` : "-", hasData ? `${s.ingilizce_d ?? 0}/${s.ingilizce_y ?? 0}/${s.ingilizce_b ?? 0}` : "-",
-                    s.toplam_net != null ? Number(s.toplam_net) : 0, s.lgs_puan != null ? Number(s.lgs_puan) : 0, s.yuzdelik_dilim != null ? Number(s.yuzdelik_dilim) : 0
+                    isKatildi ? `${s.turkce_d ?? 0}/${s.turkce_y ?? 0}/${s.turkce_b ?? 0}` : "-", isKatildi ? `${s.matematik_d ?? 0}/${s.matematik_y ?? 0}/${s.matematik_b ?? 0}` : "-",
+                    isKatildi ? `${s.fen_d ?? 0}/${s.fen_y ?? 0}/${s.fen_b ?? 0}` : "-", isKatildi ? `${s.inkilap_d ?? 0}/${s.inkilap_y ?? 0}/${s.inkilap_b ?? 0}` : "-",
+                    isKatildi ? `${s.din_d ?? 0}/${s.din_y ?? 0}/${s.din_b ?? 0}` : "-", isKatildi ? `${s.ingilizce_d ?? 0}/${s.ingilizce_y ?? 0}/${s.ingilizce_b ?? 0}` : "-",
+                    isKatildi && s.toplam_net != null ? Number(s.toplam_net) : 0, isKatildi && s.lgs_puan != null ? Number(s.lgs_puan) : 0, isKatildi && s.yuzdelik_dilim != null ? Number(s.yuzdelik_dilim) : 0
                 ]);
             });
 
-            globalOzelDenemeler.forEach(od => {
-                katildigiSinavSayisi++;
-                toplam.t_d += (od.turkce_d ?? 0); toplam.t_y += (od.turkce_y ?? 0); toplam.t_b += (od.turkce_b ?? 0);
-                toplam.m_d += (od.matematik_d ?? 0); toplam.m_y += (od.matematik_y ?? 0); toplam.m_b += (od.matematik_b ?? 0);
-                toplam.f_d += (od.fen_d ?? 0); toplam.f_y += (od.fen_y ?? 0); toplam.f_b += (od.fen_b ?? 0);
-                toplam.ind += (od.inkilap_d ?? 0); toplam.iny += (od.inkilap_y ?? 0); toplam.inb += (od.inkilap_b ?? 0);
-                toplam.d_d += (od.din_d ?? 0); toplam.d_y += (od.din_y ?? 0); toplam.d_b += (od.din_b ?? 0);
-                toplam.ingd += (od.ingilizce_d ?? 0); toplam.ingy += (od.ingilizce_y ?? 0); toplam.ingb += (od.ingilizce_b ?? 0);
-                toplam.net += (od.toplam_net ?? 0); toplam.puan += (od.lgs_puan ?? 0); toplam.yuzde += (od.yuzdelik_dilim ?? 0);
+            let fmtEx = (val, count) => { if(count===0) return 0; let n = val / count; return Number.isInteger(n) ? n : Number(n.toFixed(2)); };
+            let fmtExPuan = (val, count) => { if(count===0) return 0; let n = val / count; return Number.isInteger(n) ? n : Number(n.toFixed(3)); };
+
+            if(okulKatilim > 0 && globalOzelDenemeler.length > 0) {
+                excelVerisi.push([
+                    "OKUL DENEMELERİ ORT.", "", "", "",
+                    `${fmtEx(okulTop.t_d, okulKatilim)}/${fmtEx(okulTop.t_y, okulKatilim)}/${fmtEx(okulTop.t_b, okulKatilim)}`,
+                    `${fmtEx(okulTop.m_d, okulKatilim)}/${fmtEx(okulTop.m_y, okulKatilim)}/${fmtEx(okulTop.m_b, okulKatilim)}`,
+                    `${fmtEx(okulTop.f_d, okulKatilim)}/${fmtEx(okulTop.f_y, okulKatilim)}/${fmtEx(okulTop.f_b, okulKatilim)}`,
+                    `${fmtEx(okulTop.ind, okulKatilim)}/${fmtEx(okulTop.iny, okulKatilim)}/${fmtEx(okulTop.inb, okulKatilim)}`,
+                    `${fmtEx(okulTop.d_d, okulKatilim)}/${fmtEx(okulTop.d_y, okulKatilim)}/${fmtEx(okulTop.d_b, okulKatilim)}`,
+                    `${fmtEx(okulTop.ingd, okulKatilim)}/${fmtEx(okulTop.ingy, okulKatilim)}/${fmtEx(okulTop.ingb, okulKatilim)}`,
+                    fmtEx(okulTop.net, okulKatilim), fmtExPuan(okulTop.puan, okulKatilim), fmtEx(okulTop.yuzde, okulKatilim)
+                ]);
+            }
+
+            let siraliOzelDenemeler = [...globalOzelDenemeler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+            siraliOzelDenemeler.forEach(od => {
+                let isKatildi = (od.lgs_puan != null || od.toplam_net != null);
+                if(isKatildi) {
+                    ozelKatilim++;
+                    ozelTop.t_d += (od.turkce_d ?? 0); ozelTop.t_y += (od.turkce_y ?? 0); ozelTop.t_b += (od.turkce_b ?? 0);
+                    ozelTop.m_d += (od.matematik_d ?? 0); ozelTop.m_y += (od.matematik_y ?? 0); ozelTop.m_b += (od.matematik_b ?? 0);
+                    ozelTop.f_d += (od.fen_d ?? 0); ozelTop.f_y += (od.fen_y ?? 0); ozelTop.f_b += (od.fen_b ?? 0);
+                    ozelTop.ind += (od.inkilap_d ?? 0); ozelTop.iny += (od.inkilap_y ?? 0); ozelTop.inb += (od.inkilap_b ?? 0);
+                    ozelTop.d_d += (od.din_d ?? 0); ozelTop.d_y += (od.din_y ?? 0); ozelTop.d_b += (od.din_b ?? 0);
+                    ozelTop.ingd += (od.ingilizce_d ?? 0); ozelTop.ingy += (od.ingilizce_y ?? 0); ozelTop.ingb += (od.ingilizce_b ?? 0);
+                    ozelTop.net += (od.toplam_net ?? 0); ozelTop.puan += (od.lgs_puan ?? 0); ozelTop.yuzde += (od.yuzdelik_dilim ?? 0);
+                }
 
                 excelVerisi.push([
                     siraNo++, od.deneme_adi + " (Özel)", od.tarih || "", "-",
-                    `${od.turkce_d ?? 0}/${od.turkce_y ?? 0}/${od.turkce_b ?? 0}`, `${od.matematik_d ?? 0}/${od.matematik_y ?? 0}/${od.matematik_b ?? 0}`,
-                    `${od.fen_d ?? 0}/${od.fen_y ?? 0}/${od.fen_b ?? 0}`, `${od.inkilap_d ?? 0}/${od.inkilap_y ?? 0}/${od.inkilap_b ?? 0}`,
-                    `${od.din_d ?? 0}/${od.din_y ?? 0}/${od.din_b ?? 0}`, `${od.ingilizce_d ?? 0}/${od.ingilizce_y ?? 0}/${od.ingilizce_b ?? 0}`,
-                    od.toplam_net != null ? Number(od.toplam_net) : 0, od.lgs_puan != null ? Number(od.lgs_puan) : 0, od.yuzdelik_dilim != null ? Number(od.yuzdelik_dilim) : 0
+                    isKatildi ? `${od.turkce_d ?? 0}/${od.turkce_y ?? 0}/${od.turkce_b ?? 0}` : "-", isKatildi ? `${od.matematik_d ?? 0}/${od.matematik_y ?? 0}/${od.matematik_b ?? 0}` : "-",
+                    isKatildi ? `${od.fen_d ?? 0}/${od.fen_y ?? 0}/${od.fen_b ?? 0}` : "-", isKatildi ? `${od.inkilap_d ?? 0}/${od.inkilap_y ?? 0}/${od.inkilap_b ?? 0}` : "-",
+                    isKatildi ? `${od.din_d ?? 0}/${od.din_y ?? 0}/${od.din_b ?? 0}` : "-", isKatildi ? `${od.ingilizce_d ?? 0}/${od.ingilizce_y ?? 0}/${od.ingilizce_b ?? 0}` : "-",
+                    isKatildi && od.toplam_net != null ? Number(od.toplam_net) : 0, isKatildi && od.lgs_puan != null ? Number(od.lgs_puan) : 0, isKatildi && od.yuzdelik_dilim != null ? Number(od.yuzdelik_dilim) : 0
                 ]);
             });
 
-            if(katildigiSinavSayisi > 0) {
-                let fmtExcel = (val, dec = 2) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n : Number(n.toFixed(dec)); };
-                let fmtExcelPuan = (val) => { let n = val / katildigiSinavSayisi; return Number.isInteger(n) ? n : Number(n.toFixed(3)); };
+            if(ozelKatilim > 0 && okulKatilim > 0) {
+                excelVerisi.push([
+                    "ÖZEL DENEMELER ORT.", "", "", "",
+                    `${fmtEx(ozelTop.t_d, ozelKatilim)}/${fmtEx(ozelTop.t_y, ozelKatilim)}/${fmtEx(ozelTop.t_b, ozelKatilim)}`,
+                    `${fmtEx(ozelTop.m_d, ozelKatilim)}/${fmtEx(ozelTop.m_y, ozelKatilim)}/${fmtEx(ozelTop.m_b, ozelKatilim)}`,
+                    `${fmtEx(ozelTop.f_d, ozelKatilim)}/${fmtEx(ozelTop.f_y, ozelKatilim)}/${fmtEx(ozelTop.f_b, ozelKatilim)}`,
+                    `${fmtEx(ozelTop.ind, ozelKatilim)}/${fmtEx(ozelTop.iny, ozelKatilim)}/${fmtEx(ozelTop.inb, ozelKatilim)}`,
+                    `${fmtEx(ozelTop.d_d, ozelKatilim)}/${fmtEx(ozelTop.d_y, ozelKatilim)}/${fmtEx(ozelTop.d_b, ozelKatilim)}`,
+                    `${fmtEx(ozelTop.ingd, ozelKatilim)}/${fmtEx(ozelTop.ingy, ozelKatilim)}/${fmtEx(ozelTop.ingb, ozelKatilim)}`,
+                    fmtEx(ozelTop.net, ozelKatilim), fmtExPuan(ozelTop.puan, ozelKatilim), fmtEx(ozelTop.yuzde, ozelKatilim)
+                ]);
+            }
 
+            if(okulKatilim > 0 || ozelKatilim > 0) {
+                let genKat = okulKatilim + ozelKatilim;
+                let genTop = {
+                    t_d: okulTop.t_d + ozelTop.t_d, t_y: okulTop.t_y + ozelTop.t_y, t_b: okulTop.t_b + ozelTop.t_b,
+                    m_d: okulTop.m_d + ozelTop.m_d, m_y: okulTop.m_y + ozelTop.m_y, m_b: okulTop.m_b + ozelTop.m_b,
+                    f_d: okulTop.f_d + ozelTop.f_d, f_y: okulTop.f_y + ozelTop.f_y, f_b: okulTop.f_b + ozelTop.f_b,
+                    ind: okulTop.ind + ozelTop.ind, iny: okulTop.iny + ozelTop.iny, inb: okulTop.inb + ozelTop.inb,
+                    d_d: okulTop.d_d + ozelTop.d_d, d_y: okulTop.d_y + ozelTop.d_y, d_b: okulTop.d_b + ozelTop.d_b,
+                    ingd: okulTop.ingd + ozelTop.ingd, ingy: okulTop.ingy + ozelTop.ingy, ingb: okulTop.ingb + ozelTop.ingb,
+                    net: okulTop.net + ozelTop.net, puan: okulTop.puan + ozelTop.puan, yuzde: okulTop.yuzde + ozelTop.yuzde
+                };
                 excelVerisi.push([
                     "GENEL ORTALAMA", "", "", "",
-                    `${fmtExcel(toplam.t_d)}/${fmtExcel(toplam.t_y)}/${fmtExcel(toplam.t_b)}`, `${fmtExcel(toplam.m_d)}/${fmtExcel(toplam.m_y)}/${fmtExcel(toplam.m_b)}`,
-                    `${fmtExcel(toplam.f_d)}/${fmtExcel(toplam.f_y)}/${fmtExcel(toplam.f_b)}`, `${fmtExcel(toplam.ind)}/${fmtExcel(toplam.iny)}/${fmtExcel(toplam.inb)}`,
-                    `${fmtExcel(toplam.d_d)}/${fmtExcel(toplam.d_y)}/${fmtExcel(toplam.d_b)}`, `${fmtExcel(toplam.ingd)}/${fmtExcel(toplam.ingy)}/${fmtExcel(toplam.ingb)}`,
-                    fmtExcel(toplam.net), fmtExcelPuan(toplam.puan), fmtExcel(toplam.yuzde)
+                    `${fmtEx(genTop.t_d, genKat)}/${fmtEx(genTop.t_y, genKat)}/${fmtEx(genTop.t_b, genKat)}`,
+                    `${fmtEx(genTop.m_d, genKat)}/${fmtEx(genTop.m_y, genKat)}/${fmtEx(genTop.m_b, genKat)}`,
+                    `${fmtEx(genTop.f_d, genKat)}/${fmtEx(genTop.f_y, genKat)}/${fmtEx(genTop.f_b, genKat)}`,
+                    `${fmtEx(genTop.ind, genKat)}/${fmtEx(genTop.iny, genKat)}/${fmtEx(genTop.inb, genKat)}`,
+                    `${fmtEx(genTop.d_d, genKat)}/${fmtEx(genTop.d_y, genKat)}/${fmt(genTop.d_b, genKat)}`,
+                    `${fmtEx(genTop.ingd, genKat)}/${fmt(genTop.ingy, genKat)}/${fmt(genTop.ingb, genKat)}`,
+                    fmtEx(genTop.net, genKat), fmtExPuan(genTop.puan, genKat), fmtEx(genTop.yuzde, genKat)
                 ]);
             }
 
@@ -1700,6 +1382,346 @@
             let workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Ogrenci Karnesi");
             XLSX.writeFile(workbook, `CADEP_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9]/g, '_')}_Karnesi.xlsx`);
+        }
+
+        async function veliAnalizRaporuPdfAl() {
+            if (!globalOgrenci) return;
+            
+            let btn = document.querySelector('button[onclick="veliAnalizRaporuPdfAl()"]');
+            let btnOrijinalHtml = btn.innerHTML;
+            btn.innerHTML = "⏳ Rapor Hazırlanıyor...";
+            btn.disabled = true;
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                const fontReqReg = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf");
+                const blobReg = await fontReqReg.blob();
+                const b64Reg = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobReg); });
+                doc.addFileToVFS("Roboto-Regular.ttf", b64Reg);
+                doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+
+                const fontReqBold = await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf");
+                const blobBold = await fontReqBold.blob();
+                const b64Bold = await new Promise(r => { let reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blobBold); });
+                doc.addFileToVFS("Roboto-Medium.ttf", b64Bold);
+                doc.addFont("Roboto-Medium.ttf", "Roboto", "bold");
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(16);
+                doc.text("Hasköy Ortaokulu LGS Koordinatörlüğü", 105, 20, { align: "center" });
+                doc.setFontSize(12);
+                doc.setTextColor(79, 70, 229);
+                doc.text("CADEP Veli Analiz ve Gelişim Raporu", 105, 27, { align: "center" });
+
+                doc.setLineWidth(0.5);
+                doc.setDrawColor(200, 200, 200);
+                doc.line(15, 32, 195, 32);
+
+                doc.setTextColor(0, 0, 0);
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(11);
+                doc.text("Öğrenci: ", 15, 42);
+                doc.setFont("Roboto", "normal");
+                doc.text(globalOgrenci.ad_soyad, 35, 42);
+
+                doc.setFont("Roboto", "bold");
+                doc.text("Sınıf / No: ", 15, 49);
+                doc.setFont("Roboto", "normal");
+                doc.text(globalOgrenci.sinif + " / " + (globalOgrenci.ogrenci_no || globalOgrenci.okul_no || "-"), 38, 49);
+                
+                doc.setFont("Roboto", "bold");
+                doc.text("Hedef Lisesi: ", 110, 42);
+                doc.setFont("Roboto", "normal");
+                doc.text(globalOgrenci.hedef_lisesi || "-", 135, 42);
+                
+                let detayMetni = document.getElementById('ogr-detay-bilgi').innerText;
+                let mihmandarIsmi = detayMetni.includes("Mihmandar:") ? detayMetni.split("Mihmandar:")[1].split("|")[0].trim() : "-";
+                doc.setFont("Roboto", "bold");
+                doc.text("Danışman: ", 110, 49);
+                doc.setFont("Roboto", "normal");
+                doc.text(mihmandarIsmi, 132, 49);
+
+                doc.line(15, 54, 195, 54);
+
+                let currentY = 62;
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(79, 70, 229);
+                doc.text("1. Deneme Sınavı Performansı", 15, currentY);
+                currentY += 5;
+
+                let tableData = [];
+                let denemeSira = 1;
+                
+                let okulKat = 0; let okulT = { net: 0, puan: 0, yuzde: 0 };
+                let ozelKat = 0; let ozelT = { net: 0, puan: 0, yuzde: 0 };
+
+                globalDenemeler.forEach((deneme) => {
+                    let s = globalSonuclar.find(res => res.deneme_id === deneme.id);
+                    let isKatildi = s && (s.lgs_puan != null || s.toplam_net != null);
+                    
+                    if(isKatildi) {
+                        okulKat++;
+                        okulT.net += (s.toplam_net ?? 0); okulT.puan += (s.lgs_puan ?? 0); okulT.yuzde += (s.yuzdelik_dilim ?? 0);
+                    }
+                    
+                    tableData.push([
+                        denemeSira++, deneme.deneme_adi, deneme.tarih || "-",
+                        isKatildi && s.toplam_net != null ? s.toplam_net.toString() : "-",
+                        isKatildi && s.lgs_puan != null ? s.lgs_puan.toString() : "-",
+                        isKatildi && s.yuzdelik_dilim != null ? s.yuzdelik_dilim.toString() : "-"
+                    ]);
+                });
+
+                if(okulKat > 0 && globalOzelDenemeler.length > 0) {
+                    tableData.push([
+                        "-", "OKUL DENEMELERI ORT.", "-",
+                        (okulT.net / okulKat).toFixed(2),
+                        (okulT.puan / okulKat).toFixed(3),
+                        (okulT.yuzde / okulKat).toFixed(2)
+                    ]);
+                }
+
+                let siraliOzelDenemeler = [...globalOzelDenemeler].sort((a, b) => new Date(a.tarih) - new Date(b.tarih));
+                siraliOzelDenemeler.forEach((od) => {
+                    let isKatildi = (od.lgs_puan != null || od.toplam_net != null);
+                    
+                    if(isKatildi) {
+                        ozelKat++;
+                        ozelT.net += (od.toplam_net ?? 0); ozelT.puan += (od.lgs_puan ?? 0); ozelT.yuzde += (od.yuzdelik_dilim ?? 0);
+                    }
+
+                    tableData.push([
+                        denemeSira++, od.deneme_adi + " (Özel)", od.tarih || "-",
+                        isKatildi && od.toplam_net != null ? od.toplam_net.toString() : "-",
+                        isKatildi && od.lgs_puan != null ? od.lgs_puan.toString() : "-",
+                        isKatildi && od.yuzdelik_dilim != null ? od.yuzdelik_dilim.toString() : "-"
+                    ]);
+                });
+
+                if(ozelKat > 0 && okulKat > 0) {
+                    tableData.push([
+                        "-", "OZEL DENEMELER ORT.", "-",
+                        (ozelT.net / ozelKat).toFixed(2),
+                        (ozelT.puan / ozelKat).toFixed(3),
+                        (ozelT.yuzde / ozelKat).toFixed(2)
+                    ]);
+                }
+
+                if(okulKat > 0 || ozelKat > 0) {
+                    let gKat = okulKat + ozelKat;
+                    tableData.push([
+                        "-", "GENEL ORTALAMA", "-",
+                        ((okulT.net + ozelT.net) / gKat).toFixed(2),
+                        ((okulT.puan + ozelT.puan) / gKat).toFixed(3),
+                        ((okulT.yuzde + ozelT.yuzde) / gKat).toFixed(2)
+                    ]);
+                }
+
+                if (tableData.length === 0) { tableData.push(["-", "Kayıtlı sınav bulunamadı.", "-", "-", "-", "-"]); }
+
+                doc.autoTable({
+                    startY: currentY,
+                    head: [['Sıra', 'Deneme Adı', 'Tarih', 'Net', 'Puan', 'Yüzde']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [79, 70, 229], font: "Roboto", fontStyle: "bold" },
+                    styles: { fontSize: 9, font: "Roboto" },
+                    didParseCell: function(data) {
+                        // Tablodaki satır metnini kontrol et
+                        let text = data.row.cells[1] ? data.row.cells[1].text : '';
+                        if (text.includes('ORT.')) {
+                            // Okul ve Özel Ortalama satırları için açık mavi/lacivert tonu
+                            data.cell.styles.fillColor = [224, 231, 255]; // Hafif indigo arkaplan
+                            data.cell.styles.textColor = [49, 46, 129];  // Koyu lacivert yazı
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (text.includes('GENEL ORTALAMA')) {
+                            // Genel Ortalama satırı için daha dikkat çekici koyu bir ton veya yeşil/mavi vurgu
+                            data.cell.styles.fillColor = [203, 213, 225]; // Slate gri/mavi tonu
+                            data.cell.styles.textColor = [15, 23, 42];   // Neredeyse siyah koyu yazı
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    }
+                });
+
+                currentY = doc.lastAutoTable.finalY + 15;
+
+                // --- 2. Eksik Kazanımlar ---
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(220, 38, 38);
+                doc.text("2. Öncelikli Gelişim Alanları (Eksik Kazanımlar)", 15, currentY);
+                currentY += 7;
+
+                doc.setFontSize(9);
+                doc.setTextColor(0, 0, 0);
+                if (eksikKazanimlar.length === 0) {
+                    doc.setFont("Roboto", "normal");
+                    doc.text("Kayıtlı eksik kazanım bulunmamaktadır. Harika!", 15, currentY);
+                    currentY += 10;
+                } else {
+                    let analiz = {};
+                    eksikKazanimlar.forEach(e => {
+                        let k = kazanimVeritabani.find(x => x.id === e.kazanim_id);
+                        if(k) {
+                            let metin = k.kazanim_adi || k.kazanim || k.kazanim_metni || k.metin || k.icerik || "";
+                            let ders = k.ders_adi || k.ders || k.brans || "Diğer";
+                            if(!analiz[ders]) analiz[ders] = {};
+                            if(!analiz[ders][metin]) analiz[ders][metin] = 0;
+                            analiz[ders][metin]++;
+                        }
+                    });
+
+                    let kazanimTablosu = [];
+                    for(let ders in analiz) {
+                        for(let k in analiz[ders]) {
+                            kazanimTablosu.push([ders, k, analiz[ders][k] + " Kez Hata"]);
+                        }
+                    }
+
+                    kazanimTablosu.sort((a,b) => parseInt(b[2]) - parseInt(a[2]));
+                    kazanimTablosu = kazanimTablosu.slice(0, 15); 
+
+                    doc.autoTable({
+                        startY: currentY,
+                        head: [['Ders', 'Kazanım / Konu (En Sık Hata Yapılanlar)', 'Hata']],
+                        body: kazanimTablosu,
+                        theme: 'grid',
+                        headStyles: { fillColor: [220, 38, 38], font: "Roboto", fontStyle: "bold" },
+                        styles: { fontSize: 8, font: "Roboto" }
+                    });
+                    currentY = doc.lastAutoTable.finalY + 15;
+                }
+
+                if (currentY > 210) { doc.addPage(); currentY = 20; }
+
+                // --- 3. AYLIK SORU VE KİTAP OKUMA TAKİBİ ---
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(16, 185, 129); // Emerald Yeşili
+                doc.text("3. Aylık Soru Çözümü ve Kitap Okuma Takibi", 15, currentY);
+                currentY += 7;
+
+                let aylikData = {};
+                const aylarIsim = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+                globalTumSorular.forEach(s => {
+                    if(s.tarih) {
+                        let date = new Date(s.tarih);
+                        let ayYil = `${aylarIsim[date.getMonth()]} ${date.getFullYear()}`;
+                        let siralamaKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
+                        
+                        if(!aylikData[siralamaKey]) {
+                            aylikData[siralamaKey] = { etiket: ayYil, tr: 0, mat: 0, fen: 0, diger: 0, toplamSoru: 0, sayfa: 0 };
+                        }
+                        
+                        aylikData[siralamaKey].tr += (s.turkce || 0);
+                        aylikData[siralamaKey].mat += (s.matematik || 0);
+                        aylikData[siralamaKey].fen += (s.fen || 0);
+                        let diger = (s.inkilap || 0) + (s.din || 0) + (s.ingilizce || 0);
+                        aylikData[siralamaKey].diger += diger;
+                        aylikData[siralamaKey].toplamSoru += (s.toplam_soru || 0);
+                    }
+                });
+
+                globalTumKitaplar.forEach(k => {
+                    if(k.tarih) {
+                        let date = new Date(k.tarih);
+                        let ayYil = `${aylarIsim[date.getMonth()]} ${date.getFullYear()}`;
+                        let siralamaKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
+                        
+                        if(!aylikData[siralamaKey]) {
+                            aylikData[siralamaKey] = { etiket: ayYil, tr: 0, mat: 0, fen: 0, diger: 0, toplamSoru: 0, sayfa: 0 };
+                        }
+                        
+                        aylikData[siralamaKey].sayfa += (k.sayfa_sayisi || 0);
+                    }
+                });
+
+                let aylikTablo = [];
+                let siraliAylar = Object.keys(aylikData).sort(); 
+                
+                siraliAylar.forEach(key => {
+                    let d = aylikData[key];
+                    aylikTablo.push([
+                        d.etiket,
+                        d.tr.toLocaleString('tr-TR'),
+                        d.mat.toLocaleString('tr-TR'),
+                        d.fen.toLocaleString('tr-TR'),
+                        d.diger.toLocaleString('tr-TR'),
+                        d.toplamSoru.toLocaleString('tr-TR'),
+                        d.sayfa.toLocaleString('tr-TR')
+                    ]);
+                });
+
+                if (aylikTablo.length === 0) {
+                    aylikTablo.push(["-", "-", "-", "-", "-", "-", "Öğrencinin kayıtlı soru/kitap verisi bulunmuyor."]);
+                }
+
+                doc.autoTable({
+                    startY: currentY,
+                    head: [['Ay', 'Türkçe', 'Matematik', 'Fen Bil.', 'Diğer Dersler', 'Toplam Soru', 'Okunan Kitap (Sayfa)']],
+                    body: aylikTablo,
+                    theme: 'grid',
+                    headStyles: { fillColor: [16, 185, 129], font: "Roboto", fontStyle: "bold" },
+                    styles: { fontSize: 8, font: "Roboto", halign: 'center' },
+                    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
+                });
+                currentY = doc.lastAutoTable.finalY + 15;
+
+                if (currentY > 240) { doc.addPage(); currentY = 20; }
+
+                // --- 4. Genel Değerlendirme ---
+                let streakEl = document.getElementById('streak-count');
+                let streak = streakEl ? streakEl.innerText : "0";
+
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(12);
+                doc.setTextColor(79, 70, 229);
+                doc.text("4. Genel Değerlendirme & Koçluk Notu", 15, currentY);
+                currentY += 7;
+
+                doc.setFont("Roboto", "normal");
+                doc.setFontSize(10);
+                doc.setTextColor(60, 60, 60);
+                
+                let degerlendirme = "Öğrencimizin deneme sınavı sonuçları ve eksik kazanımları incelendiğinde, hedeflenen liseye ulaşması adına düzenli soru çözümü yapması kritik öneme sahiptir.";
+                if(parseInt(streak) > 0) {
+                    degerlendirme += ` Ayrıca öğrencimiz an itibariyle ${streak} günlük kesintisiz soru çözüm serisine ulaşmıştır. Bu motivasyonun devam etmesi başarıyı getirecektir.`;
+                }
+                
+                let splittedText = doc.splitTextToSize(degerlendirme, 180);
+                doc.text(splittedText, 15, currentY);
+
+                currentY += Math.max(25, splittedText.length * 6 + 10);
+
+                // İmzalar
+                doc.setFont("Roboto", "bold");
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                doc.text("Mihmandar / LGS Koçu", 40, currentY, { align: "center" });
+                doc.text("Veli İmzası", 170, currentY, { align: "center" });
+
+                const pageCount = doc.internal.getNumberOfPages();
+                for(let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFont("Roboto", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text("Hasköy Ortaokulu CADEP Takip Sistemi - Otomatik Üretilmiştir", 105, 290, { align: "center" });
+                }
+
+                doc.save(`CADEP_Veli_Raporu_${globalOgrenci.ad_soyad.replace(/[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ]/g, '_')}.pdf`);
+                
+            } catch(e) {
+                alert("Rapor oluşturulurken bir hata oluştu: " + e.message);
+            } finally {
+                btn.innerHTML = btnOrijinalHtml;
+                btn.disabled = false;
+            }
         }
 
         function mihmandarLinkYonlendir(e) {
