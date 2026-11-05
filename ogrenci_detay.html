@@ -1529,7 +1529,22 @@ function ogrenciDerecesiniBul(denemeId, ogrenciId, ogrenciPuan) {
                     body: tableData,
                     theme: 'grid',
                     headStyles: { fillColor: [79, 70, 229], font: "Roboto", fontStyle: "bold" },
-                    styles: { fontSize: 9, font: "Roboto" }
+                    styles: { fontSize: 9, font: "Roboto" },
+                    didParseCell: function(data) {
+                        // Hücre içeriğini güvenli bir şekilde string'e çevirip büyük harfe yansıtıyoruz
+                        let cellContent = data.row.cells[1] ? data.row.cells[1].text : '';
+                        let text = String(cellContent).toUpperCase();
+                        
+                        if (text.includes('GENEL ORTALAMA')) {
+                            data.cell.styles.fillColor = [203, 213, 225]; // Slate gri arkaplan
+                            data.cell.styles.textColor = [15, 23, 42];   // Koyu yazı
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (text.includes('ORT')) {
+                            data.cell.styles.fillColor = [224, 231, 255]; // Hafif indigo arkaplan
+                            data.cell.styles.textColor = [49, 46, 129];  // Koyu lacivert yazı
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                    }
                 });
 
                 currentY = doc.lastAutoTable.finalY + 15;
