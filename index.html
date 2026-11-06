@@ -410,7 +410,7 @@
             let ogrenciSoruMap = {};
             globalOgrenciler.forEach(o => {
                 if(secilenSinif !== 'TUM' && (!o.sinif || o.sinif.trim() !== secilenSinif)) return;
-                ogrenciSoruMap[o.id] = { ad: o.ad_soyad, sinif: o.sinif || '-', toplam: 0 };
+                ogrenciSoruMap[o.id] = { id: o.id, ad: o.ad_soyad, sinif: o.sinif || '-', toplam: 0 };
             });
 
             globalSoruKayitlari.forEach(sq => {
@@ -435,7 +435,9 @@
                 html += `
                     <tr class="${bgClass} hover:bg-slate-50 transition">
                         <td class="p-2 text-center font-bold text-slate-600 text-[14px]">${madalya}</td>
-                        <td class="p-2 text-slate-800 font-medium">${item.ad}</td>
+                        <td class="p-2 font-medium">
+                            <a href="ogrenci_detay.html?id=${item.id}" class="text-indigo-700 hover:text-indigo-900 hover:underline transition">${item.ad}</a>
+                        </td>
                         <td class="p-2 text-center text-slate-500 text-xs">${item.sinif}</td>
                         <td class="p-2 text-center font-black text-indigo-700 text-xs">${item.toplam.toLocaleString('tr-TR')} Soru</td>
                     </tr>
@@ -457,7 +459,7 @@
             let ogrenciKitapMap = {};
             globalOgrenciler.forEach(o => {
                 if(secilenSinif !== 'TUM' && (!o.sinif || o.sinif.trim() !== secilenSinif)) return;
-                ogrenciKitapMap[o.id] = { ad: o.ad_soyad, sinif: o.sinif || '-', toplamSayfa: 0 };
+                ogrenciKitapMap[o.id] = { id: o.id, ad: o.ad_soyad, sinif: o.sinif || '-', toplamSayfa: 0 };
             });
 
             globalKitapKayitlari.forEach(kq => {
@@ -482,7 +484,9 @@
                 html += `
                     <tr class="${bgClass} hover:bg-slate-50 transition">
                         <td class="p-2 text-center font-bold text-slate-600 text-[14px]">${madalya}</td>
-                        <td class="p-2 text-slate-800 font-medium">${item.ad}</td>
+                        <td class="p-2 font-medium">
+                            <a href="ogrenci_detay.html?id=${item.id}" class="text-emerald-700 hover:text-emerald-900 hover:underline transition">${item.ad}</a>
+                        </td>
                         <td class="p-2 text-center text-slate-500 text-xs">${item.sinif}</td>
                         <td class="p-2 text-center font-black text-emerald-600 text-xs">${item.toplamSayfa.toLocaleString('tr-TR')} Sayfa</td>
                     </tr>
