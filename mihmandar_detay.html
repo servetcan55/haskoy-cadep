@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hasköy CADEP - Mihmandar Öğretmen Öğrenci Analizi</title>
     <script>
-        // Oturum ve Yetki Kontrolü: Giriş yapılmamışsa giriş sayfasına, öğrenci ise kendi detay sayfasına yönlendirir
         let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
         if (!oturum) {
             window.location.href = 'giris.html';
@@ -13,48 +12,35 @@
             window.location.href = 'ogrenci_detay.html';
         }
     </script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase JS Client v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- SheetJS (Excel Çıktısı İçin) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Ortak Navbar (Sticky Yapıldı) -->
+    <!-- Ortak Navbar -->
     <header class="bg-indigo-800 text-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    Hasköy CADEP Takip Sistemi
-                </h1>
+                <h1 class="text-2xl font-bold flex items-center gap-2">Hasköy CADEP Takip Sistemi</h1>
                 <p class="text-indigo-200 text-sm">8. Sınıf LGS Öğrenci ve Deneme Analiz Platformu - Hasköy Ortaokulu</p>
             </div>
             <nav class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
                 <a href="index.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Ana Sayfa</a>
                 <a href="ogrenciler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Öğrenciler</a>
-                
                 <a href="#" onclick="mihmandarLinkYonlendir(event)" class="bg-indigo-900 px-3 py-2 rounded-lg text-sm font-medium transition shadow-inner">Mihmandar Öğretmenler</a>
-                
                 <a href="denemeler.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Denemeler & Sonuçlar</a>
                 <a href="deneme_ortalamalari.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Genel Ortalamalar</a>
-                
                 <a href="kullanicilar.html" id="menu-kullanicilar" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kullanıcılar</a>
-                
-                <!-- KAZANIM YÖNETİMİ BUTONU -->
                 <a href="kazanim_yonetimi.html" id="menu-kazanim" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">Kazanım Yönetimi</a>
-
                 <a href="ekip.html" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded-lg text-sm font-medium transition">CADEP Ekibi</a>
                 
-                <!-- Aktif Kullanıcı İsim Alanı -->
                 <div class="hidden sm:flex items-center bg-indigo-900/60 border border-indigo-700 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-100 gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     <span id="aktif-kullanici-adi" class="font-bold text-white">Yükleniyor...</span>
                 </div>
-
                 <button onclick="localStorage.removeItem('cadep_oturum'); window.location.href='giris.html';" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer text-white">Çıkış Yap</button>
             </nav>
         </div>
@@ -69,11 +55,9 @@
                 <p id="ogretmen-brans" class="text-sm text-slate-500">Sorumluluk alanındaki öğrencilerin tüm deneme sınavı sonuçları.</p>
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <!-- Özel Deneme Ekle Butonu -->
                 <button id="btn-ozel-deneme-ekle" onclick="ozelDenemeModalAc()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow text-sm font-medium items-center gap-1 cursor-pointer">
                     + Özel/Dershane Denemesi Ekle
                 </button>
-                <!-- Sıralama Seçenekleri -->
                 <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
                     <label for="siralama-sec" class="font-medium text-xs text-slate-600 whitespace-nowrap">Sıralama:</label>
                     <select id="siralama-sec" onchange="siralamaDegisti()" class="border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white cursor-pointer">
@@ -88,7 +72,7 @@
             </div>
         </div>
 
-        <!-- HİBRİT: Öğrenci & Deneme Sonuçları Tablosu -->
+        <!-- Öğrenci & Deneme Sonuçları Tablosu -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse" id="analiz-tablosu">
@@ -110,7 +94,7 @@
             </div>
         </div>
 
-        <!-- MİHMANDAR TARAFINDAN EKLENEN ÖZEL DENEMELER LİSTESİ -->
+        <!-- Özel / Dershane Denemeleri Listesi -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
             <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
                 <span>📝</span> Öğrencilere Eklenen Özel / Dershane Denemeleri
@@ -135,14 +119,14 @@
         </div>
     </main>
 
-    <!-- ÖZEL DENEME EKLEME MODALI -->
+    <!-- ÖZEL DENEME EKLEME / DÜZENLEME MODALI -->
     <div id="ozel-deneme-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden max-h-[90vh] flex flex-col">
             <div class="bg-indigo-800 text-white px-6 py-4 flex justify-between items-center">
                 <h3 class="text-lg font-bold">Öğrenciye Özel / Dershane Denemesi Ekle</h3>
                 <button onclick="ozelDenemeModalKapat()" class="text-indigo-200 hover:text-white text-xl font-bold cursor-pointer">&times;</button>
             </div>
-            <form id="ozel-deneme-form" onsubmit="ozelDenemeKaydet(event)" class="p-6 space-y-4">
+            <form id="ozel-deneme-form" onsubmit="ozelDenemeKaydet(event)" class="p-6 space-y-4 overflow-y-auto">
                 <input type="hidden" id="ozel-deneme-edit-id" value="">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -172,6 +156,55 @@
                     </div>
                 </div>
 
+                <!-- DERS BAZLI DOĞRU/YANLIŞ GİRİŞ ALANLARI -->
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Ders Bazlı Doğru / Yanlış Bilgileri (D / Y)</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div class="bg-white p-2 rounded border border-slate-200">
+                            <span class="block text-[10px] font-bold text-indigo-700 mb-1">Türkçe (20 Soru)</span>
+                            <div class="flex gap-1">
+                                <input type="number" id="form-turkce-d" placeholder="D" min="0" max="20" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                                <input type="number" id="form-turkce-y" placeholder="Y" min="0" max="20" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                            </div>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-slate-200">
+                            <span class="block text-[10px] font-bold text-indigo-700 mb-1">Matematik (20 Soru)</span>
+                            <div class="flex gap-1">
+                                <input type="number" id="form-mat-d" placeholder="D" min="0" max="20" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                                <input type="number" id="form-mat-y" placeholder="Y" min="0" max="20" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                            </div>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-slate-200">
+                            <span class="block text-[10px] font-bold text-indigo-700 mb-1">Fen Bilimleri (20 Soru)</span>
+                            <div class="flex gap-1">
+                                <input type="number" id="form-fen-d" placeholder="D" min="0" max="20" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                                <input type="number" id="form-fen-y" placeholder="Y" min="0" max="20" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                            </div>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-slate-200">
+                            <span class="block text-[10px] font-bold text-indigo-700 mb-1">İnkılap Tarihi (10 Soru)</span>
+                            <div class="flex gap-1">
+                                <input type="number" id="form-ink-d" placeholder="D" min="0" max="10" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                                <input type="number" id="form-ink-y" placeholder="Y" min="0" max="10" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                            </div>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-slate-200">
+                            <span class="block text-[10px] font-bold text-indigo-700 mb-1">Din Kültürü (10 Soru)</span>
+                            <div class="flex gap-1">
+                                <input type="number" id="form-din-d" placeholder="D" min="0" max="10" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                                <input type="number" id="form-din-y" placeholder="Y" min="0" max="10" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                            </div>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-slate-200">
+                            <span class="block text-[10px] font-bold text-indigo-700 mb-1">İngilizce (10 Soru)</span>
+                            <div class="flex gap-1">
+                                <input type="number" id="form-ing-d" placeholder="D" min="0" max="10" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                                <input type="number" id="form-ing-y" placeholder="Y" min="0" max="10" class="w-1/2 border rounded px-1 py-1 text-xs text-center">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" onclick="ozelDenemeModalKapat()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer">İptal</button>
                     <button type="submit" id="btn-ozel-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-xs font-semibold cursor-pointer">Kaydet</button>
@@ -180,7 +213,7 @@
         </div>
     </div>
 
-    <!-- DETAY POPUP (MODAL) -->
+    <!-- DETAY MODALI -->
     <div id="detay-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in duration-200">
             <div class="bg-indigo-800 text-white px-6 py-4 flex justify-between items-center">
@@ -192,7 +225,6 @@
             </div>
             
             <div class="p-6">
-                <!-- Özet Bilgiler -->
                 <div class="grid grid-cols-3 gap-4 mb-6 bg-indigo-50 p-4 rounded-xl text-center">
                     <div>
                         <span class="text-xs text-indigo-600 font-semibold block">LGS PUANI</span>
@@ -208,7 +240,6 @@
                     </div>
                 </div>
 
-                <!-- Ders Detay Tablosu -->
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-100 text-slate-600 uppercase">
@@ -220,9 +251,7 @@
                                 <th class="p-2.5 text-center">Net</th>
                             </tr>
                         </thead>
-                        <tbody id="modal-ders-tablosu" class="divide-y divide-slate-200">
-                            <!-- JS ile doldurulacak -->
-                        </tbody>
+                        <tbody id="modal-ders-tablosu" class="divide-y divide-slate-200"></tbody>
                     </table>
                 </div>
             </div>
@@ -252,149 +281,138 @@
         let globalOgretmenAdi = "";
 
         window.onload = async function() {
-            if (oturum && oturum.rol !== 'admin') {
-                let kulMenu = document.getElementById('menu-kullanicilar');
-                if (kulMenu) kulMenu.style.display = 'none';
+            try {
+                if (oturum && oturum.rol !== 'admin') {
+                    let kulMenu = document.getElementById('menu-kullanicilar');
+                    if (kulMenu) kulMenu.style.display = 'none';
 
-                let kazanimMenu = document.getElementById('menu-kazanim');
-                if (kazanimMenu) kazanimMenu.style.display = 'none';
-            }
-
-            await aktifKullaniciAdiGoster(oturum);
-
-            if (oturum && oturum.rol === 'gozlemci') {
-                let btnOzelEkle = document.getElementById('btn-ozel-deneme-ekle');
-                if (btnOzelEkle) btnOzelEkle.style.display = 'none';
-            } else {
-                let btnOzelEkle = document.getElementById('btn-ozel-deneme-ekle');
-                if (btnOzelEkle) btnOzelEkle.style.display = 'flex';
-            }
-
-            if (oturum.rol === 'mihmandar') {
-                document.getElementById('geri-link').style.display = 'none';
-                if (!ogretmenId) {
-                    ogretmenId = oturum.iliskili_id || oturum.id;
+                    let kazanimMenu = document.getElementById('menu-kazanim');
+                    if (kazanimMenu) kazanimMenu.style.display = 'none';
                 }
-            } else if (oturum.rol === 'gozlemci') {
-                if (!ogretmenId) {
-                    let { data: ilkOgrt } = await _supabase.from('cadep_mihmandar_ogretmenler').select('id').limit(1).maybeSingle();
-                    if (ilkOgrt) ogretmenId = ilkOgrt.id;
+
+                await aktifKullaniciAdiGoster(oturum);
+
+                if (oturum && oturum.rol === 'gozlemci') {
+                    let btnOzelEkle = document.getElementById('btn-ozel-deneme-ekle');
+                    if (btnOzelEkle) btnOzelEkle.style.display = 'none';
+                } else {
+                    let btnOzelEkle = document.getElementById('btn-ozel-deneme-ekle');
+                    if (btnOzelEkle) btnOzelEkle.style.display = 'flex';
                 }
+
+                if (oturum.rol === 'mihmandar') {
+                    let geriLink = document.getElementById('geri-link');
+                    if(geriLink) geriLink.style.display = 'none';
+                    if (!ogretmenId) {
+                        ogretmenId = oturum.iliskili_id || oturum.id;
+                    }
+                } else if (oturum.rol === 'gozlemci') {
+                    if (!ogretmenId) {
+                        let { data: ilkOgrt } = await _supabase.from('cadep_mihmandar_ogretmenler').select('id').limit(1).maybeSingle();
+                        if (ilkOgrt) ogretmenId = ilkOgrt.id;
+                    }
+                }
+
+                if(!ogretmenId) {
+                    alert("Geçersiz öğretmen seçimi!");
+                    window.location.href = "mihmandar_ogretmenler.html";
+                    return;
+                }
+
+                let kaydedilenSiralama = localStorage.getItem('mihmandar_detay_siralama');
+                if(kaydedilenSiralama) {
+                    let siralamaSec = document.getElementById('siralama-sec');
+                    if(siralamaSec) siralamaSec.value = kaydedilenSiralama;
+                }
+
+                let formTarih = document.getElementById('form-tarih');
+                if(formTarih) formTarih.value = new Date().toISOString().split('T')[0];
+
+                await verileriGetir();
+            } catch (err) {
+                console.error("Sayfa yükleme hatası:", err);
             }
-
-            if(!ogretmenId) {
-                alert("Geçersiz öğretmen seçimi!");
-                window.location.href = "mihmandar_ogretmenler.html";
-                return;
-            }
-
-            let kaydedilenSiralama = localStorage.getItem('mihmandar_detay_siralama');
-            if(kaydedilenSiralama) {
-                document.getElementById('siralama-sec').value = kaydedilenSiralama;
-            }
-
-            document.getElementById('form-tarih').value = new Date().toISOString().split('T')[0];
-
-            await verileriGetir();
         };
 
         async function aktifKullaniciAdiGoster(oturum) {
             let isimSpan = document.getElementById('aktif-kullanici-adi');
-            if (!oturum) return;
-
+            if (!oturum || !isimSpan) return;
             let gorunurIsim = oturum.kullanici_adi || "Kullanıcı";
 
-            if (oturum.rol === 'admin') {
-                if (oturum.iliskili_id) {
-                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else {
-                    let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('kullanici_adi', oturum.kullanici_adi).single();
-                    if (data && data.ad_soyad) {
-                        gorunurIsim = data.ad_soyad;
-                    } else {
-                        let { data: allEkip } = await _supabase.from('cadep_ekip').select('ad_soyad, kullanici_adi');
-                        if (allEkip && allEkip.length > 0) {
-                            let bulunan = allEkip.find(e => e.kullanici_adi === oturum.kullanici_adi || (e.ad_soyad && e.ad_soyad.toLowerCase().includes(oturum.kullanici_adi.toLowerCase())));
-                            if (bulunan) gorunurIsim = bulunan.ad_soyad;
-                            else gorunurIsim = allEkip[0].ad_soyad;
-                        }
+            try {
+                if (oturum.rol === 'admin') {
+                    if (oturum.iliskili_id) {
+                        let { data } = await _supabase.from('cadep_ekip').select('ad_soyad').eq('id', oturum.iliskili_id).maybeSingle();
+                        if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
                     }
-                }
-                isimSpan.innerText = gorunurIsim + " (Yönetici)";
-            } 
-            else if (oturum.rol === 'gozlemci') {
-                isimSpan.innerText = gorunurIsim + " (Gözlemci)";
-            }
-            else if (oturum.rol === 'mihmandar') {
-                if (oturum.iliskili_id) {
-                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else {
-                    let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad');
-                    if (data && data.length > 0) {
-                        let bulunan = data.find(m => m.ad_soyad && m.ad_soyad.toLowerCase().replace(/[^a-z0-9]/g, '').includes(oturum.kullanici_adi.toLowerCase()));
-                        if (bulunan) gorunurIsim = bulunan.ad_soyad;
-                        else gorunurIsim = data[0].ad_soyad;
+                    isimSpan.innerText = gorunurIsim + " (Yönetici)";
+                } else if (oturum.rol === 'gozlemci') {
+                    isimSpan.innerText = gorunurIsim + " (Gözlemci)";
+                } else if (oturum.rol === 'mihmandar') {
+                    if (oturum.iliskili_id) {
+                        let { data } = await _supabase.from('cadep_mihmandar_ogretmenler').select('ad_soyad').eq('id', oturum.iliskili_id).maybeSingle();
+                        if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
                     }
+                    isimSpan.innerText = gorunurIsim + " (Mihmandar)";
                 }
-                isimSpan.innerText = gorunurIsim + " (Mihmandar)";
-            } 
-            else if (oturum.rol === 'ogrenci') {
-                if (oturum.id) {
-                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').eq('id', oturum.id).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                } else if (oturum.kullanici_adi) {
-                    let { data } = await _supabase.from('cadep_ogrenciler').select('ad_soyad').or(`ogrenci_no.eq.${oturum.kullanici_adi},okul_no.eq.${oturum.kullanici_adi}`).single();
-                    if (data && data.ad_soyad) gorunurIsim = data.ad_soyad;
-                }
-                isimSpan.innerText = gorunurIsim + " (Öğrenci)";
+            } catch(e) {
+                isimSpan.innerText = gorunurIsim;
             }
         }
 
         async function verileriGetir() {
-            let { data: ogrData } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*').eq('id', ogretmenId).single();
-            if(ogrData) {
-                globalOgretmenAdi = ogrData.ad_soyad;
-                document.getElementById('ogretmen-baslik').innerText = ogrData.ad_soyad + " - Öğrenci Takip Analizi";
-                document.getElementById('ogretmen-brans').innerText = `Branş: ${ogrData.brans || '-'} | Telefon: ${ogrData.telefon || '-'}`;
+            try {
+                let { data: ogrData } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*').eq('id', ogretmenId).maybeSingle();
+                if(ogrData) {
+                    globalOgretmenAdi = ogrData.ad_soyad;
+                    let baslik = document.getElementById('ogretmen-baslik');
+                    let brans = document.getElementById('ogretmen-brans');
+                    if(baslik) baslik.innerText = ogrData.ad_soyad + " - Öğrenci Takip Analizi";
+                    if(brans) brans.innerText = `Branş: ${ogrData.brans || '-'} | Telefon: ${ogrData.telefon || '-'}`;
+                }
+
+                let { data: ogrenciler } = await _supabase.from('cadep_ogrenciler').select('*').eq('mihmandar_ogretmen_id', ogretmenId);
+                globalOgrenciler = ogrenciler || [];
+
+                let selectOgr = document.getElementById('form-ogrenci-id');
+                if(selectOgr) {
+                    let ogrOpts = '<option value="">-- Öğrenci Seçin --</option>';
+                    globalOgrenciler.forEach(o => {
+                        ogrOpts += `<option value="${o.id}">${o.sinif} - ${o.ad_soyad}</option>`;
+                    });
+                    selectOgr.innerHTML = ogrOpts;
+                }
+
+                let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: true });
+                globalDenemeler = denemeler || [];
+
+                let { data: sonuclar } = await _supabase.from('deneme_sonuclari').select('*');
+                globalSonuclar = sonuclar || [];
+
+                let { data: ozelDen } = await _supabase.from('cadep_ozel_denemeler').select('*').eq('mihmandar_id', ogretmenId).order('tarih', { ascending: false });
+                globalOzelDenemeler = ozelDen || [];
+
+                let { data: notData } = await _supabase.from('cadep_mihmandar_notlari').select('*').order('tarih', { ascending: false });
+                tumNotlar = notData || [];
+
+                tabloyuOlustur();
+                ozelDenemeleriListele();
+            } catch (err) {
+                console.error("Veri getirme hatası:", err);
             }
-
-            let { data: ogrenciler } = await _supabase.from('cadep_ogrenciler').select('*').eq('mihmandar_ogretmen_id', ogretmenId);
-            globalOgrenciler = ogrenciler || [];
-
-            let selectOgr = document.getElementById('form-ogrenci-id');
-            let ogrOpts = '<option value="">-- Öğrenci Seçin --</option>';
-            globalOgrenciler.forEach(o => {
-                ogrOpts += `<option value="${o.id}">${o.sinif} - ${o.ad_soyad}</option>`;
-            });
-            selectOgr.innerHTML = ogrOpts;
-
-            let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: true });
-            globalDenemeler = denemeler || [];
-
-            let { data: sonuclar } = await _supabase.from('deneme_sonuclari').select('*');
-            globalSonuclar = sonuclar || [];
-
-            let { data: ozelDen } = await _supabase.from('cadep_ozel_denemeler').select('*').eq('mihmandar_id', ogretmenId).order('tarih', { ascending: false });
-            globalOzelDenemeler = ozelDen || [];
-
-            let { data: notData } = await _supabase.from('cadep_mihmandar_notlari').select('*').order('tarih', { ascending: false });
-            tumNotlar = notData || [];
-
-            tabloyuOlustur();
-            ozelDenemeleriListele();
         }
 
         function siralamaDegisti() {
-            let tercih = document.getElementById('siralama-sec').value;
+            let siralamaSec = document.getElementById('siralama-sec');
+            if(!siralamaSec) return;
+            let tercih = siralamaSec.value;
             localStorage.setItem('mihmandar_detay_siralama', tercih);
             tabloyuOlustur();
         }
 
         function siralanmisOgrencileriGetir() {
-            let kriter = document.getElementById('siralama-sec').value;
-
+            let siralamaSec = document.getElementById('siralama-sec');
+            let kriter = siralamaSec ? siralamaSec.value : 'sinif_no';
             let liste = globalOgrenciler.map(ogrenci => {
                 let ogrenciSonuclari = globalSonuclar.filter(s => s.ogrenci_id === ogrenci.id);
                 let toplamPuan = 0;
@@ -406,41 +424,30 @@
                     toplamNet += (s.toplam_net || 0);
                 });
 
-                let ortPuan = sayi > 0 ? toplamPuan / sayi : -1;
-                let ortNet = sayi > 0 ? toplamNet / sayi : -1;
-
                 return {
                     ogrenci,
-                    ortPuan,
-                    ortNet
+                    ortPuan: sayi > 0 ? toplamPuan / sayi : -1,
+                    ortNet: sayi > 0 ? toplamNet / sayi : -1
                 };
             });
 
             liste.sort((a, b) => {
-                if(kriter === 'puan_azalan') {
-                    return b.ortPuan - a.ortPuan;
-                } else if(kriter === 'puan_artan') {
-                    return a.ortPuan - b.ortPuan;
-                } else if(kriter === 'net_azalan') {
-                    return b.ortNet - a.ortNet;
-                } else if(kriter === 'net_artan') {
-                    return a.ortNet - b.ortNet;
-                } else {
-                    let sinifCmp = (a.ogrenci.sinif || '').localeCompare(b.ogrenci.sinif || '');
-                    if(sinifCmp !== 0) return sinifCmp;
-                    let noA = parseInt(a.ogrenci.ogrenci_no) || 0;
-                    let noB = parseInt(b.ogrenci.ogrenci_no) || 0;
-                    return noA - noB;
-                }
+                if(kriter === 'puan_azalan') return b.ortPuan - a.ortPuan;
+                if(kriter === 'puan_artan') return a.ortPuan - b.ortPuan;
+                if(kriter === 'net_azalan') return b.ortNet - a.ortNet;
+                if(kriter === 'net_artan') return a.ortNet - b.ortNet;
+                let sinifCmp = (a.ogrenci.sinif || '').localeCompare(b.ogrenci.sinif || '');
+                if(sinifCmp !== 0) return sinifCmp;
+                return (parseInt(a.ogrenci.ogrenci_no) || 0) - (parseInt(b.ogrenci.ogrenci_no) || 0);
             });
 
             return liste.map(item => item.ogrenci);
         }
 
-        // --- GÜNCELLEME: HİBRİT TABLO (Sütunlar Yeniden Düzenlendi) ---
         function tabloyuOlustur() {
             let theadTr = document.getElementById('tablo-basliklar');
             let tbody = document.getElementById('analiz-govde');
+            if(!theadTr || !tbody) return;
 
             if(globalOgrenciler.length === 0) {
                 theadTr.innerHTML = `<th class="p-3">Sıra</th><th class="p-3">Sınıf</th><th class="p-3">No</th><th class="p-3">Öğrenci Adı Soyadı</th>`;
@@ -450,7 +457,6 @@
 
             let sirlanmisOgrListesi = siralanmisOgrencileriGetir();
 
-            // 1. Dinamik Başlıkları Oluştur (Seyir Defteri ve Hedef Lise Sola Alındı)
             let headHtml = `
                 <th class="p-3 w-12 text-center">Sıra</th>
                 <th class="p-3 w-16 text-center">Sınıf</th>
@@ -460,14 +466,12 @@
                 <th class="p-3 text-center border-l border-slate-200">Seyir Defteri</th>
             `;
             
-            // Denemeleri sağa dizmeye başla
             globalDenemeler.forEach(d => {
                 headHtml += `<th class="p-3 text-center bg-indigo-50/50 border-l border-slate-200 min-w-[110px]">${d.deneme_adi}<br><span class="text-[9px] text-slate-400 font-normal">PUAN / NET</span></th>`;
             });
             
             theadTr.innerHTML = headHtml;
 
-            // 2. Gövde Verilerini Doldur
             let bodyHtml = '';
             sirlanmisOgrListesi.forEach((ogrenci, index) => {
                 let ogrNotlari = tumNotlar.filter(n => n.ogrenci_id === ogrenci.id);
@@ -477,19 +481,17 @@
                     <td class="p-3 text-center font-bold text-slate-500">${index + 1}</td>
                     <td class="p-3 text-center font-semibold text-slate-600">${ogrenci.sinif || '-'}</td>
                     <td class="p-3 text-center font-semibold text-indigo-600">
-                        <a href="ogrenci_detay.html?id=${ogrenci.id}" class="hover:underline" title="Öğrenci Karne Detayına Git">${ogrenci.ogrenci_no || '-'}</a>
+                        <a href="ogrenci_detay.html?id=${ogrenci.id}" class="hover:underline">${ogrenci.ogrenci_no || '-'}</a>
                     </td>
                     <td class="p-3 font-medium text-slate-800">
-                        <a href="ogrenci_detay.html?id=${ogrenci.id}" class="text-indigo-600 hover:text-indigo-900 font-semibold hover:underline truncate block" title="Öğrenci Karne Detayına Git">${ogrenci.ad_soyad}</a>
+                        <a href="ogrenci_detay.html?id=${ogrenci.id}" class="text-indigo-600 hover:text-indigo-900 font-semibold hover:underline truncate block">${ogrenci.ad_soyad}</a>
                     </td>
                     <td class="p-3 text-center text-[11px] text-slate-600 border-l border-slate-200">${ogrenci.hedef_lisesi || '-'}</td>
                     <td class="p-3 text-center border-l border-slate-200">${sonNotBilgisi}</td>
                 `;
 
-                // Deneme Sütunları
                 globalDenemeler.forEach(d => {
                     let sonuc = globalSonuclar.find(s => s.ogrenci_id === ogrenci.id && s.deneme_id === d.id);
-                    // Eğer sonuç varsa VE notlardan en az biri boş değilse yazdır
                     if(sonuc && (sonuc.lgs_puan != null || sonuc.toplam_net != null)) {
                         let net = sonuc.toplam_net != null ? sonuc.toplam_net : '-';
                         let puan = sonuc.lgs_puan != null ? sonuc.lgs_puan : '-';
@@ -503,7 +505,6 @@
                             </td>
                         `;
                     } else {
-                        // Deneme var ama bu öğrenci için sonuç girilmemişse boş bırak
                         bodyHtml += `<td class="p-3 text-center border-l border-slate-200 text-slate-300 font-light">-</td>`;
                     }
                 });
@@ -515,15 +516,22 @@
         }
 
         function ozelDenemeModalAc() {
-            document.getElementById('ozel-deneme-edit-id').value = '';
-            document.getElementById('ozel-deneme-form').reset();
-            document.getElementById('form-tarih').value = new Date().toISOString().split('T')[0];
-            document.getElementById('btn-ozel-submit').innerText = "Kaydet";
-            document.getElementById('ozel-deneme-modal').classList.remove('hidden');
+            let editId = document.getElementById('ozel-deneme-edit-id');
+            let form = document.getElementById('ozel-deneme-form');
+            let formTarih = document.getElementById('form-tarih');
+            let btnSubmit = document.getElementById('btn-ozel-submit');
+            let modal = document.getElementById('ozel-deneme-modal');
+
+            if(editId) editId.value = '';
+            if(form) form.reset();
+            if(formTarih) formTarih.value = new Date().toISOString().split('T')[0];
+            if(btnSubmit) btnSubmit.innerText = "Kaydet";
+            if(modal) modal.classList.remove('hidden');
         }
 
         function ozelDenemeModalKapat() {
-            document.getElementById('ozel-deneme-modal').classList.add('hidden');
+            let modal = document.getElementById('ozel-deneme-modal');
+            if(modal) modal.classList.add('hidden');
         }
 
         async function ozelDenemeKaydet(e) {
@@ -547,7 +555,19 @@
                 deneme_adi,
                 tarih,
                 lgs_puan,
-                toplam_net
+                toplam_net,
+                turkce_d: parseInt(document.getElementById('form-turkce-d').value) || 0,
+                turkce_y: parseInt(document.getElementById('form-turkce-y').value) || 0,
+                matematik_d: parseInt(document.getElementById('form-mat-d').value) || 0,
+                matematik_y: parseInt(document.getElementById('form-mat-y').value) || 0,
+                fen_d: parseInt(document.getElementById('form-fen-d').value) || 0,
+                fen_y: parseInt(document.getElementById('form-fen-y').value) || 0,
+                inkilap_d: parseInt(document.getElementById('form-ink-d').value) || 0,
+                inkilap_y: parseInt(document.getElementById('form-ink-y').value) || 0,
+                din_d: parseInt(document.getElementById('form-din-d').value) || 0,
+                din_y: parseInt(document.getElementById('form-din-y').value) || 0,
+                ingilizce_d: parseInt(document.getElementById('form-ing-d').value) || 0,
+                ingilizce_y: parseInt(document.getElementById('form-ing-y').value) || 0
             };
 
             if (id) {
@@ -582,12 +602,28 @@
             document.getElementById('form-lgs-puan').value = kayit.lgs_puan || '';
             document.getElementById('form-toplam-net').value = kayit.toplam_net || '';
             
-            document.getElementById('btn-ozel-submit').innerText = "Güncelle";
-            document.getElementById('ozel-deneme-modal').classList.remove('hidden');
+            document.getElementById('form-turkce-d').value = kayit.turkce_d || '';
+            document.getElementById('form-turkce-y').value = kayit.turkce_y || '';
+            document.getElementById('form-mat-d').value = kayit.matematik_d || '';
+            document.getElementById('form-mat-y').value = kayit.matematik_y || '';
+            document.getElementById('form-fen-d').value = kayit.fen_d || '';
+            document.getElementById('form-fen-y').value = kayit.fen_y || '';
+            document.getElementById('form-ink-d').value = kayit.inkilap_d || '';
+            document.getElementById('form-ink-y').value = kayit.inkilap_y || '';
+            document.getElementById('form-din-d').value = kayit.din_d || '';
+            document.getElementById('form-din-y').value = kayit.din_y || '';
+            document.getElementById('form-ing-d').value = kayit.ingilizce_d || '';
+            document.getElementById('form-ing-y').value = kayit.ingilizce_y || '';
+
+            let btnSubmit = document.getElementById('btn-ozel-submit');
+            let modal = document.getElementById('ozel-deneme-modal');
+            if(btnSubmit) btnSubmit.innerText = "Güncelle";
+            if(modal) modal.classList.remove('hidden');
         }
 
         function ozelDenemeleriListele() {
             let tbody = document.getElementById('ozel-deneme-govde');
+            if(!tbody) return;
             let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
             let isGozlemci = (oturum && oturum.rol === 'gozlemci');
 
@@ -602,7 +638,6 @@
             let html = '';
             globalOzelDenemeler.forEach(d => {
                 let ogr = ogrMap[d.ogrenci_id] || { ad_soyad: 'Bilinmeyen Öğrenci', sinif: '-' };
-                
                 let islemBtn = isGozlemci ? '-' : `
                     <button onclick="ozelDenemeDuzenleKurgula(${d.id})" class="text-[11px] text-blue-500 hover:text-blue-700 font-semibold cursor-pointer mr-2">[Düzenle]</button>
                     <button onclick="ozelDenemeSil('${d.id}')" class="text-[11px] text-red-500 hover:text-red-700 font-semibold cursor-pointer">[Sil]</button>
@@ -625,11 +660,8 @@
         async function ozelDenemeSil(id) {
             if (confirm("Bu özel denemeyi silmek istediğinize emin misiniz?")) {
                 let { error } = await _supabase.from('cadep_ozel_denemeler').delete().eq('id', id);
-                if (error) {
-                    alert("Silme başarısız: " + error.message);
-                } else {
-                    await verileriGetir();
-                }
+                if (error) alert("Silme başarısız: " + error.message);
+                else await verileriGetir();
             }
         }
 
@@ -666,23 +698,23 @@
                 </tr>`;
             });
 
-            document.getElementById('modal-ders-tablosu').innerHTML = html;
-            document.getElementById('detay-modal').classList.remove('hidden');
+            let modalDersTablosu = document.getElementById('modal-ders-tablosu');
+            let detayModal = document.getElementById('detay-modal');
+            if(modalDersTablosu) modalDersTablosu.innerHTML = html;
+            if(detayModal) detayModal.classList.remove('hidden');
         }
 
         function modalKapat() {
-            document.getElementById('detay-modal').classList.add('hidden');
+            let detayModal = document.getElementById('detay-modal');
+            if(detayModal) detayModal.classList.add('hidden');
         }
 
         function excelRaporAl() {
             if(globalOgrenciler.length === 0) return alert("Rapor verisi bulunamadı!");
-
             let sirlanmisOgrListesi = siralanmisOgrencileriGetir();
 
             let excelBasliklar = ["Sıra", "Sınıfı", "Öğrenci No", "Öğrenci Adı Soyadı", "Hedef Lisesi"];
-            globalDenemeler.forEach(d => {
-                excelBasliklar.push(`${d.deneme_adi} Puan`, `${d.deneme_adi} Net`);
-            });
+            globalDenemeler.forEach(d => { excelBasliklar.push(`${d.deneme_adi} Puan`, `${d.deneme_adi} Net`); });
 
             let excelVerisi = [
                 ["Hasköy Ortaokulu"],
@@ -693,27 +725,18 @@
             ];
 
             sirlanmisOgrListesi.forEach((ogrenci, index) => {
-                let satir = [
-                    index + 1,
-                    ogrenci.sinif || "",
-                    ogrenci.ogrenci_no ? Number(ogrenci.ogrenci_no) || ogrenci.ogrenci_no : "",
-                    ogrenci.ad_soyad || "",
-                    ogrenci.hedef_lisesi || ""
-                ];
-
+                let satir = [index + 1, ogrenci.sinif || "", ogrenci.ogrenci_no ? Number(ogrenci.ogrenci_no) || ogrenci.ogrenci_no : "", ogrenci.ad_soyad || "", ogrenci.hedef_lisesi || ""];
                 globalDenemeler.forEach(d => {
                     let sonuc = globalSonuclar.find(s => s.ogrenci_id === ogrenci.id && s.deneme_id === d.id);
                     satir.push(sonuc && sonuc.lgs_puan != null ? Number(sonuc.lgs_puan) : 0);
                     satir.push(sonuc && sonuc.toplam_net != null ? Number(sonuc.toplam_net) : 0);
                 });
-                
                 excelVerisi.push(satir);
             });
 
             let worksheet = XLSX.utils.aoa_to_sheet(excelVerisi);
             let workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Mihmandar Analiz");
-            
             XLSX.writeFile(workbook, `CADEP_${globalOgretmenAdi.replace(/[^a-zA-Z0-9]/g, '_')}_Ogrencileri.xlsx`);
         }
 
