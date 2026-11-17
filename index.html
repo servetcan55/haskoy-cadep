@@ -8,12 +8,9 @@
     // Oturum Kontrolü ve Yetkilendirme
     let oturum = JSON.parse(localStorage.getItem('cadep_oturum'));
     
-    // 1. Hiç giriş yapılmamışsa login sayfasına at
     if (!oturum) {
         window.location.href = 'giris.html';
-    } 
-    // 2. Giriş yapan kişi "öğrenci" ise dashboard'a girmesini engelle ve kendi sayfasına geri fırlat
-    else if (oturum.rol === 'ogrenci') {
+    } else if (oturum.rol === 'ogrenci') {
         window.location.href = 'ogrenci_detay.html';
     }
     </script>
@@ -24,13 +21,11 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Ortak Navbar (Sticky Yapıldı) -->
+    <!-- Ortak Navbar -->
     <header class="bg-indigo-800 text-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    Hasköy CADEP Takip Sistemi
-                </h1>
+                <h1 class="text-2xl font-bold flex items-center gap-2">Hasköy CADEP Takip Sistemi</h1>
                 <p class="text-indigo-200 text-sm">8. Sınıf LGS Öğrenci ve Deneme Analiz Platformu - Hasköy Ortaokulu</p>
             </div>
             <nav class="mt-3 sm:mt-0 flex flex-wrap gap-2 items-center">
@@ -63,7 +58,7 @@
             </div>
         </div>
 
-        <!-- İstatistik Kartları (4'lü Grid) -->
+        <!-- İstatistik Kartları -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
                 <div>
@@ -105,7 +100,7 @@
 
         <div class="flex flex-col lg:flex-row gap-6">
             <div class="flex flex-col w-full lg:w-2/3 gap-6">
-                <!-- SON DENEME SINAVI ÖZET KARTI VE BAŞARILI ÖĞRENCİLER -->
+                <!-- Son Deneme Sınavı Özet Kartı -->
                 <div id="son-deneme-ozet-container" class="grid grid-cols-1 sm:grid-cols-2 gap-6 hidden">
                     <div class="bg-gradient-to-br from-indigo-800 to-indigo-900 text-white p-6 rounded-2xl shadow-md flex flex-col justify-between h-full">
                         <div>
@@ -153,7 +148,7 @@
                     </div>
                 </div>
 
-                <!-- DİNAMİK DUYURU VE BİLGİLENDİRME PANOSU -->
+                <!-- Duyuru ve Bilgilendirme Panosu -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-grow">
                     <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                         <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
@@ -170,7 +165,7 @@
                 </div>
             </div>
             
-            <!-- WIDGET: EN ÇOK ZORLANILAN KONULAR -->
+            <!-- Kritik Konu Analizi -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full w-full lg:w-1/3">
                 <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
                     <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
@@ -198,10 +193,10 @@
             </div>
         </div>
 
-        <!-- YENİ LİDERLİK TABLOLARI GRİDİ (SORU VE KİTAP YAN YANA / ALT ALTA) -->
+        <!-- LİDERLİK TABLOLARI (Takvim Haftası Bazlı: Pazartesi - Pazar) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            <!-- WIDGET 1: BU HAFTA EN ÇOK SORU ÇÖZENLER TOP 5 -->
+            <!-- En Çok Soru Çözenler Top 5 -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-slate-100 pb-3">
                     <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
@@ -231,7 +226,7 @@
                 </div>
             </div>
 
-            <!-- WIDGET 2: YENİ EKLENEN KİTAP KURTLARI TOP 5 -->
+            <!-- En Çok Kitap Okuyanlar Top 5 -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-slate-100 pb-3">
                     <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
@@ -354,7 +349,6 @@
                 const { data: mih } = await _supabase.from('cadep_mihmandar_ogretmenler').select('*');
                 const { data: den } = await _supabase.from('denemeler').select('*');
                 
-                // Paralel Veri Çekimi Soru + Kitap
                 const [sorularRes, kitaplarRes] = await Promise.all([
                     _supabase.from('cadep_soru_kumbarasi').select('*'),
                     _supabase.from('cadep_kitap_okuma').select('*')
@@ -397,15 +391,33 @@
             kitapSelect.innerHTML = html;
         }
 
-        // --- SORU LİDERLİK TABLOSU ---
+        // --- SORU LİDERLİK TABLOSU (Sabit Takvim Haftası: Pazartesi - Pazar) ---
         function top5SoruTablosunuYukle() {
             let tbody = document.getElementById('top5-soru-govde');
             let secilenSinif = document.getElementById('top5-sinif-filtre').value;
             if(!tbody) return;
 
             let simdi = new Date();
-            let birHaftaOnce = new Date();
-            birHaftaOnce.setDate(simdi.getDate() - 7);
+            let day = simdi.getDay();
+            let diffToPazartesi = simdi.getDate() - day + (day === 0 ? -6 : 1);
+            
+            let pazartesi = new Date(simdi);
+            pazartesi.setDate(diffToPazartesi);
+            pazartesi.setHours(0, 0, 0, 0);
+
+            let pazar = new Date(pazartesi);
+            pazar.setDate(pazartesi.getDate() + 6);
+            pazar.setHours(23, 59, 59, 999);
+
+            let tarihStrFormat = (d) => {
+                let yil = d.getFullYear();
+                let ay = String(d.getMonth() + 1).padStart(2, '0');
+                let gun = String(d.getDate()).padStart(2, '0');
+                return `${yil}-${ay}-${gun}`;
+            };
+
+            let pazartesiStr = tarihStrFormat(pazartesi);
+            let pazarStr = tarihStrFormat(pazar);
 
             let ogrenciSoruMap = {};
             globalOgrenciler.forEach(o => {
@@ -415,8 +427,7 @@
 
             globalSoruKayitlari.forEach(sq => {
                 if(!sq.tarih) return;
-                let soruTarihi = new Date(sq.tarih);
-                if(soruTarihi >= birHaftaOnce && ogrenciSoruMap[sq.ogrenci_id]) {
+                if(sq.tarih >= pazartesiStr && sq.tarih <= pazarStr && ogrenciSoruMap[sq.ogrenci_id]) {
                     ogrenciSoruMap[sq.ogrenci_id].toplam += (sq.toplam_soru || 0);
                 }
             });
@@ -446,15 +457,33 @@
             tbody.innerHTML = html;
         }
 
-        // --- KİTAP OKUMA LİDERLİK TABLOSU ---
+        // --- KİTAP OKUMA LİDERLİK TABLOSU (Sabit Takvim Haftası: Pazartesi - Pazar) ---
         function top5KitapTablosunuYukle() {
             let tbody = document.getElementById('top5-kitap-govde');
             let secilenSinif = document.getElementById('top5-kitap-filtre').value;
             if(!tbody) return;
 
             let simdi = new Date();
-            let birHaftaOnce = new Date();
-            birHaftaOnce.setDate(simdi.getDate() - 7);
+            let day = simdi.getDay();
+            let diffToPazartesi = simdi.getDate() - day + (day === 0 ? -6 : 1);
+            
+            let pazartesi = new Date(simdi);
+            pazartesi.setDate(diffToPazartesi);
+            pazartesi.setHours(0, 0, 0, 0);
+
+            let pazar = new Date(pazartesi);
+            pazar.setDate(pazartesi.getDate() + 6);
+            pazar.setHours(23, 59, 59, 999);
+
+            let tarihStrFormat = (d) => {
+                let yil = d.getFullYear();
+                let ay = String(d.getMonth() + 1).padStart(2, '0');
+                let gun = String(d.getDate()).padStart(2, '0');
+                return `${yil}-${ay}-${gun}`;
+            };
+
+            let pazartesiStr = tarihStrFormat(pazartesi);
+            let pazarStr = tarihStrFormat(pazar);
 
             let ogrenciKitapMap = {};
             globalOgrenciler.forEach(o => {
@@ -464,8 +493,7 @@
 
             globalKitapKayitlari.forEach(kq => {
                 if(!kq.tarih) return;
-                let kitapTarihi = new Date(kq.tarih);
-                if(kitapTarihi >= birHaftaOnce && ogrenciKitapMap[kq.ogrenci_id]) {
+                if(kq.tarih >= pazartesiStr && kq.tarih <= pazarStr && ogrenciKitapMap[kq.ogrenci_id]) {
                     ogrenciKitapMap[kq.ogrenci_id].toplamSayfa += (kq.sayfa_sayisi || 0);
                 }
             });
@@ -712,7 +740,6 @@
             tbody.innerHTML = html;
         }
 
-        // --- GÜNCELLEME: ŞUBE BAŞARI ÖZETİ İÇİN ---
         async function sinifDagilimlariniYukle(ogrencilerListesi) {
             let containerGrid = document.getElementById('sinif-kartlari-grid');
             let parentContainer = document.getElementById('sinif-dagilim-container');
@@ -728,7 +755,6 @@
             let { data: denemeler } = await _supabase.from('denemeler').select('*').order('tarih', { ascending: false });
             if (!denemeler || denemeler.length === 0) return;
 
-            // En son sonuç girilen denemeyi bul
             let { data: tumSonuclar } = await _supabase.from('deneme_sonuclari').select('*');
             if (!tumSonuclar) tumSonuclar = [];
 
