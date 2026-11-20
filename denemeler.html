@@ -80,6 +80,9 @@
                 <button id="btn-deneme-ekle" onclick="denemeEkle()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium hidden cursor-pointer flex-shrink-0">+ Yeni Ekle</button>
                 
                 <a href="optik_yukleme.html" id="btn-optik-yukle" class="bg-teal-600 hover:bg-teal-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium hidden cursor-pointer items-center gap-1 flex flex-shrink-0">📥 Optik Yükle</a>
+
+                <!-- Sadece Yönetici (Admin): Deneme Takvimi Butonu -->
+                <button id="btn-deneme-takvimi" onclick="denemeTakvimiModalAc()" class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 sm:px-3 py-1.5 rounded-lg shadow text-xs font-medium hidden cursor-pointer items-center gap-1 flex flex-shrink-0">🗓️ Deneme Takvimi</button>
             </div>
         </div>
         
@@ -238,7 +241,7 @@
             </div>
         </div>
 
-        <!-- DENEME DÜZENLEME MODALI (YENİ EKLENDİ) -->
+        <!-- DENEME DÜZENLEME MODALI -->
         <div id="deneme-duzenle-modal" class="fixed inset-0 bg-slate-900/50 hidden flex items-center justify-center z-[100] backdrop-blur-sm">
             <div class="bg-white rounded-2xl p-6 shadow-xl w-full max-w-sm border border-slate-200">
                 <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">✏️ Deneme Düzenle</h3>
@@ -258,6 +261,48 @@
                 </div>
             </div>
         </div>
+
+        <!-- DENEME TAKVİMİ YÖNETİM MODALI (Sadece Yönetici) -->
+        <div id="deneme-takvimi-modal" class="fixed inset-0 bg-slate-900/50 hidden flex items-center justify-center z-[100] backdrop-blur-sm p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl border border-slate-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-4 flex items-center justify-between text-white">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xl">🗓️</span>
+                        <div>
+                            <h3 class="font-bold text-base leading-tight">Deneme Takvimi Yönetimi</h3>
+                            <p class="text-[11px] text-amber-100">En yakın gelecek deneme, öğrenci sayfasındaki turuncu sayaçta görünür.</p>
+                        </div>
+                    </div>
+                    <button onclick="denemeTakvimiModalKapat()" class="text-white/80 hover:text-white text-xl font-bold px-2 cursor-pointer">✕</button>
+                </div>
+
+                <div class="p-5 space-y-4">
+                    <div class="bg-amber-50/70 border border-amber-200/80 p-3.5 rounded-xl space-y-3">
+                        <div id="takvim-form-baslik" class="text-xs font-bold text-amber-900 uppercase tracking-wider">Yeni Deneme Tarihi Ekle</div>
+                        <input type="hidden" id="edit-takvim-id" value="">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <input type="text" id="modal-takvim-ad" placeholder="Deneme Adı (Örn: Deneme 3)" class="sm:col-span-2 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            <input type="date" id="modal-takvim-tarih" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button id="btn-takvim-iptal" onclick="modalTakvimDuzenleIptal()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-lg transition cursor-pointer">
+                                İptal
+                            </button>
+                            <button id="btn-takvim-kaydet" onclick="modalDenemeTakvimiKaydet()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-lg transition cursor-pointer shadow-xs">
+                                + Takvime Ekle
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs font-bold text-slate-600 mb-2">Planlanan Deneme Sınavları</div>
+                        <div id="modal-takvim-liste" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            <p class="text-xs text-slate-400 text-center py-4">Yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Footer -->
@@ -272,7 +317,7 @@
 
         let ogrenciCache = [];
         let sonuclarCache = [];
-        let denemeCache = []; // Seçili denemenin detaylarına ulaşmak için
+        let denemeCache = [];
         let isAdmin = (oturum && oturum.rol === 'admin');
 
         window.onload = async function() {
@@ -293,6 +338,9 @@
                 
                 let btnOptikYukle = document.getElementById('btn-optik-yukle');
                 if (btnOptikYukle) btnOptikYukle.classList.remove('hidden');
+
+                let btnDenemeTakvimi = document.getElementById('btn-deneme-takvimi');
+                if (btnDenemeTakvimi) btnDenemeTakvimi.classList.remove('hidden');
 
                 let btnDenemeSil = document.getElementById('btn-deneme-sil');
                 if (btnDenemeSil) btnDenemeSil.classList.remove('hidden');
@@ -384,7 +432,7 @@
             let seciliDeger = select.value;
             select.innerHTML = '<option value="">Deneme Seçiniz...</option>';
             if(data) {
-                denemeCache = data; // Düzenleme işlemi için saklıyoruz
+                denemeCache = data;
                 data.forEach(d => {
                     select.innerHTML += `<option value="${d.id}">${d.deneme_adi} (${d.tarih})</option>`;
                 });
@@ -753,9 +801,7 @@
             let tarih = prompt("Tarih (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
             await _supabase.from('denemeler').insert([{ deneme_adi: adi, tarih: tarih }]);
             
-            // Ekledikten sonra listeyi güncelle
             await denemeleriYukle();
-            // Yeni eklenen denemeyi otomatik seç (En üstteki)
             let select = document.getElementById('aktif-deneme-sec');
             if (select.options.length > 1) {
                 select.selectedIndex = 1;
@@ -774,7 +820,6 @@
             }
         }
         
-        // --- YENİ EKLENEN FONKSİYONLAR: DENEME DÜZENLEME ---
         function denemeDuzenleModalAc() {
             let denemeId = document.getElementById('aktif-deneme-sec').value;
             if (!denemeId) {
@@ -814,9 +859,154 @@
                 alert("Güncellenirken hata oluştu: " + error.message);
             } else {
                 denemeDuzenleModalKapat();
-                await denemeleriYukle(); // Listeyi yenile
-                document.getElementById('aktif-deneme-sec').value = denemeId; // Seçimi koru
+                await denemeleriYukle();
+                document.getElementById('aktif-deneme-sec').value = denemeId;
                 alert("Deneme bilgileri başarıyla güncellendi!");
+            }
+        }
+
+        // --- DENEME TAKVİMİ YÖNETİMİ (SADECE ADMIN) ---
+        async function denemeTakvimiModalAc() {
+            if (!isAdmin) return;
+            const modal = document.getElementById('deneme-takvimi-modal');
+            if (!modal) return;
+            modalTakvimDuzenleIptal();
+            modal.classList.remove('hidden');
+            await modalDenemeTakvimiListele();
+        }
+
+        function denemeTakvimiModalKapat() {
+            modalTakvimDuzenleIptal();
+            const modal = document.getElementById('deneme-takvimi-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function modalDenemeTakvimiListele() {
+            const listeEl = document.getElementById('modal-takvim-liste');
+            if (!listeEl) return;
+
+            const { data, error } = await _supabase
+                .from('cadep_deneme_takvimi')
+                .select('*')
+                .order('deneme_tarihi', { ascending: true });
+
+            if (error) {
+                listeEl.innerHTML = `<p class="text-xs text-rose-500 bg-rose-50 p-3 rounded-lg border border-rose-100">Takvim verisi okunamadı: ${error.message}</p>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listeEl.innerHTML = `<p class="text-xs text-slate-400 bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">Henüz deneme tarihi eklenmemiş.</p>`;
+                return;
+            }
+
+            const simdi = new Date().getTime();
+            const siradakiKayit = data.find(d => new Date(d.deneme_tarihi).getTime() > simdi);
+
+            listeEl.innerHTML = data.map(item => {
+                const dt = new Date(item.deneme_tarihi);
+                const trTarih = dt.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const inputTarih = dt.toISOString().split('T')[0];
+                const aktifMi = siradakiKayit && siradakiKayit.id === item.id;
+                const rozet = aktifMi
+                    ? `<span class="text-[10px] font-bold bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full border border-orange-200 ml-1.5">Sıradaki Sayaçta</span>`
+                    : '';
+
+                const guvenliAd = String(item.deneme_adi || '').replace(/'/g, "\\'");
+
+                return `
+                    <div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl">
+                        <div class="text-xs sm:text-sm">
+                            <span class="font-bold text-slate-800">${item.deneme_adi}</span>
+                            <span class="text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded ml-2">${trTarih}</span>
+                            ${rozet}
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button onclick="modalTakvimDuzenleBaslat(${item.id}, '${guvenliAd}', '${inputTarih}')" class="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 cursor-pointer transition">
+                                Düzenle
+                            </button>
+                            <button onclick="modalDenemeTakvimiSil(${item.id})" class="text-xs font-semibold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-200 cursor-pointer transition">
+                                Sil
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function modalTakvimDuzenleBaslat(id, ad, tarihStr) {
+            if (!isAdmin) return;
+            document.getElementById('edit-takvim-id').value = id;
+            document.getElementById('modal-takvim-ad').value = ad;
+            document.getElementById('modal-takvim-tarih').value = tarihStr;
+            document.getElementById('takvim-form-baslik').innerText = 'Deneme Tarihini Düzenle';
+            document.getElementById('btn-takvim-kaydet').innerText = 'Güncelle';
+            document.getElementById('btn-takvim-iptal').classList.remove('hidden');
+        }
+
+        function modalTakvimDuzenleIptal() {
+            document.getElementById('edit-takvim-id').value = '';
+            document.getElementById('modal-takvim-ad').value = '';
+            document.getElementById('modal-takvim-tarih').value = '';
+            document.getElementById('takvim-form-baslik').innerText = 'Yeni Deneme Tarihi Ekle';
+            document.getElementById('btn-takvim-kaydet').innerText = '+ Takvime Ekle';
+            document.getElementById('btn-takvim-iptal').classList.add('hidden');
+        }
+
+        async function modalDenemeTakvimiKaydet() {
+            if (!isAdmin) return;
+            const editId = document.getElementById('edit-takvim-id').value;
+            const adInput = document.getElementById('modal-takvim-ad');
+            const tarihInput = document.getElementById('modal-takvim-tarih');
+            const denemeAdi = adInput ? adInput.value.trim() : '';
+            const tarihDeger = tarihInput ? tarihInput.value : '';
+
+            if (!denemeAdi || !tarihDeger) {
+                alert("Lütfen deneme adını ve tarihini giriniz.");
+                return;
+            }
+
+            const isoTarih = `${tarihDeger}T09:00:00+03:00`;
+
+            if (editId) {
+                const { error } = await _supabase
+                    .from('cadep_deneme_takvimi')
+                    .update({ deneme_adi: denemeAdi, deneme_tarihi: isoTarih })
+                    .eq('id', editId);
+
+                if (error) {
+                    alert("Güncelleme sırasında hata oluştu: " + error.message);
+                    return;
+                }
+            } else {
+                const { error } = await _supabase
+                    .from('cadep_deneme_takvimi')
+                    .insert([{ deneme_adi: denemeAdi, deneme_tarihi: isoTarih }]);
+
+                if (error) {
+                    alert("Kayıt sırasında hata oluştu: " + error.message);
+                    return;
+                }
+            }
+
+            modalTakvimDuzenleIptal();
+            await modalDenemeTakvimiListele();
+        }
+
+        async function modalDenemeTakvimiSil(id) {
+            if (!isAdmin) return;
+            if (!confirm("Bu deneme tarihini takvimden silmek istediğinize emin misiniz?")) return;
+
+            const { error } = await _supabase
+                .from('cadep_deneme_takvimi')
+                .delete()
+                .eq('id', id);
+
+            if (!error) {
+                if (document.getElementById('edit-takvim-id').value == id) {
+                    modalTakvimDuzenleIptal();
+                }
+                await modalDenemeTakvimiListele();
             }
         }
 

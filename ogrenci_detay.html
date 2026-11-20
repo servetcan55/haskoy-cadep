@@ -95,6 +95,44 @@
             </div>
         </div>
 
+        <!-- YAKLAŞAN DENEME SINAVI CANLI GERİ SAYIM PANELİ (Turuncu Tema - Salt Okunur) -->
+        <div id="yaklasan-deneme-banner" class="hidden bg-gradient-to-r from-amber-700 via-orange-700 to-amber-900 rounded-2xl p-4 sm:p-6 shadow-md border border-orange-500/80 text-white flex flex-col md:flex-row items-center justify-between gap-6 mt-4">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-white/10 rounded-xl text-3xl hidden sm:block">📝</div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <h3 class="text-base sm:text-lg font-bold">Sıradaki Deneme Sınavına Kalan Zaman</h3>
+                        <div class="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg border border-white/20">
+                            <span class="text-[10px] text-amber-100">Deneme Tarihi:</span>
+                            <span id="yaklasan-deneme-tarih-rozet" class="text-xs font-bold text-white">--.--.----</span>
+                        </div>
+                    </div>
+                    <p id="yaklasan-deneme-adi" class="text-xs sm:text-sm text-amber-100 mt-0.5 font-medium">
+                        Sıradaki deneme sınavı bilgisi yükleniyor...
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 sm:gap-4 text-center">
+                <div class="bg-white/10 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="deneme-sayac-gun" class="text-xl sm:text-2xl font-black text-white">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-amber-100 block">Gün</span>
+                </div>
+                <div class="bg-white/10 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="deneme-sayac-saat" class="text-xl sm:text-2xl font-black text-white">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-amber-100 block">Saat</span>
+                </div>
+                <div class="bg-white/10 border border-white/10 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="deneme-sayac-dakika" class="text-xl sm:text-2xl font-black text-white">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-amber-100 block">Dakika</span>
+                </div>
+                <div class="bg-orange-600/70 border border-amber-300/40 px-3 py-2 rounded-xl backdrop-blur-sm min-w-[65px]">
+                    <span id="deneme-sayac-saniye" class="text-xl sm:text-2xl font-black text-amber-200">00</span>
+                    <span class="text-[9px] uppercase tracking-wider text-amber-50 block">Saniye</span>
+                </div>
+            </div>
+        </div>
+
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <a href="ogrenciler.html" id="btn-geri-don" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center gap-1 mb-1">← Öğrenci Listesine Dön</a>
@@ -380,6 +418,7 @@
         let globalTumKitaplar = []; 
 
         let lgsHedefTarih = '2027-06-06T10:00:00';
+        let siradakiDeneme = null;
 
         window.onload = async function() {
             if (oturum && oturum.rol === 'ogrenci') {
@@ -422,6 +461,10 @@
             
             lgsGeriSayimBaslat();
             setInterval(lgsGeriSayimBaslat, 1000);
+
+            try { await yaklasanDenemeyiGetir(); } catch(e) {}
+            siradakiDenemeSayacBaslat();
+            setInterval(siradakiDenemeSayacBaslat, 1000);
 
             await verileriGetir();
         };
@@ -1910,6 +1953,71 @@ function ogrenciGelisimGrafiginiCiz() {
                 window.location.href = 'mihmandar_ogretmenler.html';
             }
         }
+
+    
+async function yaklasanDenemeyiGetir() {
+    const banner = document.getElementById('yaklasan-deneme-banner');
+    if (!banner) return;
+
+    const { data, error } = await _supabase
+        .from('cadep_deneme_takvimi')
+        .select('*')
+        .order('deneme_tarihi', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    const simdi = new Date().getTime();
+    // Tarihi henüz geçmemiş en yakın denemeyi bul
+    const gelecekDenemeler = data.filter(d => new Date(d.deneme_tarihi).getTime() > simdi);
+
+    if (gelecekDenemeler.length === 0) {
+        banner.classList.add('hidden');
+        siradakiDeneme = null;
+        return;
+    }
+
+    siradakiDeneme = gelecekDenemeler[0];
+    document.getElementById('yaklasan-deneme-adi').innerText = `Sıradaki Sınav: ${siradakiDeneme.deneme_adi}`;
+
+    const tarihObj = new Date(siradakiDeneme.deneme_tarihi);
+    const tarihStr = tarihObj.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    document.getElementById('yaklasan-deneme-tarih-rozet').innerText = `Deneme Tarihi: ${tarihStr}`;
+
+    banner.classList.remove('hidden');
+}
+
+function siradakiDenemeSayacBaslat() {
+    const banner = document.getElementById('yaklasan-deneme-banner');
+    if (!siradakiDeneme || !banner) return;
+
+    const hedef = new Date(siradakiDeneme.deneme_tarihi).getTime();
+    const simdi = new Date().getTime();
+    const fark = hedef - simdi;
+
+    if (fark <= 0) {
+        // Sınav zamanı dolduğunda bir sonraki denemeye geçmek için listeyi tazele
+        yaklasanDenemeyiGetir();
+        return;
+    }
+
+    const gun = Math.floor(fark / (1000 * 60 * 60 * 24));
+    const saat = Math.floor((fark % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const dakika = Math.floor((fark % (1000 * 60 * 60)) / (1000 * 60));
+    const saniye = Math.floor((fark % (1000 * 60)) / 1000);
+
+    const elGun = document.getElementById('deneme-sayac-gun');
+    const elSaat = document.getElementById('deneme-sayac-saat');
+    const elDakika = document.getElementById('deneme-sayac-dakika');
+    const elSaniye = document.getElementById('deneme-sayac-saniye');
+
+    if (elGun) elGun.innerText = gun;
+    if (elSaat) elSaat.innerText = String(saat).padStart(2, '0');
+    if (elDakika) elDakika.innerText = String(dakika).padStart(2, '0');
+    if (elSaniye) elSaniye.innerText = String(saniye).padStart(2, '0');
+}
 
         async function ogrenciDuyurulariniYukle() {
     const container = document.getElementById('ogrenci-duyuru-container');
