@@ -143,6 +143,22 @@
             <div id="rozet-container" class="flex flex-wrap gap-3"><div class="text-sm text-slate-400">Rozetler hesaplanıyor...</div></div>
         </div>
 
+        <!-- DUYURU VE BİLGİLENDİRME PANOSU (Tam Genişlik - Sadece Öğrenci ve Admin) -->
+        <div id="ogrenci-duyuru-container" class="hidden w-full bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                    <span class="bg-sky-100 text-sky-600 p-1.5 rounded-lg text-base">📢</span>
+                    Duyuru ve Bilgilendirme Panosu
+                </h3>
+                <button id="btn-ogrenci-duyuru-ekle" onclick="ogrenciDuyuruEkleModalAc()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer shadow-sm">
+                    + Yeni Ekle
+                </button>
+            </div>
+            <div id="ogrenci-duyuru-listesi" class="space-y-3 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                <p class="text-slate-400 text-xs text-center py-4">Duyurular yükleniyor...</p>
+            </div>
+        </div>
+
         <!-- MİHMANDAR SEYİR DEFTERİ VE GÖREV TAKİBİ -->
         <div id="koocluk-grid-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col h-full">
@@ -579,6 +595,7 @@
             if(yetkiliOgretmen) { try { await notlariGetir(); } catch(e) { console.error("Not Hatası:", e); } }
             try { await soruKumbarasiniGetir(); } catch(e) { console.error("Soru Hatası:", e); }
             try { await kitapKumbarasiniGetir(); } catch(e) { console.error("Kitap Hatası:", e); }
+            try { await ogrenciDuyurulariniYukle(); } catch(e) { console.error("Duyuru Hatası:", e); }
         }
         async function kitapKumbarasiniGetir() {
             let tbody = document.getElementById('kitap-kumbarasi-govde');
@@ -1893,6 +1910,98 @@ function ogrenciGelisimGrafiginiCiz() {
                 window.location.href = 'mihmandar_ogretmenler.html';
             }
         }
+
+        async function ogrenciDuyurulariniYukle() {
+    const container = document.getElementById('ogrenci-duyuru-container');
+    const listeEl = document.getElementById('ogrenci-duyuru-listesi');
+    const ekleBtn = document.getElementById('btn-ogrenci-duyuru-ekle');
+    if (!container || !listeEl) return;
+
+    const aktifOturum = (typeof oturum !== 'undefined' && oturum)
+        ? oturum
+        : JSON.parse(localStorage.getItem('cadep_oturum') || 'null');
+
+    const rol = aktifOturum ? String(aktifOturum.rol || '').toLowerCase().trim() : '';
+
+    // Gözetmen ve Mihmandar grupları öğrenci sayfasındaki bu duyuru bölümünü görmez
+    if (rol === 'mihmandar' || rol === 'gozlemci') {
+        container.classList.add('hidden');
+        container.style.display = 'none';
+        return;
+    }
+
+    // Öğrenci, Admin ve diğer yetkili görünümlerde kutuyu göster
+    container.classList.remove('hidden');
+    container.style.display = 'block';
+
+    const isAdminUser = (rol === 'admin');
+    if (ekleBtn) {
+        if (isAdminUser) ekleBtn.classList.remove('hidden');
+        else ekleBtn.classList.add('hidden');
+    }
+
+    const { data, error } = await _supabase
+        .from('cadep_duyurular')
+        .select('*')
+        .order('tarih', { ascending: false });
+
+    if (error) {
+        console.error("Duyuru çekme hatası:", error);
+        listeEl.innerHTML = `<p class="text-rose-500 text-xs text-center py-4 bg-rose-50 rounded-xl border border-rose-100">Duyurular yüklenirken erişim/veritabanı hatası oluştu.</p>`;
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        listeEl.innerHTML = `<p class="text-slate-400 text-xs text-center py-4 bg-slate-50 rounded-xl border border-slate-100">Henüz yayınlanmış duyuru bulunmuyor.</p>`;
+        return;
+    }
+
+    listeEl.innerHTML = data.map(d => {
+        const silBtn = isAdminUser
+            ? `<button onclick="ogrenciDuyuruSil(${d.id})" class="text-[10px] text-red-500 hover:text-red-700 font-medium ml-2 cursor-pointer bg-red-50 px-1.5 py-0.5 rounded border border-red-100 transition-colors">Sil</button>`
+            : '';
+        return `
+            <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl hover:shadow-sm transition-shadow">
+                <div class="flex justify-between items-start mb-1.5">
+                    <h4 class="font-bold text-slate-800 text-xs sm:text-sm pr-2 leading-tight">${d.baslik}</h4>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <span class="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-100">${d.tarih || ''}</span>
+                        ${silBtn}
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">${d.icerik}</p>
+            </div>
+        `;
+    }).join('');
+}
+
+async function ogrenciDuyuruEkleModalAc() {
+    const aktifOturum = (typeof oturum !== 'undefined' && oturum)
+        ? oturum
+        : JSON.parse(localStorage.getItem('cadep_oturum') || 'null');
+    if (!aktifOturum || String(aktifOturum.rol || '').toLowerCase() !== 'admin') return;
+
+    const baslik = prompt("Duyuru Başlığı:");
+    if (!baslik) return;
+    const icerik = prompt("Duyuru İçeriği:");
+    if (!icerik) return;
+    const tarih = new Date().toISOString().split('T')[0];
+
+    const { error } = await _supabase.from('cadep_duyurular').insert([{ baslik, icerik, tarih }]);
+    if (!error) await ogrenciDuyurulariniYukle();
+}
+
+async function ogrenciDuyuruSil(id) {
+    const aktifOturum = (typeof oturum !== 'undefined' && oturum)
+        ? oturum
+        : JSON.parse(localStorage.getItem('cadep_oturum') || 'null');
+    if (!aktifOturum || String(aktifOturum.rol || '').toLowerCase() !== 'admin') return;
+
+    if (confirm("Bu duyuruyu silmek istediğinize emin misiniz?")) {
+        const { error } = await _supabase.from('cadep_duyurular').delete().eq('id', id);
+        if (!error) await ogrenciDuyurulariniYukle();
+    }
+}
     </script>
 </body>
 </html>
